@@ -9,3 +9,6 @@ build
 npm-debug.log*
 .DS_Store
 Thumbs.db
+
+# Local dev-tool config (hardcodes an absolute machine-specific path)
+.claude/
