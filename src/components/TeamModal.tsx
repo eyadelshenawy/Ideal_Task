@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, X, Shield, ToggleLeft, ToggleRight, RotateCcw, FolderKanban } from "lucide-react";
+import { Plus, X, Shield, ToggleLeft, ToggleRight, RotateCcw, FolderKanban, Trash2, Check } from "lucide-react";
 import type { TeamMember, Project } from "@/types/models";
 
 interface TeamModalProps {
@@ -19,6 +19,7 @@ export default function TeamModal({ team, projects, currentUserId, onClose, onCh
   const [error, setError] = useState("");
   const [tempPasswordInfo, setTempPasswordInfo] = useState<{ name: string; password: string } | null>(null);
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
 
   async function addMember() {
     if (!newName.trim() || !newEmail.trim()) return;
@@ -62,6 +63,22 @@ export default function TeamModal({ team, projects, currentUserId, onClose, onCh
     }
   }
 
+  async function deleteMember(id: string) {
+    setBusyId(id);
+    setError("");
+    try {
+      const res = await fetch(`/api/team/${id}`, { method: "DELETE" });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "Couldn't delete member");
+      setConfirmingDeleteId(null);
+      onChanged();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't delete member");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   function toggleProjectAdmin(member: TeamMember, projectId: string) {
     const next = member.projectAdminOf.includes(projectId)
       ? member.projectAdminOf.filter((id) => id !== projectId)
@@ -77,9 +94,10 @@ export default function TeamModal({ team, projects, currentUserId, onClose, onCh
           <button onClick={onClose} className="text-brand-sub"><X size={18} /></button>
         </div>
         <div className="text-[11.5px] text-brand-sub mb-3">
-          Toggle a member to Inactive when they leave — their past tasks stay untouched. The shield marks Super
-          Admins (full access everywhere). The folder icon lets you grant a member admin rights on specific
-          projects only — they can create/edit/delete tasks there without being a Super Admin.
+          Toggle a member to Inactive when they leave — their past tasks stay untouched, and it&apos;s reversible.
+          The shield marks Super Admins (full access everywhere). The folder icon lets you grant a member admin
+          rights on specific projects only. The trash icon permanently deletes the account — use Inactive instead
+          unless you really mean to remove them for good.
         </div>
 
         {tempPasswordInfo && (
@@ -147,6 +165,14 @@ export default function TeamModal({ team, projects, currentUserId, onClose, onCh
                     className="text-brand-sub"
                   >
                     <RotateCcw size={15} />
+                  </button>
+                  <button
+                    onClick={() => !isSelf && (confirmingDeleteId === m.id ? deleteMember(m.id) : setConfirmingDeleteId(m.id))}
+                    disabled={isSelf || busyId === m.id}
+                    title={isSelf ? "You can't delete your own account" : (confirmingDeleteId === m.id ? "Click to confirm permanent delete" : "Delete permanently")}
+                    style={{ color: confirmingDeleteId === m.id ? "#C4443D" : "#5B6B64", cursor: isSelf ? "not-allowed" : "pointer" }}
+                  >
+                    {confirmingDeleteId === m.id ? <Check size={15} /> : <Trash2 size={15} />}
                   </button>
                 </div>
                 {isExpanded && m.role === "MEMBER" && (

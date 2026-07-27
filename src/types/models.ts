@@ -46,7 +46,7 @@ export interface Task {
   progress: number;
   isMilestone: boolean;
   dependsOn: string[]; // predecessor task ids
-  createdById: string;
+  createdById: string | null;
   createdAt: string;
   updatedAt: string;
 }

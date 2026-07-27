@@ -73,3 +73,22 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ error: "Couldn't update member" }, { status: 400 });
   }
 }
+
+// Permanently deletes a user account. Tasks they created keep their record
+// (createdById just goes null — see Task.createdBy onDelete: SetNull);
+// tasks assigned to them become unassigned the same way.
+export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+  const { session, error } = await requireSuperAdmin();
+  if (error) return error;
+
+  if (params.id === session.user.id) {
+    return NextResponse.json({ error: "You can't delete your own account" }, { status: 400 });
+  }
+
+  try {
+    await prisma.user.delete({ where: { id: params.id } });
+    return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json({ error: "Couldn't delete member" }, { status: 400 });
+  }
+}
