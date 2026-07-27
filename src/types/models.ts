@@ -1,4 +1,4 @@
-export type Role = "ADMIN" | "MEMBER";
+export type Role = "SUPER_ADMIN" | "MEMBER";
 export type Priority = "HIGH" | "MEDIUM" | "LOW";
 export type Status = "TODO" | "INPROGRESS" | "REVIEW" | "DONE";
 
@@ -8,11 +8,27 @@ export interface TeamMember {
   email: string;
   role: Role;
   active: boolean;
+  /** Project ids this member holds a per-project admin grant on. */
+  projectAdminOf: string[];
 }
 
 export interface Project {
   id: string;
   name: string;
+}
+
+/** A task assignee without a system login — a client contact or other external person. */
+export interface Contact {
+  id: string;
+  name: string;
+}
+
+/** Resolved display info for a task's assignee, whichever kind it is. */
+export interface AssigneeDisplay {
+  name: string;
+  color?: string;
+  active?: boolean;
+  kind: "user" | "contact";
 }
 
 export interface Task {
@@ -22,6 +38,7 @@ export interface Task {
   description: string | null;
   projectId: string | null;
   assigneeId: string | null;
+  contactAssigneeId: string | null;
   priority: Priority;
   status: Status;
   startDate: string | null; // "YYYY-MM-DD"

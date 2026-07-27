@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Pencil, Trash2, Check, ChevronLeft, ChevronRight, Diamond, AlertTriangle } from "lucide-react";
-import type { Task, Project, TeamMember } from "@/types/models";
+import type { Task, Project, AssigneeDisplay } from "@/types/models";
 import { PRIORITIES, STATUSES, dueBadge, toneStyle, isBlocked } from "@/lib/taskHelpers";
 import Avatar from "./ui/Avatar";
 import Chip from "./ui/Chip";
@@ -10,18 +10,18 @@ import ProgressBar from "./ui/ProgressBar";
 
 interface TaskCardProps {
   task: Task;
-  assignee?: TeamMember;
-  assigneeColor?: string;
+  assignee?: AssigneeDisplay;
   project?: Project;
   allTasks: Task[];
-  isAdmin: boolean;
+  /** Whether this user can fully edit/delete THIS task (Super Admin, or project-admin of its project). */
+  canManage: boolean;
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
   onMove: (task: Task, dir: 1 | -1) => void;
 }
 
 export default function TaskCard({
-  task, assignee, assigneeColor, project, allTasks, isAdmin, onEdit, onDelete, onMove,
+  task, assignee, project, allTasks, canManage, onEdit, onDelete, onMove,
 }: TaskCardProps) {
   const [confirming, setConfirming] = useState(false);
   const priority = PRIORITIES.find((p) => p.id === task.priority)!;
@@ -47,7 +47,7 @@ export default function TaskCard({
           <button onClick={() => onEdit(task)} title="Edit" className="p-1 rounded hover:bg-gray-100 text-brand-sub">
             <Pencil size={14} />
           </button>
-          {isAdmin && (
+          {canManage && (
             <button
               onClick={() => (confirming ? onDelete(task.id) : setConfirming(true))}
               title={confirming ? "Click to confirm" : "Delete"}
@@ -94,7 +94,7 @@ export default function TaskCard({
         </div>
         <div className="flex items-center gap-2">
           {badge && <Chip small style={toneStyle(badge.tone)}>{badge.label}</Chip>}
-          <Avatar name={assignee?.name} color={assigneeColor} active={assignee?.active} size={24} />
+          <Avatar name={assignee?.name} color={assignee?.color} active={assignee?.active} kind={assignee?.kind} size={24} />
         </div>
       </div>
     </div>

@@ -33,7 +33,7 @@ async function main() {
         name: "Eyad Badran",
         email: bootstrapEmail,
         passwordHash,
-        role: Role.ADMIN,
+        role: Role.SUPER_ADMIN,
         active: true,
         mustChangePassword: true,
       },

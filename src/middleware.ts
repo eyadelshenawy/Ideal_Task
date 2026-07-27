@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import type { NextRequest } from "next/server";
 
-// API routes handle their own auth (requireSession/requireAdmin) and return
+// API routes handle their own auth (requireSession/requireSuperAdmin/requireProjectAccess) and return
 // JSON 401/403s — a redirect here would break fetch() calls, so only page
 // routes are gated by this middleware.
 export async function middleware(req: NextRequest) {

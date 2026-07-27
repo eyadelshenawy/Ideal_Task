@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Pencil, Trash2, Check, Diamond } from "lucide-react";
-import type { Task, Project, TeamMember } from "@/types/models";
+import type { Task, Project, AssigneeDisplay } from "@/types/models";
 import { PRIORITIES, STATUSES, dueBadge, toneStyle, isBlocked } from "@/lib/taskHelpers";
 import Avatar from "./ui/Avatar";
 import Chip from "./ui/Chip";
@@ -10,17 +10,16 @@ import ProgressBar from "./ui/ProgressBar";
 
 interface TaskListRowProps {
   task: Task;
-  assignee?: TeamMember;
-  assigneeColor?: string;
+  assignee?: AssigneeDisplay;
   project?: Project;
   allTasks: Task[];
-  isAdmin: boolean;
+  canManage: boolean;
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
 }
 
 export default function TaskListRow({
-  task, assignee, assigneeColor, project, allTasks, isAdmin, onEdit, onDelete,
+  task, assignee, project, allTasks, canManage, onEdit, onDelete,
 }: TaskListRowProps) {
   const [confirming, setConfirming] = useState(false);
   const priority = PRIORITIES.find((p) => p.id === task.priority)!;
@@ -35,7 +34,7 @@ export default function TaskListRow({
     >
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap flex-1 min-w-[180px]">
-          <Avatar name={assignee?.name} color={assigneeColor} active={assignee?.active} />
+          <Avatar name={assignee?.name} color={assignee?.color} active={assignee?.active} kind={assignee?.kind} />
           {task.isMilestone && <Diamond size={12} className="text-brand-dark" />}
           {task.code && <span className="font-mono text-[11px] text-brand-sub">{task.code}</span>}
           <span className="font-semibold text-[13.5px] text-brand-text">{task.title}</span>
@@ -48,7 +47,7 @@ export default function TaskListRow({
           <button onClick={() => onEdit(task)} title="Edit" className="p-1 rounded hover:bg-gray-100 text-brand-sub">
             <Pencil size={14} />
           </button>
-          {isAdmin && (
+          {canManage && (
             <button
               onClick={() => (confirming ? onDelete(task.id) : setConfirming(true))}
               title={confirming ? "Click to confirm" : "Delete"}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireSession, requireAdmin } from "@/lib/permissions";
+import { requireSession, requireSuperAdmin } from "@/lib/permissions";
 import { projectCreateSchema } from "@/lib/validation/project";
 
 export async function GET() {
@@ -12,7 +12,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const { error } = await requireAdmin();
+  const { error } = await requireSuperAdmin();
   if (error) return error;
 
   const parsed = projectCreateSchema.safeParse(await req.json().catch(() => null));

@@ -12,3 +12,4 @@ Thumbs.db
 
 # Local dev-tool config (hardcodes an absolute machine-specific path)
 .claude/
+tsconfig.tsbuildinfo

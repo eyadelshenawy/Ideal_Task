@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2 } from "lucide-react";
 import useSWR from "swr";
-import type { Task, Project, TeamMember, Status } from "@/types/models";
+import type { Task, Project, TeamMember, Contact, Status, AssigneeDisplay } from "@/types/models";
 import type { ImportPreview } from "@/types/import";
 import { colorForIndex, STATUSES, PRIORITIES, todayStr, sortTasks, type SortBy } from "@/lib/taskHelpers";
 import { api } from "@/lib/apiClient";
@@ -27,7 +27,9 @@ const fetcher = (url: string) =>
 interface DashboardProps {
   userId: string;
   userName: string;
-  isAdmin: boolean;
+  isSuperAdmin: boolean;
+  /** Project ids this user holds a per-project admin grant on. */
+  administeredProjectIds: string[];
 }
 
 interface Filters {
@@ -44,14 +46,16 @@ const defaultFilters: Filters = {
   overdueOnly: false, milestonesOnly: false,
 };
 
-export default function Dashboard({ userId, userName, isAdmin }: DashboardProps) {
+export default function Dashboard({ userId, userName, isSuperAdmin, administeredProjectIds }: DashboardProps) {
   const { data: tasks, mutate: mutateTasks } = useSWR<Task[]>("/api/tasks", fetcher);
   const { data: team, mutate: mutateTeam } = useSWR<TeamMember[]>("/api/team", fetcher);
   const { data: projects, mutate: mutateProjects } = useSWR<Project[]>("/api/projects", fetcher);
+  const { data: contacts, mutate: mutateContacts } = useSWR<Contact[]>("/api/contacts", fetcher);
 
   const [view, setView] = useState<"board" | "list" | "timeline">("board");
   const [modalOpen, setModalOpen] = useState(false);
   const [draft, setDraft] = useState<TaskDraft>(blankDraft());
+  const [editingCanFullyEdit, setEditingCanFullyEdit] = useState(true);
   const [formError, setFormError] = useState("");
   const [filters, setFilters] = useState<Filters>(defaultFilters);
   const [sortBy, setSortBy] = useState<SortBy>("dueDate");
@@ -65,8 +69,29 @@ export default function Dashboard({ userId, userName, isAdmin }: DashboardProps)
   const taskList = tasks ?? [];
   const teamList = team ?? [];
   const projectList = projects ?? [];
+  const contactList = contacts ?? [];
 
   const colorMap = Object.fromEntries(teamList.map((m, i) => [m.id, colorForIndex(i)]));
+
+  function canManage(task: Task): boolean {
+    return isSuperAdmin || (task.projectId !== null && administeredProjectIds.includes(task.projectId));
+  }
+  const canCreateAnywhere = isSuperAdmin || administeredProjectIds.length > 0;
+  const modalProjects = isSuperAdmin ? projectList : projectList.filter((p) => administeredProjectIds.includes(p.id));
+
+  function getAssigneeDisplay(task: Task): AssigneeDisplay | undefined {
+    if (task.assigneeId) {
+      const member = teamList.find((m) => m.id === task.assigneeId);
+      if (!member) return undefined;
+      return { name: member.name, color: colorMap[member.id], active: member.active, kind: "user" };
+    }
+    if (task.contactAssigneeId) {
+      const contact = contactList.find((c) => c.id === task.contactAssigneeId);
+      if (!contact) return undefined;
+      return { name: contact.name, kind: "contact" };
+    }
+    return undefined;
+  }
 
   const today = todayStr();
   const stats = useMemo(() => ({
@@ -92,28 +117,38 @@ export default function Dashboard({ userId, userName, isAdmin }: DashboardProps)
   }), [taskList, filters, today, projectList]);
 
   function openNew() {
-    setDraft(blankDraft());
+    const d = blankDraft();
+    if (!isSuperAdmin && administeredProjectIds.length > 0) {
+      d.projectId = administeredProjectIds[0];
+    }
+    setDraft(d);
+    setEditingCanFullyEdit(true);
     setFormError("");
     setModalOpen(true);
   }
 
   function openEdit(task: Task) {
     setDraft(draftFromTask(task));
+    setEditingCanFullyEdit(canManage(task));
     setFormError("");
     setModalOpen(true);
   }
 
   async function saveDraft() {
-    if (isAdmin && !draft.title.trim()) {
+    const fullEdit = draft.id ? editingCanFullyEdit : true;
+    if (fullEdit && !draft.title.trim()) {
       setFormError("Title is required");
       return;
     }
+    const assignee = draft.assigneeType === "none"
+      ? { type: "none" as const }
+      : { type: draft.assigneeType, id: draft.assigneeRefId };
     try {
       if (draft.id) {
-        const payload = isAdmin
+        const payload = fullEdit
           ? {
               code: draft.code, title: draft.title, description: draft.description,
-              projectId: draft.projectId || null, assigneeId: draft.assigneeId || null,
+              projectId: draft.projectId || null, assignee,
               priority: draft.priority, status: draft.status,
               startDate: draft.startDate || null, dueDate: draft.dueDate || null,
               progress: draft.progress, isMilestone: draft.isMilestone, dependsOn: draft.dependsOn,
@@ -123,7 +158,7 @@ export default function Dashboard({ userId, userName, isAdmin }: DashboardProps)
       } else {
         await api.createTask({
           code: draft.code, title: draft.title, description: draft.description,
-          projectId: draft.projectId || null, assigneeId: draft.assigneeId || null,
+          projectId: draft.projectId || null, assignee,
           priority: draft.priority, status: draft.status,
           startDate: draft.startDate || null, dueDate: draft.dueDate || null,
           progress: draft.progress, isMilestone: draft.isMilestone, dependsOn: draft.dependsOn,
@@ -148,6 +183,22 @@ export default function Dashboard({ userId, userName, isAdmin }: DashboardProps)
     if (!next) return;
     await api.updateTask(task.id, { status: next, progress: next === "DONE" ? 100 : task.progress });
     await mutateTasks();
+  }
+
+  async function createContact(name: string): Promise<Contact | null> {
+    try {
+      const res = await fetch("/api/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      if (!res.ok) return null;
+      const contact: Contact = await res.json();
+      await mutateContacts();
+      return contact;
+    } catch {
+      return null;
+    }
   }
 
   function downloadTemplate() {
@@ -216,7 +267,7 @@ export default function Dashboard({ userId, userName, isAdmin }: DashboardProps)
   const sortedList = sortTasks(filteredTasks, sortBy, teamList);
   const sortedGantt = sortTasks(filteredTasks, sortBy, teamList);
 
-  if (!tasks || !team || !projects) {
+  if (!tasks || !team || !projects || !contacts) {
     return (
       <div className="min-h-screen bg-brand-bg flex items-center justify-center">
         <Loader2 className="animate-spin text-brand-dark" size={28} />
@@ -264,7 +315,7 @@ export default function Dashboard({ userId, userName, isAdmin }: DashboardProps)
               </button>
             </div>
             <span className="text-white text-xs">{userName}</span>
-            {isAdmin && (
+            {isSuperAdmin && (
               <button
                 onClick={() => setTeamModalOpen(true)}
                 title="Manage Team"
@@ -274,7 +325,7 @@ export default function Dashboard({ userId, userName, isAdmin }: DashboardProps)
                 <Users size={15} />
               </button>
             )}
-            {isAdmin && (
+            {isSuperAdmin && (
               <button
                 onClick={() => setProjectsModalOpen(true)}
                 title="Manage Projects"
@@ -284,7 +335,7 @@ export default function Dashboard({ userId, userName, isAdmin }: DashboardProps)
                 <Building2 size={15} />
               </button>
             )}
-            {isAdmin && (
+            {isSuperAdmin && (
               <button
                 onClick={downloadTemplate}
                 title="Download Excel template"
@@ -294,7 +345,7 @@ export default function Dashboard({ userId, userName, isAdmin }: DashboardProps)
                 <Download size={15} />
               </button>
             )}
-            {isAdmin && (
+            {isSuperAdmin && (
               <button
                 onClick={() => fileInputRef.current?.click()}
                 title="Import from Excel"
@@ -304,10 +355,10 @@ export default function Dashboard({ userId, userName, isAdmin }: DashboardProps)
                 <Upload size={15} />
               </button>
             )}
-            {isAdmin && (
+            {isSuperAdmin && (
               <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} className="hidden" />
             )}
-            {isAdmin && (
+            {canCreateAnywhere && (
               <button
                 onClick={openNew}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-brand-light text-brand-dark"
@@ -410,11 +461,10 @@ export default function Dashboard({ userId, userName, isAdmin }: DashboardProps)
                       <TaskCard
                         key={task.id}
                         task={task}
-                        assignee={teamList.find((m) => m.id === task.assigneeId)}
-                        assigneeColor={task.assigneeId ? colorMap[task.assigneeId] : undefined}
+                        assignee={getAssigneeDisplay(task)}
                         project={projectList.find((p) => p.id === task.projectId)}
                         allTasks={taskList}
-                        isAdmin={isAdmin}
+                        canManage={canManage(task)}
                         onEdit={openEdit}
                         onDelete={deleteTask}
                         onMove={moveTask}
@@ -436,11 +486,10 @@ export default function Dashboard({ userId, userName, isAdmin }: DashboardProps)
               <TaskListRow
                 key={task.id}
                 task={task}
-                assignee={teamList.find((m) => m.id === task.assigneeId)}
-                assigneeColor={task.assigneeId ? colorMap[task.assigneeId] : undefined}
+                assignee={getAssigneeDisplay(task)}
                 project={projectList.find((p) => p.id === task.projectId)}
                 allTasks={taskList}
-                isAdmin={isAdmin}
+                canManage={canManage(task)}
                 onEdit={openEdit}
                 onDelete={deleteTask}
               />
@@ -459,15 +508,19 @@ export default function Dashboard({ userId, userName, isAdmin }: DashboardProps)
           onSave={saveDraft}
           error={formError}
           team={teamList}
-          projects={projectList}
+          projects={modalProjects}
+          contacts={contactList}
           allTasks={taskList}
-          isAdmin={isAdmin}
+          canFullyEdit={editingCanFullyEdit}
+          isSuperAdmin={isSuperAdmin}
+          onCreateContact={createContact}
         />
       )}
 
       {teamModalOpen && (
         <TeamModal
           team={teamList}
+          projects={projectList}
           currentUserId={userId}
           onClose={() => setTeamModalOpen(false)}
           onChanged={() => mutateTeam()}

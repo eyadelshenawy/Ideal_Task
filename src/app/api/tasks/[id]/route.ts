@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireSession, requireAdmin } from "@/lib/permissions";
-import { taskFullUpdateSchema, taskStatusUpdateSchema } from "@/lib/validation/task";
+import { requireSession, getUserAccess } from "@/lib/permissions";
+import { taskFullUpdateSchema, taskStatusUpdateSchema, assigneeToFields } from "@/lib/validation/task";
 import { serializeTask } from "@/lib/serializers/task";
 import { dateStrToUTC } from "@/lib/serverDates";
 
@@ -12,16 +12,18 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const existing = await prisma.task.findUnique({ where: { id: params.id } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const isAdmin = session.user.role === "ADMIN";
+  const access = await getUserAccess(session);
+  const canFullyEdit = access.isSuperAdmin || (existing.projectId !== null && access.administeredProjectIds.includes(existing.projectId));
   const body = await req.json().catch(() => null);
 
-  // Members may only move status and adjust progress — everything else (title,
-  // dates, assignee, priority, project, dependencies, milestone flag) is
-  // Admin-only, enforced here regardless of what the client sends.
-  if (!isAdmin) {
+  // Anyone without full-edit rights on this task's current project may only
+  // move its status and adjust progress — everything else (title, dates,
+  // assignee, priority, project, dependencies, milestone flag) requires
+  // Super Admin or a project-admin grant on the task's project.
+  if (!canFullyEdit) {
     const parsed = taskStatusUpdateSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: "Members can only update status and progress" }, { status: 403 });
+      return NextResponse.json({ error: "You can only update status and progress on this task" }, { status: 403 });
     }
     const data = parsed.data;
     const nextStatus = data.status ?? existing.status;
@@ -48,6 +50,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const nextStatus = data.status ?? existing.status;
   const dependsOn = data.dependsOn?.filter((id) => id !== params.id);
 
+  // A Project-Admin editor (not Super Admin) may only move a task to another
+  // project they themselves administer — never to null, never to a project
+  // outside their grants. Super Admin is unrestricted.
+  if (!access.isSuperAdmin && data.projectId !== undefined && data.projectId !== existing.projectId) {
+    if (!data.projectId || !access.administeredProjectIds.includes(data.projectId)) {
+      return NextResponse.json({ error: "You can only move this task to a project you administer" }, { status: 403 });
+    }
+  }
+
   try {
     const task = await prisma.task.update({
       where: { id: params.id },
@@ -56,7 +67,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         ...(data.title !== undefined ? { title: data.title } : {}),
         ...(data.description !== undefined ? { description: data.description || null } : {}),
         ...(data.projectId !== undefined ? { projectId: data.projectId || null } : {}),
-        ...(data.assigneeId !== undefined ? { assigneeId: data.assigneeId || null } : {}),
+        ...(data.assignee !== undefined ? assigneeToFields(data.assignee) : {}),
         ...(data.priority !== undefined ? { priority: data.priority } : {}),
         status: nextStatus,
         ...(data.startDate !== undefined ? { startDate: dateStrToUTC(data.startDate) } : {}),
@@ -74,8 +85,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  const { error } = await requireAdmin();
+  const { session, error } = await requireSession();
   if (error) return error;
+
+  const existing = await prisma.task.findUnique({ where: { id: params.id }, select: { projectId: true } });
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const access = await getUserAccess(session);
+  if (!access.isSuperAdmin && !(existing.projectId && access.administeredProjectIds.includes(existing.projectId))) {
+    return NextResponse.json({ error: "You don't have admin rights on this project" }, { status: 403 });
+  }
 
   await prisma.task.delete({ where: { id: params.id } }).catch(() => null);
   return NextResponse.json({ ok: true });

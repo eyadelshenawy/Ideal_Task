@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { requireSession, requireAdmin } from "@/lib/permissions";
+import { requireSession, requireSuperAdmin } from "@/lib/permissions";
 import { teamCreateSchema } from "@/lib/validation/team";
 import { generateTempPassword } from "@/lib/tempPassword";
 
@@ -11,15 +11,24 @@ export async function GET() {
 
   const users = await prisma.user.findMany({
     orderBy: { createdAt: "asc" },
-    select: { id: true, name: true, email: true, role: true, active: true },
+    select: {
+      id: true, name: true, email: true, role: true, active: true,
+      projectAdminOf: { select: { projectId: true } },
+    },
   });
-  return NextResponse.json(users);
+  return NextResponse.json(
+    users.map((u) => ({
+      id: u.id, name: u.name, email: u.email, role: u.role, active: u.active,
+      projectAdminOf: u.projectAdminOf.map((g) => g.projectId),
+    })),
+  );
 }
 
-// Admin-only: creates a member with a generated temp password (returned once in
-// the response so the admin can hand it to the new member — no email service).
+// Super-Admin-only: creates a member with a generated temp password (returned
+// once in the response so the admin can hand it to the new member — no email
+// service).
 export async function POST(req: NextRequest) {
-  const { error } = await requireAdmin();
+  const { error } = await requireSuperAdmin();
   if (error) return error;
 
   const parsed = teamCreateSchema.safeParse(await req.json().catch(() => null));
@@ -41,5 +50,5 @@ export async function POST(req: NextRequest) {
     select: { id: true, name: true, email: true, role: true, active: true },
   });
 
-  return NextResponse.json({ user, tempPassword }, { status: 201 });
+  return NextResponse.json({ user: { ...user, projectAdminOf: [] }, tempPassword }, { status: 201 });
 }

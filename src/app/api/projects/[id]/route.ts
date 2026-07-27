@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/permissions";
+import { requireSuperAdmin } from "@/lib/permissions";
 import { projectUpdateSchema } from "@/lib/validation/project";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  const { error } = await requireAdmin();
+  const { error } = await requireSuperAdmin();
   if (error) return error;
 
   const parsed = projectUpdateSchema.safeParse(await req.json().catch(() => null));
@@ -23,7 +23,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 // Deleting a project unassigns it from any tasks that used it (Task.projectId
 // has onDelete: SetNull) — those tasks are kept, matching the prototype.
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  const { error } = await requireAdmin();
+  const { error } = await requireSuperAdmin();
   if (error) return error;
 
   await prisma.project.delete({ where: { id: params.id } }).catch(() => null);

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/permissions";
+import { requireSuperAdmin } from "@/lib/permissions";
 import { importCommitSchema } from "@/lib/validation/import";
 import { dateStrToUTC } from "@/lib/serverDates";
 
 export async function POST(req: NextRequest) {
-  const { session, error } = await requireAdmin();
+  const { session, error } = await requireSuperAdmin();
   if (error) return error;
 
   const parsed = importCommitSchema.safeParse(await req.json().catch(() => null));

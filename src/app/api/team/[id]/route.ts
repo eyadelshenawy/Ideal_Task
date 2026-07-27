@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/permissions";
+import { requireSuperAdmin } from "@/lib/permissions";
 import { teamUpdateSchema } from "@/lib/validation/team";
 import { generateTempPassword } from "@/lib/tempPassword";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  const { session, error } = await requireAdmin();
+  const { session, error } = await requireSuperAdmin();
   if (error) return error;
 
   const parsed = teamUpdateSchema.safeParse(await req.json().catch(() => null));
@@ -16,8 +16,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const data = parsed.data;
   const isSelf = params.id === session.user.id;
 
-  // Server-side guard, independent of the disabled buttons in the UI: an admin
-  // can't demote or deactivate their own account (would risk locking everyone out).
+  // Server-side guard, independent of the disabled buttons in the UI: a super
+  // admin can't demote or deactivate their own account (would risk locking
+  // everyone out).
   if (isSelf && (data.active === false || data.role === "MEMBER")) {
     return NextResponse.json({ error: "You can't change your own admin access or deactivate yourself" }, { status: 400 });
   }
@@ -35,11 +36,38 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 
   try {
-    const user = await prisma.user.update({
-      where: { id: params.id },
-      data: updateData,
-      select: { id: true, name: true, email: true, role: true, active: true },
+    const user = await prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id: params.id },
+        data: updateData,
+        select: { id: true, name: true, email: true, role: true, active: true },
+      });
+
+      if (data.projectAdminIds !== undefined) {
+        const existing = await tx.projectAdmin.findMany({
+          where: { userId: params.id },
+          select: { projectId: true },
+        });
+        const existingIds = new Set(existing.map((g) => g.projectId));
+        const nextIds = new Set(data.projectAdminIds);
+
+        const toRemove = [...existingIds].filter((id) => !nextIds.has(id));
+        const toAdd = [...nextIds].filter((id) => !existingIds.has(id));
+
+        if (toRemove.length) {
+          await tx.projectAdmin.deleteMany({ where: { userId: params.id, projectId: { in: toRemove } } });
+        }
+        if (toAdd.length) {
+          await tx.projectAdmin.createMany({
+            data: toAdd.map((projectId) => ({ userId: params.id, projectId })),
+          });
+        }
+      }
+
+      const grants = await tx.projectAdmin.findMany({ where: { userId: params.id }, select: { projectId: true } });
+      return { ...updated, projectAdminOf: grants.map((g) => g.projectId) };
     });
+
     return NextResponse.json({ user, tempPassword });
   } catch {
     return NextResponse.json({ error: "Couldn't update member" }, { status: 400 });

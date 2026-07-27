@@ -1,8 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { X } from "lucide-react";
-import type { Task, Project, TeamMember, Priority, Status } from "@/types/models";
+import type { Task, Project, TeamMember, Contact, Priority, Status } from "@/types/models";
 import { PRIORITIES, STATUSES } from "@/lib/taskHelpers";
+
+export type AssigneeType = "user" | "contact" | "none";
 
 export interface TaskDraft {
   id?: string;
@@ -10,7 +13,8 @@ export interface TaskDraft {
   title: string;
   description: string;
   projectId: string;
-  assigneeId: string;
+  assigneeType: AssigneeType;
+  assigneeRefId: string;
   priority: Priority;
   status: Status;
   startDate: string;
@@ -22,7 +26,7 @@ export interface TaskDraft {
 
 export function blankDraft(): TaskDraft {
   return {
-    code: "", title: "", description: "", projectId: "", assigneeId: "",
+    code: "", title: "", description: "", projectId: "", assigneeType: "none", assigneeRefId: "",
     priority: "MEDIUM", status: "TODO", startDate: "", dueDate: "",
     progress: 0, isMilestone: false, dependsOn: [],
   };
@@ -35,7 +39,8 @@ export function draftFromTask(task: Task): TaskDraft {
     title: task.title,
     description: task.description ?? "",
     projectId: task.projectId ?? "",
-    assigneeId: task.assigneeId ?? "",
+    assigneeType: task.assigneeId ? "user" : task.contactAssigneeId ? "contact" : "none",
+    assigneeRefId: task.assigneeId ?? task.contactAssigneeId ?? "",
     priority: task.priority,
     status: task.status,
     startDate: task.startDate ?? "",
@@ -54,16 +59,49 @@ interface TaskModalProps {
   error?: string;
   team: TeamMember[];
   projects: Project[];
+  contacts: Contact[];
   allTasks: Task[];
-  isAdmin: boolean;
+  /** Full create/edit form vs the Status+Progress-only form. */
+  canFullyEdit: boolean;
+  /** Super Admins get an unrestricted "No project" option; Project Admins must pick one of their administered projects (already pre-filtered into `projects`). */
+  isSuperAdmin: boolean;
+  onCreateContact: (name: string) => Promise<Contact | null>;
 }
 
 export default function TaskModal({
-  draft, setDraft, onClose, onSave, error, team, projects, allTasks, isAdmin,
+  draft, setDraft, onClose, onSave, error, team, projects, contacts, allTasks, canFullyEdit, isSuperAdmin, onCreateContact,
 }: TaskModalProps) {
+  const [addingContact, setAddingContact] = useState(false);
+  const [newContactName, setNewContactName] = useState("");
+  const [contactError, setContactError] = useState("");
+
   const activeMembers = team.filter((m) => m.active);
   const inactiveMembers = team.filter((m) => !m.active);
   const otherTasks = allTasks.filter((t) => t.id !== draft.id);
+
+  const assigneeValue = draft.assigneeType === "none" ? "" : `${draft.assigneeType}:${draft.assigneeRefId}`;
+
+  function handleAssigneeChange(v: string) {
+    if (!v) {
+      setDraft({ ...draft, assigneeType: "none", assigneeRefId: "" });
+      return;
+    }
+    const [type, id] = v.split(":");
+    setDraft({ ...draft, assigneeType: type as AssigneeType, assigneeRefId: id });
+  }
+
+  async function submitNewContact() {
+    if (!newContactName.trim()) return;
+    setContactError("");
+    const contact = await onCreateContact(newContactName.trim());
+    if (!contact) {
+      setContactError("Couldn't add contact");
+      return;
+    }
+    setDraft({ ...draft, assigneeType: "contact", assigneeRefId: contact.id });
+    setNewContactName("");
+    setAddingContact(false);
+  }
 
   function toggleDepend(id: string) {
     setDraft({
@@ -77,12 +115,12 @@ export default function TaskModal({
       <div className="bg-white rounded-2xl w-full max-w-[460px] max-h-[90vh] overflow-y-auto p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-bold text-[16px] text-brand-text">
-            {draft.id ? (isAdmin ? "Edit Task" : "Update Status") : "New Task"}
+            {draft.id ? (canFullyEdit ? "Edit Task" : "Update Status") : "New Task"}
           </h2>
           <button onClick={onClose} className="text-brand-sub"><X size={18} /></button>
         </div>
 
-        {!isAdmin ? (
+        {!canFullyEdit ? (
           <div className="flex flex-col gap-3">
             <div>
               <div className="text-xs font-semibold text-brand-sub">Task</div>
@@ -152,33 +190,80 @@ export default function TaskModal({
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-brand-sub">Project</label>
+              <label className="text-xs font-semibold text-brand-sub">Project{!isSuperAdmin && " *"}</label>
               <select
                 value={draft.projectId}
                 onChange={(e) => setDraft({ ...draft, projectId: e.target.value })}
                 className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
               >
-                <option value="">No project</option>
+                {isSuperAdmin && <option value="">No project</option>}
                 {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
+              {!isSuperAdmin && (
+                <div className="text-[11px] text-brand-sub mt-1">
+                  You can only create tasks in projects you administer.
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-semibold text-brand-sub">Assignee</label>
                 <select
-                  value={draft.assigneeId}
-                  onChange={(e) => setDraft({ ...draft, assigneeId: e.target.value })}
+                  value={assigneeValue}
+                  onChange={(e) => handleAssigneeChange(e.target.value)}
                   className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
                 >
                   <option value="">Unassigned</option>
-                  {activeMembers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                  {activeMembers.length > 0 && (
+                    <optgroup label="Team">
+                      {activeMembers.map((m) => <option key={m.id} value={`user:${m.id}`}>{m.name}</option>)}
+                    </optgroup>
+                  )}
                   {inactiveMembers.length > 0 && (
                     <optgroup label="Inactive">
-                      {inactiveMembers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                      {inactiveMembers.map((m) => <option key={m.id} value={`user:${m.id}`}>{m.name}</option>)}
+                    </optgroup>
+                  )}
+                  {contacts.length > 0 && (
+                    <optgroup label="External contacts">
+                      {contacts.map((c) => <option key={c.id} value={`contact:${c.id}`}>{c.name}</option>)}
                     </optgroup>
                   )}
                 </select>
+                {!addingContact ? (
+                  <button
+                    type="button"
+                    onClick={() => setAddingContact(true)}
+                    className="text-[11px] text-brand-dark underline mt-1"
+                  >
+                    + New external contact
+                  </button>
+                ) : (
+                  <div className="flex gap-1 mt-1">
+                    <input
+                      value={newContactName}
+                      onChange={(e) => setNewContactName(e.target.value)}
+                      placeholder="Contact name"
+                      className="flex-1 min-w-0 rounded-lg border border-brand-border px-2 py-1.5 text-xs outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={submitNewContact}
+                      className="rounded-lg px-2 text-xs font-semibold bg-brand-dark text-white flex-shrink-0"
+                    >
+                      Add
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setAddingContact(false); setNewContactName(""); setContactError(""); }}
+                      className="text-xs text-brand-sub px-1 flex-shrink-0"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+                {contactError && <div className="text-[11px] text-red-600 mt-1">{contactError}</div>}
               </div>
               <div>
                 <label className="text-xs font-semibold text-brand-sub">Priority</label>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireSession, requireAdmin } from "@/lib/permissions";
-import { taskCreateSchema } from "@/lib/validation/task";
+import { requireSession, getUserAccess } from "@/lib/permissions";
+import { taskCreateSchema, assigneeToFields } from "@/lib/validation/task";
 import { serializeTask } from "@/lib/serializers/task";
 import { dateStrToUTC } from "@/lib/serverDates";
 
@@ -17,7 +17,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const { session, error } = await requireAdmin();
+  const { session, error } = await requireSession();
   if (error) return error;
 
   const parsed = taskCreateSchema.safeParse(await req.json().catch(() => null));
@@ -26,6 +26,15 @@ export async function POST(req: NextRequest) {
   }
   const data = parsed.data;
 
+  // Super Admins can create anywhere (or with no project, as before). Everyone
+  // else needs a per-project admin grant on the specific project they're
+  // targeting — a project is required in that case, there's no "unscoped"
+  // task creation for a Project Admin.
+  const access = await getUserAccess(session);
+  if (!access.isSuperAdmin && !(data.projectId && access.administeredProjectIds.includes(data.projectId))) {
+    return NextResponse.json({ error: "You don't have admin rights on this project" }, { status: 403 });
+  }
+
   try {
     const task = await prisma.task.create({
       data: {
@@ -33,7 +42,7 @@ export async function POST(req: NextRequest) {
         title: data.title,
         description: data.description || null,
         projectId: data.projectId || null,
-        assigneeId: data.assigneeId || null,
+        ...assigneeToFields(data.assignee),
         priority: data.priority,
         status: data.status,
         startDate: dateStrToUTC(data.startDate),

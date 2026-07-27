@@ -12,6 +12,7 @@ export function serializeTask(t: TaskWithDependsOn): Task {
     description: t.description,
     projectId: t.projectId,
     assigneeId: t.assigneeId,
+    contactAssigneeId: t.contactAssigneeId,
     priority: t.priority,
     status: t.status,
     startDate: utcToDateStr(t.startDate),

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/permissions";
+import { requireSuperAdmin } from "@/lib/permissions";
 import { importRawRowsSchema } from "@/lib/validation/import";
 import { parseSheetRows } from "@/lib/excelImport";
 import type { ImportPreview } from "@/types/import";
 
 export async function POST(req: NextRequest) {
-  const { error } = await requireAdmin();
+  const { error } = await requireSuperAdmin();
   if (error) return error;
 
   const parsedBody = importRawRowsSchema.safeParse(await req.json().catch(() => null));
