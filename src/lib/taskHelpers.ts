@@ -104,8 +104,8 @@ export function sortTasks(list: Task[], sortBy: SortBy, team: TeamMember[]): Tas
     arr.sort((a, b) => priorityWeight(a.priority) - priorityWeight(b.priority));
   } else if (sortBy === "assignee") {
     arr.sort((a, b) => {
-      const an = team.find((m) => m.id === a.assigneeId)?.name || "zzz";
-      const bn = team.find((m) => m.id === b.assigneeId)?.name || "zzz";
+      const an = team.find((m) => m.id === a.assigneeIds[0])?.name || "zzz";
+      const bn = team.find((m) => m.id === b.assigneeIds[0])?.name || "zzz";
       return an.localeCompare(bn);
     });
   } else {

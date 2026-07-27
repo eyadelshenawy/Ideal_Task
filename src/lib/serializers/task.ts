@@ -2,17 +2,28 @@ import type { Task as PrismaTask } from "@prisma/client";
 import { utcToDateStr } from "@/lib/serverDates";
 import type { Task } from "@/types/models";
 
-type TaskWithDependsOn = PrismaTask & { dependsOn: { id: string }[] };
+type TaskWithRelations = PrismaTask & {
+  dependsOn: { id: string }[];
+  assignees: { id: string }[];
+  contactAssignees: { id: string }[];
+};
 
-export function serializeTask(t: TaskWithDependsOn): Task {
+/** Shared Prisma `include` for any query whose result will pass through serializeTask. */
+export const taskInclude = {
+  dependsOn: { select: { id: true } },
+  assignees: { select: { id: true } },
+  contactAssignees: { select: { id: true } },
+} as const;
+
+export function serializeTask(t: TaskWithRelations): Task {
   return {
     id: t.id,
     code: t.code,
     title: t.title,
     description: t.description,
     projectId: t.projectId,
-    assigneeId: t.assigneeId,
-    contactAssigneeId: t.contactAssigneeId,
+    assigneeIds: t.assignees.map((a) => a.id),
+    contactAssigneeIds: t.contactAssignees.map((c) => c.id),
     priority: t.priority,
     status: t.status,
     startDate: utcToDateStr(t.startDate),

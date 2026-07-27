@@ -81,18 +81,16 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   const canCreateAnywhere = isSuperAdmin || administeredProjectIds.length > 0;
   const modalProjects = isSuperAdmin ? projectList : projectList.filter((p) => administeredProjectIds.includes(p.id));
 
-  function getAssigneeDisplay(task: Task): AssigneeDisplay | undefined {
-    if (task.assigneeId) {
-      const member = teamList.find((m) => m.id === task.assigneeId);
-      if (!member) return undefined;
-      return { name: member.name, color: colorMap[member.id], active: member.active, kind: "user" };
-    }
-    if (task.contactAssigneeId) {
-      const contact = contactList.find((c) => c.id === task.contactAssigneeId);
-      if (!contact) return undefined;
-      return { name: contact.name, kind: "contact" };
-    }
-    return undefined;
+  function getAssigneeDisplays(task: Task): AssigneeDisplay[] {
+    const users: AssigneeDisplay[] = task.assigneeIds
+      .map((id) => teamList.find((m) => m.id === id))
+      .filter((m): m is TeamMember => !!m)
+      .map((m) => ({ name: m.name, color: colorMap[m.id], active: m.active, kind: "user" }));
+    const contactDisplays: AssigneeDisplay[] = task.contactAssigneeIds
+      .map((id) => contactList.find((c) => c.id === id))
+      .filter((c): c is Contact => !!c)
+      .map((c) => ({ name: c.name, kind: "contact" }));
+    return [...users, ...contactDisplays];
   }
 
   const today = todayStr();
@@ -107,7 +105,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   const filteredTasks = useMemo(() => taskList.filter((t) => {
     if (filters.overdueOnly && !(t.dueDate && t.dueDate < today && t.status !== "DONE")) return false;
     if (filters.milestonesOnly && !t.isMilestone) return false;
-    if (filters.assigneeId !== "all" && t.assigneeId !== filters.assigneeId) return false;
+    if (filters.assigneeId !== "all" && !t.assigneeIds.includes(filters.assigneeId)) return false;
     if (filters.priority !== "all" && t.priority !== filters.priority) return false;
     if (filters.projectId !== "all" && t.projectId !== filters.projectId) return false;
     if (filters.search) {
@@ -142,15 +140,12 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
       setFormError("Title is required");
       return;
     }
-    const assignee = draft.assigneeType === "none"
-      ? { type: "none" as const }
-      : { type: draft.assigneeType, id: draft.assigneeRefId };
     try {
       if (draft.id) {
         const payload = fullEdit
           ? {
               code: draft.code, title: draft.title, description: draft.description,
-              projectId: draft.projectId || null, assignee,
+              projectId: draft.projectId || null, assignees: draft.assignees,
               priority: draft.priority, status: draft.status,
               startDate: draft.startDate || null, dueDate: draft.dueDate || null,
               progress: draft.progress, isMilestone: draft.isMilestone, dependsOn: draft.dependsOn,
@@ -160,7 +155,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
       } else {
         await api.createTask({
           code: draft.code, title: draft.title, description: draft.description,
-          projectId: draft.projectId || null, assignee,
+          projectId: draft.projectId || null, assignees: draft.assignees,
           priority: draft.priority, status: draft.status,
           startDate: draft.startDate || null, dueDate: draft.dueDate || null,
           progress: draft.progress, isMilestone: draft.isMilestone, dependsOn: draft.dependsOn,
@@ -473,7 +468,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
                       <TaskCard
                         key={task.id}
                         task={task}
-                        assignee={getAssigneeDisplay(task)}
+                        assignees={getAssigneeDisplays(task)}
                         project={projectList.find((p) => p.id === task.projectId)}
                         allTasks={taskList}
                         canManage={canManage(task)}
@@ -498,7 +493,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
               <TaskListRow
                 key={task.id}
                 task={task}
-                assignee={getAssigneeDisplay(task)}
+                assignees={getAssigneeDisplays(task)}
                 project={projectList.find((p) => p.id === task.projectId)}
                 allTasks={taskList}
                 canManage={canManage(task)}

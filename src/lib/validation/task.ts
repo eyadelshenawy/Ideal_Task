@@ -5,14 +5,14 @@ const dateOnly = z
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD")
   .nullable();
 
-// A task's assignee is either a real system user, an external Contact (no
-// login), or nobody — at most one of Task.assigneeId / contactAssigneeId is
-// ever set, this union is how the client tells the API which.
-export const assigneeSchema = z.union([
+// A single assignee entry — either a real system user or an external Contact
+// (no login). A task can have any number of these, mixed.
+export const assigneeEntrySchema = z.union([
   z.object({ type: z.literal("user"), id: z.string().min(1) }),
   z.object({ type: z.literal("contact"), id: z.string().min(1) }),
-  z.object({ type: z.literal("none") }),
 ]);
+export const assigneesSchema = z.array(assigneeEntrySchema);
+type AssigneeEntry = z.infer<typeof assigneeEntrySchema>;
 
 // Full task shape — used for admin/project-admin create and full-edit (as a .partial()).
 export const taskCreateSchema = z.object({
@@ -20,7 +20,7 @@ export const taskCreateSchema = z.object({
   title: z.string().trim().min(1, "Title is required"),
   description: z.string().default(""),
   projectId: z.string().nullable().default(null),
-  assignee: assigneeSchema.default({ type: "none" }),
+  assignees: assigneesSchema.default([]),
   priority: z.enum(["HIGH", "MEDIUM", "LOW"]).default("MEDIUM"),
   status: z.enum(["TODO", "INPROGRESS", "REVIEW", "DONE"]).default("TODO"),
   startDate: dateOnly.default(null),
@@ -32,13 +32,24 @@ export const taskCreateSchema = z.object({
 
 export const taskFullUpdateSchema = taskCreateSchema.partial();
 
-type Assignee = z.infer<typeof assigneeSchema>;
+/** Prisma nested-write payload connecting a fresh task to its assignees (create only). */
+export function assigneesToConnect(assignees: AssigneeEntry[]) {
+  const userIds = assignees.filter((a) => a.type === "user").map((a) => a.id);
+  const contactIds = assignees.filter((a) => a.type === "contact").map((a) => a.id);
+  return {
+    assignees: { connect: userIds.map((id) => ({ id })) },
+    contactAssignees: { connect: contactIds.map((id) => ({ id })) },
+  };
+}
 
-/** Converts the client's assignee union into the two Prisma scalar fields. */
-export function assigneeToFields(assignee: Assignee): { assigneeId: string | null; contactAssigneeId: string | null } {
-  if (assignee.type === "user") return { assigneeId: assignee.id, contactAssigneeId: null };
-  if (assignee.type === "contact") return { assigneeId: null, contactAssigneeId: assignee.id };
-  return { assigneeId: null, contactAssigneeId: null };
+/** Prisma nested-write payload replacing a task's whole assignee list (update). */
+export function assigneesToSet(assignees: AssigneeEntry[]) {
+  const userIds = assignees.filter((a) => a.type === "user").map((a) => a.id);
+  const contactIds = assignees.filter((a) => a.type === "contact").map((a) => a.id);
+  return {
+    assignees: { set: userIds.map((id) => ({ id })) },
+    contactAssignees: { set: contactIds.map((id) => ({ id })) },
+  };
 }
 
 // Members (and anyone without project admin rights on a task) may only move

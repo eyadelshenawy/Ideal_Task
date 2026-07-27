@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession, getUserAccess } from "@/lib/permissions";
-import { taskCreateSchema, assigneeToFields } from "@/lib/validation/task";
-import { serializeTask } from "@/lib/serializers/task";
+import { taskCreateSchema, assigneesToConnect } from "@/lib/validation/task";
+import { serializeTask, taskInclude } from "@/lib/serializers/task";
 import { dateStrToUTC } from "@/lib/serverDates";
 
 export async function GET() {
@@ -10,7 +10,7 @@ export async function GET() {
   if (error) return error;
 
   const tasks = await prisma.task.findMany({
-    include: { dependsOn: { select: { id: true } } },
+    include: taskInclude,
     orderBy: { createdAt: "desc" },
   });
   return NextResponse.json(tasks.map(serializeTask));
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
         title: data.title,
         description: data.description || null,
         projectId: data.projectId || null,
-        ...assigneeToFields(data.assignee),
+        ...assigneesToConnect(data.assignees),
         priority: data.priority,
         status: data.status,
         startDate: dateStrToUTC(data.startDate),
@@ -52,10 +52,10 @@ export async function POST(req: NextRequest) {
         createdById: session.user.id,
         dependsOn: { connect: data.dependsOn.map((id) => ({ id })) },
       },
-      include: { dependsOn: { select: { id: true } } },
+      include: taskInclude,
     });
     return NextResponse.json(serializeTask(task), { status: 201 });
   } catch {
-    return NextResponse.json({ error: "Couldn't create task — check the selected project/assignee/dependencies" }, { status: 400 });
+    return NextResponse.json({ error: "Couldn't create task — check the selected project/assignees/dependencies" }, { status: 400 });
   }
 }

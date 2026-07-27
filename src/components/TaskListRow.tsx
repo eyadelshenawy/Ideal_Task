@@ -4,13 +4,13 @@ import { useState } from "react";
 import { Pencil, Trash2, Check, Diamond } from "lucide-react";
 import type { Task, Project, AssigneeDisplay } from "@/types/models";
 import { PRIORITIES, STATUSES, dueBadge, toneStyle, isBlocked } from "@/lib/taskHelpers";
-import Avatar from "./ui/Avatar";
+import AvatarStack from "./ui/AvatarStack";
 import Chip from "./ui/Chip";
 import ProgressBar from "./ui/ProgressBar";
 
 interface TaskListRowProps {
   task: Task;
-  assignee?: AssigneeDisplay;
+  assignees: AssigneeDisplay[];
   project?: Project;
   allTasks: Task[];
   canManage: boolean;
@@ -19,7 +19,7 @@ interface TaskListRowProps {
 }
 
 export default function TaskListRow({
-  task, assignee, project, allTasks, canManage, onEdit, onDelete,
+  task, assignees, project, allTasks, canManage, onEdit, onDelete,
 }: TaskListRowProps) {
   const [confirming, setConfirming] = useState(false);
   const priority = PRIORITIES.find((p) => p.id === task.priority)!;
@@ -34,7 +34,7 @@ export default function TaskListRow({
     >
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap flex-1 min-w-[180px]">
-          <Avatar name={assignee?.name} color={assignee?.color} active={assignee?.active} kind={assignee?.kind} />
+          <AvatarStack assignees={assignees} />
           {task.isMilestone && <Diamond size={12} className="text-brand-dark" />}
           {task.code && <span className="font-mono text-[11px] text-brand-sub">{task.code}</span>}
           <span className="font-semibold text-[13.5px] text-brand-text">{task.title}</span>

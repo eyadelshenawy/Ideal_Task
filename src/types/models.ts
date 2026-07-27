@@ -37,8 +37,8 @@ export interface Task {
   title: string;
   description: string | null;
   projectId: string | null;
-  assigneeId: string | null;
-  contactAssigneeId: string | null;
+  assigneeIds: string[];
+  contactAssigneeIds: string[];
   priority: Priority;
   status: Status;
   startDate: string | null; // "YYYY-MM-DD"

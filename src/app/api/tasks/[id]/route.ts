@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession, getUserAccess } from "@/lib/permissions";
-import { taskFullUpdateSchema, taskStatusUpdateSchema, assigneeToFields } from "@/lib/validation/task";
-import { serializeTask } from "@/lib/serializers/task";
+import { taskFullUpdateSchema, taskStatusUpdateSchema, assigneesToSet } from "@/lib/validation/task";
+import { serializeTask, taskInclude } from "@/lib/serializers/task";
 import { dateStrToUTC } from "@/lib/serverDates";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
@@ -18,7 +18,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   // Anyone without full-edit rights on this task's current project may only
   // move its status and adjust progress — everything else (title, dates,
-  // assignee, priority, project, dependencies, milestone flag) requires
+  // assignees, priority, project, dependencies, milestone flag) requires
   // Super Admin or a project-admin grant on the task's project.
   if (!canFullyEdit) {
     const parsed = taskStatusUpdateSchema.safeParse(body);
@@ -34,7 +34,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
           status: nextStatus,
           progress: nextStatus === "DONE" ? 100 : data.progress ?? existing.progress,
         },
-        include: { dependsOn: { select: { id: true } } },
+        include: taskInclude,
       });
       return NextResponse.json(serializeTask(task));
     } catch {
@@ -67,7 +67,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         ...(data.title !== undefined ? { title: data.title } : {}),
         ...(data.description !== undefined ? { description: data.description || null } : {}),
         ...(data.projectId !== undefined ? { projectId: data.projectId || null } : {}),
-        ...(data.assignee !== undefined ? assigneeToFields(data.assignee) : {}),
+        ...(data.assignees !== undefined ? assigneesToSet(data.assignees) : {}),
         ...(data.priority !== undefined ? { priority: data.priority } : {}),
         status: nextStatus,
         ...(data.startDate !== undefined ? { startDate: dateStrToUTC(data.startDate) } : {}),
@@ -76,11 +76,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         ...(data.isMilestone !== undefined ? { isMilestone: data.isMilestone } : {}),
         ...(dependsOn !== undefined ? { dependsOn: { set: dependsOn.map((id) => ({ id })) } } : {}),
       },
-      include: { dependsOn: { select: { id: true } } },
+      include: taskInclude,
     });
     return NextResponse.json(serializeTask(task));
   } catch {
-    return NextResponse.json({ error: "Couldn't update task — check the selected project/assignee/dependencies" }, { status: 400 });
+    return NextResponse.json({ error: "Couldn't update task — check the selected project/assignees/dependencies" }, { status: 400 });
   }
 }
 

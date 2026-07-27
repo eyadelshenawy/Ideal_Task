@@ -38,7 +38,7 @@ model User {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  tasksAssigned Task[] @relation("AssignedTasks")
+  tasksAssigned Task[] @relation("TaskAssignees")
   tasksCreated  Task[] @relation("CreatedTasks")
 
   // Per-project admin grants — presence of a row means this user can create/
@@ -73,7 +73,7 @@ model Contact {
   name      String
   createdAt DateTime @default(now())
 
-  tasksAssigned Task[] @relation("ContactAssignedTasks")
+  tasksAssigned Task[] @relation("TaskContactAssignees")
 }
 
 model Task {
@@ -85,13 +85,10 @@ model Task {
   projectId String?
   project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
-  // At most one of assigneeId / contactAssigneeId is set at a time (enforced
-  // in the zod validation, not at the DB level).
-  assigneeId String?
-  assignee   User?   @relation("AssignedTasks", fields: [assigneeId], references: [id], onDelete: SetNull)
-
-  contactAssigneeId String?
-  contactAssignee   Contact? @relation("ContactAssignedTasks", fields: [contactAssigneeId], references: [id], onDelete: SetNull)
+  // A task can have any number of assignees, mixing real team members and
+  // external Contacts.
+  assignees        User[]    @relation("TaskAssignees")
+  contactAssignees Contact[] @relation("TaskContactAssignees")
 
   priority Priority @default(MEDIUM)
   status   Status   @default(TODO)
@@ -116,7 +113,5 @@ model Task {
   updatedAt DateTime @updatedAt
 
   @@index([projectId])
-  @@index([assigneeId])
-  @@index([contactAssigneeId])
   @@index([status])
 }

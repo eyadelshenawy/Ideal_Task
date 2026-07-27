@@ -4,13 +4,13 @@ import { useState } from "react";
 import { Pencil, Trash2, Check, ChevronLeft, ChevronRight, Diamond, AlertTriangle } from "lucide-react";
 import type { Task, Project, AssigneeDisplay } from "@/types/models";
 import { PRIORITIES, STATUSES, dueBadge, toneStyle, isBlocked } from "@/lib/taskHelpers";
-import Avatar from "./ui/Avatar";
+import AvatarStack from "./ui/AvatarStack";
 import Chip from "./ui/Chip";
 import ProgressBar from "./ui/ProgressBar";
 
 interface TaskCardProps {
   task: Task;
-  assignee?: AssigneeDisplay;
+  assignees: AssigneeDisplay[];
   project?: Project;
   allTasks: Task[];
   /** Whether this user can fully edit/delete THIS task (Super Admin, or project-admin of its project). */
@@ -21,7 +21,7 @@ interface TaskCardProps {
 }
 
 export default function TaskCard({
-  task, assignee, project, allTasks, canManage, onEdit, onDelete, onMove,
+  task, assignees, project, allTasks, canManage, onEdit, onDelete, onMove,
 }: TaskCardProps) {
   const [confirming, setConfirming] = useState(false);
   const priority = PRIORITIES.find((p) => p.id === task.priority)!;
@@ -94,7 +94,7 @@ export default function TaskCard({
         </div>
         <div className="flex items-center gap-2">
           {badge && <Chip small style={toneStyle(badge.tone)}>{badge.label}</Chip>}
-          <Avatar name={assignee?.name} color={assignee?.color} active={assignee?.active} kind={assignee?.kind} size={24} />
+          <AvatarStack assignees={assignees} size={24} />
         </div>
       </div>
     </div>

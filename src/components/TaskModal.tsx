@@ -5,7 +5,7 @@ import { X } from "lucide-react";
 import type { Task, Project, TeamMember, Contact, Priority, Status } from "@/types/models";
 import { PRIORITIES, STATUSES } from "@/lib/taskHelpers";
 
-export type AssigneeType = "user" | "contact" | "none";
+export type AssigneeEntry = { type: "user" | "contact"; id: string };
 
 export interface TaskDraft {
   id?: string;
@@ -13,8 +13,7 @@ export interface TaskDraft {
   title: string;
   description: string;
   projectId: string;
-  assigneeType: AssigneeType;
-  assigneeRefId: string;
+  assignees: AssigneeEntry[];
   priority: Priority;
   status: Status;
   startDate: string;
@@ -26,7 +25,7 @@ export interface TaskDraft {
 
 export function blankDraft(): TaskDraft {
   return {
-    code: "", title: "", description: "", projectId: "", assigneeType: "none", assigneeRefId: "",
+    code: "", title: "", description: "", projectId: "", assignees: [],
     priority: "MEDIUM", status: "TODO", startDate: "", dueDate: "",
     progress: 0, isMilestone: false, dependsOn: [],
   };
@@ -39,8 +38,10 @@ export function draftFromTask(task: Task): TaskDraft {
     title: task.title,
     description: task.description ?? "",
     projectId: task.projectId ?? "",
-    assigneeType: task.assigneeId ? "user" : task.contactAssigneeId ? "contact" : "none",
-    assigneeRefId: task.assigneeId ?? task.contactAssigneeId ?? "",
+    assignees: [
+      ...task.assigneeIds.map((id): AssigneeEntry => ({ type: "user", id })),
+      ...task.contactAssigneeIds.map((id): AssigneeEntry => ({ type: "contact", id })),
+    ],
     priority: task.priority,
     status: task.status,
     startDate: task.startDate ?? "",
@@ -79,15 +80,17 @@ export default function TaskModal({
   const inactiveMembers = team.filter((m) => !m.active);
   const otherTasks = allTasks.filter((t) => t.id !== draft.id);
 
-  const assigneeValue = draft.assigneeType === "none" ? "" : `${draft.assigneeType}:${draft.assigneeRefId}`;
+  function isAssigned(type: AssigneeEntry["type"], id: string) {
+    return draft.assignees.some((a) => a.type === type && a.id === id);
+  }
 
-  function handleAssigneeChange(v: string) {
-    if (!v) {
-      setDraft({ ...draft, assigneeType: "none", assigneeRefId: "" });
-      return;
-    }
-    const [type, id] = v.split(":");
-    setDraft({ ...draft, assigneeType: type as AssigneeType, assigneeRefId: id });
+  function toggleAssignee(type: AssigneeEntry["type"], id: string) {
+    setDraft({
+      ...draft,
+      assignees: isAssigned(type, id)
+        ? draft.assignees.filter((a) => !(a.type === type && a.id === id))
+        : [...draft.assignees, { type, id }],
+    });
   }
 
   async function submitNewContact() {
@@ -98,7 +101,7 @@ export default function TaskModal({
       setContactError("Couldn't add contact");
       return;
     }
-    setDraft({ ...draft, assigneeType: "contact", assigneeRefId: contact.id });
+    setDraft({ ...draft, assignees: [...draft.assignees, { type: "contact", id: contact.id }] });
     setNewContactName("");
     setAddingContact(false);
   }
@@ -206,75 +209,84 @@ export default function TaskModal({
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-semibold text-brand-sub">Assignee</label>
-                <select
-                  value={assigneeValue}
-                  onChange={(e) => handleAssigneeChange(e.target.value)}
-                  className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
+            <div>
+              <label className="text-xs font-semibold text-brand-sub">Priority</label>
+              <select
+                value={draft.priority}
+                onChange={(e) => setDraft({ ...draft, priority: e.target.value as Priority })}
+                className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
+              >
+                {PRIORITIES.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-brand-sub">Assignees</label>
+              <div className="border border-brand-border rounded-[10px] max-h-[160px] overflow-y-auto p-2 mt-1">
+                {activeMembers.length === 0 && inactiveMembers.length === 0 && contacts.length === 0 && (
+                  <div className="text-xs text-brand-sub">No team members or contacts yet</div>
+                )}
+                {activeMembers.length > 0 && (
+                  <div className="text-[10px] font-bold text-brand-sub uppercase tracking-wide mt-0.5 mb-0.5">Team</div>
+                )}
+                {activeMembers.map((m) => (
+                  <label key={m.id} className="flex items-center gap-2 text-xs py-0.5 text-brand-text">
+                    <input type="checkbox" checked={isAssigned("user", m.id)} onChange={() => toggleAssignee("user", m.id)} />
+                    {m.name}
+                  </label>
+                ))}
+                {inactiveMembers.length > 0 && (
+                  <div className="text-[10px] font-bold text-brand-sub uppercase tracking-wide mt-1.5 mb-0.5">Inactive</div>
+                )}
+                {inactiveMembers.map((m) => (
+                  <label key={m.id} className="flex items-center gap-2 text-xs py-0.5 text-brand-text">
+                    <input type="checkbox" checked={isAssigned("user", m.id)} onChange={() => toggleAssignee("user", m.id)} />
+                    {m.name}
+                  </label>
+                ))}
+                {contacts.length > 0 && (
+                  <div className="text-[10px] font-bold text-brand-sub uppercase tracking-wide mt-1.5 mb-0.5">External contacts</div>
+                )}
+                {contacts.map((c) => (
+                  <label key={c.id} className="flex items-center gap-2 text-xs py-0.5 text-brand-text">
+                    <input type="checkbox" checked={isAssigned("contact", c.id)} onChange={() => toggleAssignee("contact", c.id)} />
+                    {c.name}
+                  </label>
+                ))}
+              </div>
+              {!addingContact ? (
+                <button
+                  type="button"
+                  onClick={() => setAddingContact(true)}
+                  className="text-[11px] text-brand-dark underline mt-1"
                 >
-                  <option value="">Unassigned</option>
-                  {activeMembers.length > 0 && (
-                    <optgroup label="Team">
-                      {activeMembers.map((m) => <option key={m.id} value={`user:${m.id}`}>{m.name}</option>)}
-                    </optgroup>
-                  )}
-                  {inactiveMembers.length > 0 && (
-                    <optgroup label="Inactive">
-                      {inactiveMembers.map((m) => <option key={m.id} value={`user:${m.id}`}>{m.name}</option>)}
-                    </optgroup>
-                  )}
-                  {contacts.length > 0 && (
-                    <optgroup label="External contacts">
-                      {contacts.map((c) => <option key={c.id} value={`contact:${c.id}`}>{c.name}</option>)}
-                    </optgroup>
-                  )}
-                </select>
-                {!addingContact ? (
+                  + New external contact
+                </button>
+              ) : (
+                <div className="flex gap-1 mt-1">
+                  <input
+                    value={newContactName}
+                    onChange={(e) => setNewContactName(e.target.value)}
+                    placeholder="Contact name"
+                    className="flex-1 min-w-0 rounded-lg border border-brand-border px-2 py-1.5 text-xs outline-none"
+                  />
                   <button
                     type="button"
-                    onClick={() => setAddingContact(true)}
-                    className="text-[11px] text-brand-dark underline mt-1"
+                    onClick={submitNewContact}
+                    className="rounded-lg px-2 text-xs font-semibold bg-brand-dark text-white flex-shrink-0"
                   >
-                    + New external contact
+                    Add
                   </button>
-                ) : (
-                  <div className="flex gap-1 mt-1">
-                    <input
-                      value={newContactName}
-                      onChange={(e) => setNewContactName(e.target.value)}
-                      placeholder="Contact name"
-                      className="flex-1 min-w-0 rounded-lg border border-brand-border px-2 py-1.5 text-xs outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={submitNewContact}
-                      className="rounded-lg px-2 text-xs font-semibold bg-brand-dark text-white flex-shrink-0"
-                    >
-                      Add
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setAddingContact(false); setNewContactName(""); setContactError(""); }}
-                      className="text-xs text-brand-sub px-1 flex-shrink-0"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                )}
-                {contactError && <div className="text-[11px] text-red-600 mt-1">{contactError}</div>}
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-brand-sub">Priority</label>
-                <select
-                  value={draft.priority}
-                  onChange={(e) => setDraft({ ...draft, priority: e.target.value as Priority })}
-                  className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
-                >
-                  {PRIORITIES.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-                </select>
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => { setAddingContact(false); setNewContactName(""); setContactError(""); }}
+                    className="text-xs text-brand-sub px-1 flex-shrink-0"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+              {contactError && <div className="text-[11px] text-red-600 mt-1">{contactError}</div>}
             </div>
 
             <label className="flex items-center gap-2 text-xs font-semibold text-brand-sub">

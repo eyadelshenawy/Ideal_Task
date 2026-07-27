@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
             title: t.title,
             description: t.description || null,
             projectId,
-            assigneeId: t.assigneeId,
+            assignees: t.assigneeId ? { connect: [{ id: t.assigneeId }] } : undefined,
             priority: t.priority,
             status: t.status,
             startDate: dateStrToUTC(t.startDate),
