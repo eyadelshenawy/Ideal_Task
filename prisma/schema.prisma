@@ -101,6 +101,12 @@ model Task {
   dueDate   DateTime?
   progress  Int       @default(0)
 
+  // Set once the "due tomorrow" reminder email has been sent for the current
+  // dueDate. Cleared whenever dueDate changes so a future move back to
+  // "tomorrow" re-triggers the reminder. Overdue reminders have no such gate —
+  // they resend daily for as long as the task stays overdue.
+  dueSoonNotifiedAt DateTime?
+
   isMilestone Boolean @default(false)
 
   // Predecessor tasks that must be Done before this one is unblocked.

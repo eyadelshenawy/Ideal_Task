@@ -4,12 +4,16 @@ import { requireSession, getUserAccess } from "@/lib/permissions";
 import { taskFullUpdateSchema, taskStatusUpdateSchema, assigneesToSet } from "@/lib/validation/task";
 import { serializeTask, taskInclude } from "@/lib/serializers/task";
 import { dateStrToUTC } from "@/lib/serverDates";
+import { notifyAssignment } from "@/lib/notifications";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await requireSession();
   if (error) return error;
 
-  const existing = await prisma.task.findUnique({ where: { id: params.id } });
+  const existing = await prisma.task.findUnique({
+    where: { id: params.id },
+    include: { assignees: { select: { id: true } } },
+  });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const access = await getUserAccess(session);
@@ -71,13 +75,22 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         ...(data.priority !== undefined ? { priority: data.priority } : {}),
         status: nextStatus,
         ...(data.startDate !== undefined ? { startDate: dateStrToUTC(data.startDate) } : {}),
-        ...(data.dueDate !== undefined ? { dueDate: dateStrToUTC(data.dueDate) } : {}),
+        ...(data.dueDate !== undefined ? { dueDate: dateStrToUTC(data.dueDate), dueSoonNotifiedAt: null } : {}),
         progress: nextStatus === "DONE" ? 100 : data.progress ?? existing.progress,
         ...(data.isMilestone !== undefined ? { isMilestone: data.isMilestone } : {}),
         ...(dependsOn !== undefined ? { dependsOn: { set: dependsOn.map((id) => ({ id })) } } : {}),
       },
       include: taskInclude,
     });
+
+    if (data.assignees !== undefined) {
+      const existingUserIds = new Set(existing.assignees.map((a) => a.id));
+      const newlyAssignedUserIds = data.assignees
+        .filter((a) => a.type === "user" && !existingUserIds.has(a.id))
+        .map((a) => a.id);
+      notifyAssignment(task, newlyAssignedUserIds).catch((err) => console.error("notifyAssignment failed:", err));
+    }
+
     return NextResponse.json(serializeTask(task));
   } catch {
     return NextResponse.json({ error: "Couldn't update task — check the selected project/assignees/dependencies" }, { status: 400 });

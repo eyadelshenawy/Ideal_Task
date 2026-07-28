@@ -4,6 +4,7 @@ import { requireSession, getUserAccess } from "@/lib/permissions";
 import { taskCreateSchema, assigneesToConnect } from "@/lib/validation/task";
 import { serializeTask, taskInclude } from "@/lib/serializers/task";
 import { dateStrToUTC } from "@/lib/serverDates";
+import { notifyAssignment } from "@/lib/notifications";
 
 export async function GET() {
   const { error } = await requireSession();
@@ -55,6 +56,10 @@ export async function POST(req: NextRequest) {
       },
       include: taskInclude,
     });
+
+    const newAssigneeUserIds = data.assignees.filter((a) => a.type === "user").map((a) => a.id);
+    notifyAssignment(task, newAssigneeUserIds).catch((err) => console.error("notifyAssignment failed:", err));
+
     return NextResponse.json(serializeTask(task), { status: 201 });
   } catch {
     return NextResponse.json({ error: "Couldn't create task — check the selected project/assignees/dependencies" }, { status: 400 });
