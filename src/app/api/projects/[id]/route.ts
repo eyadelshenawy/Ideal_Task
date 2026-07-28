@@ -20,12 +20,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 }
 
-// Deleting a project unassigns it from any tasks that used it (Task.projectId
-// has onDelete: SetNull) — those tasks are kept, matching the prototype.
+// Soft-delete: moves the project to Trash. Tasks that reference it are left
+// untouched — they keep showing it — while it sits in Trash; they're only
+// unassigned (Task.projectId's onDelete: SetNull) if it's later purged for
+// good via /api/trash. See /api/projects/[id]/restore to undo.
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   const { error } = await requireSuperAdmin();
   if (error) return error;
 
-  await prisma.project.delete({ where: { id: params.id } }).catch(() => null);
+  await prisma.project.update({ where: { id: params.id }, data: { deletedAt: new Date() } }).catch(() => null);
   return NextResponse.json({ ok: true });
 }

@@ -17,6 +17,10 @@ export interface Project {
   name: string;
 }
 
+export interface TrashedProject extends Project {
+  deletedAt: string;
+}
+
 /** A task assignee without a system login — a client contact or other external person. */
 export interface Contact {
   id: string;
@@ -49,4 +53,8 @@ export interface Task {
   createdById: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface TrashedTask extends Task {
+  deletedAt: string;
 }

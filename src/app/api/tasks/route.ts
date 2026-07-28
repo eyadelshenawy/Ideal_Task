@@ -10,6 +10,7 @@ export async function GET() {
   if (error) return error;
 
   const tasks = await prisma.task.findMany({
+    where: { deletedAt: null },
     include: taskInclude,
     orderBy: { createdAt: "desc" },
   });

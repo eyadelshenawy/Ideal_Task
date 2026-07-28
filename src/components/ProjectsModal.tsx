@@ -57,7 +57,7 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
           <button onClick={onClose} className="text-brand-sub"><X size={18} /></button>
         </div>
         <div className="text-[11.5px] text-brand-sub mb-3">
-          Deleting a project unassigns it from any tasks that used it — those tasks are kept.
+          Deleting a project moves it to Trash — its tasks are kept as-is and can be restored together.
         </div>
         {error && <div className="mb-3 text-xs text-red-600">{error}</div>}
 

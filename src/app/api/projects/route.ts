@@ -7,7 +7,7 @@ export async function GET() {
   const { error } = await requireSession();
   if (error) return error;
 
-  const projects = await prisma.project.findMany({ orderBy: { name: "asc" } });
+  const projects = await prisma.project.findMany({ where: { deletedAt: null }, orderBy: { name: "asc" } });
   return NextResponse.json(projects);
 }
 

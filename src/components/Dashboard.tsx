@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
-import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon } from "lucide-react";
+import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2 } from "lucide-react";
 import useSWR from "swr";
 import type { Task, Project, TeamMember, Contact, Status, AssigneeDisplay } from "@/types/models";
 import type { ImportPreview } from "@/types/import";
@@ -15,6 +15,7 @@ import TaskModal, { blankDraft, draftFromTask, type TaskDraft } from "./TaskModa
 import TeamModal from "./TeamModal";
 import ProjectsModal from "./ProjectsModal";
 import ContactsModal from "./ContactsModal";
+import TrashModal from "./TrashModal";
 import ImportPreviewModal from "./ImportPreviewModal";
 import LogoutButton from "./LogoutButton";
 import StatCard from "./ui/StatCard";
@@ -63,6 +64,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   const [teamModalOpen, setTeamModalOpen] = useState(false);
   const [projectsModalOpen, setProjectsModalOpen] = useState(false);
   const [contactsModalOpen, setContactsModalOpen] = useState(false);
+  const [trashModalOpen, setTrashModalOpen] = useState(false);
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [importError, setImportError] = useState("");
   const [importSubmitting, setImportSubmitting] = useState(false);
@@ -342,6 +344,16 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
                 <ContactIcon size={15} />
               </button>
             )}
+            {canCreateAnywhere && (
+              <button
+                onClick={() => setTrashModalOpen(true)}
+                title="Trash"
+                className="p-2 rounded-lg text-white"
+                style={{ background: "rgba(255,255,255,0.12)" }}
+              >
+                <Trash2 size={15} />
+              </button>
+            )}
             {isSuperAdmin && (
               <button
                 onClick={downloadTemplate}
@@ -547,6 +559,14 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
           contacts={contactList}
           onClose={() => setContactsModalOpen(false)}
           onChanged={() => mutateContacts()}
+        />
+      )}
+
+      {trashModalOpen && (
+        <TrashModal
+          isSuperAdmin={isSuperAdmin}
+          onClose={() => setTrashModalOpen(false)}
+          onChanged={() => { mutateTasks(); mutateProjects(); }}
         />
       )}
 

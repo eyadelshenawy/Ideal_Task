@@ -84,6 +84,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 }
 
+// Soft-delete: moves the task to Trash instead of removing it outright.
+// See /api/tasks/[id]/restore to undo, and /api/trash to list/empty.
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await requireSession();
   if (error) return error;
@@ -96,6 +98,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
     return NextResponse.json({ error: "You don't have admin rights on this project" }, { status: 403 });
   }
 
-  await prisma.task.delete({ where: { id: params.id } }).catch(() => null);
+  await prisma.task.update({ where: { id: params.id }, data: { deletedAt: new Date() } }).catch(() => null);
   return NextResponse.json({ ok: true });
 }

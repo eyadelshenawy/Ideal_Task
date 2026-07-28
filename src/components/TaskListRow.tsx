@@ -50,7 +50,7 @@ export default function TaskListRow({
           {canManage && (
             <button
               onClick={() => (confirming ? onDelete(task.id) : setConfirming(true))}
-              title={confirming ? "Click to confirm" : "Delete"}
+              title={confirming ? "Click to confirm" : "Move to Trash"}
               className="p-1 rounded hover:bg-gray-100"
               style={{ color: confirming ? "#C4443D" : "#5B6B64" }}
             >
