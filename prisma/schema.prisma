@@ -152,10 +152,25 @@ model Task {
   deletedAt DateTime?
 
   events TaskEvent[]
+  checklistItems ChecklistItem[]
 
   @@index([projectId])
   @@index([status])
   @@index([deletedAt])
+}
+
+// A checklist line within a task — a lightweight step, not a full Task (no
+// status/assignee/dates of its own).
+model ChecklistItem {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  text      String
+  done      Boolean  @default(false)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([taskId])
 }
 
 // A single chronological entry on a task — either a user-written comment or
