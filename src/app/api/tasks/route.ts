@@ -9,11 +9,25 @@ import { logActivity } from "@/lib/activity";
 import { createNextOccurrence } from "@/lib/recurrence";
 
 export async function GET() {
-  const { error } = await requireSession();
+  const { session, error } = await requireSession();
   if (error) return error;
 
+  // Visibility: Super Admins see every task. Everyone else sees only tasks
+  // in a project they administer (Project Admin grant), plus any task
+  // they're personally assigned to even outside those projects.
+  const access = await getUserAccess(session);
+  const where = access.isSuperAdmin
+    ? { deletedAt: null }
+    : {
+        deletedAt: null,
+        OR: [
+          { assignees: { some: { id: session.user.id } } },
+          ...(access.administeredProjectIds.length > 0 ? [{ projectId: { in: access.administeredProjectIds } }] : []),
+        ],
+      };
+
   const tasks = await prisma.task.findMany({
-    where: { deletedAt: null },
+    where,
     include: taskInclude,
     orderBy: { createdAt: "desc" },
   });
