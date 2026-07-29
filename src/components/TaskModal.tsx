@@ -24,6 +24,7 @@ export interface TaskDraft {
   dependsOn: string[];
   recurrenceFreq: RecurrenceFreq | "";
   recurrenceEndDate: string;
+  tags: string[];
 }
 
 export function blankDraft(): TaskDraft {
@@ -31,7 +32,7 @@ export function blankDraft(): TaskDraft {
     code: "", title: "", description: "", projectId: "", assignees: [],
     priority: "MEDIUM", status: "TODO", startDate: "", dueDate: "",
     progress: 0, isMilestone: false, dependsOn: [],
-    recurrenceFreq: "", recurrenceEndDate: "",
+    recurrenceFreq: "", recurrenceEndDate: "", tags: [],
   };
 }
 
@@ -55,6 +56,7 @@ export function draftFromTask(task: Task): TaskDraft {
     dependsOn: task.dependsOn,
     recurrenceFreq: task.recurrenceFreq ?? "",
     recurrenceEndDate: task.recurrenceEndDate ?? "",
+    tags: task.tags,
   };
 }
 
@@ -81,6 +83,18 @@ export default function TaskModal({
   const [addingContact, setAddingContact] = useState(false);
   const [newContactName, setNewContactName] = useState("");
   const [contactError, setContactError] = useState("");
+  const [newTagText, setNewTagText] = useState("");
+
+  function addTag() {
+    const name = newTagText.trim();
+    if (!name || draft.tags.includes(name)) { setNewTagText(""); return; }
+    setDraft({ ...draft, tags: [...draft.tags, name] });
+    setNewTagText("");
+  }
+
+  function removeTag(name: string) {
+    setDraft({ ...draft, tags: draft.tags.filter((t) => t !== name) });
+  }
 
   const activeMembers = team.filter((m) => m.active);
   const inactiveMembers = team.filter((m) => !m.active);
@@ -224,6 +238,28 @@ export default function TaskModal({
               >
                 {PRIORITIES.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
               </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-brand-sub">Tags</label>
+              <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                {draft.tags.map((tag) => (
+                  <span key={tag} className="flex items-center gap-1 rounded-full pl-2 pr-1 py-0.5 text-[11px] bg-brand-bg text-brand-text border border-brand-border">
+                    {tag}
+                    <button type="button" onClick={() => removeTag(tag)} className="text-brand-sub hover:text-brand-text">
+                      <X size={10} />
+                    </button>
+                  </span>
+                ))}
+                <input
+                  value={newTagText}
+                  onChange={(e) => setNewTagText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
+                  onBlur={addTag}
+                  placeholder="Type a tag, press Enter…"
+                  className="flex-1 min-w-[100px] rounded-lg border border-brand-border px-2 py-1 text-xs outline-none"
+                />
+              </div>
             </div>
 
             <div>

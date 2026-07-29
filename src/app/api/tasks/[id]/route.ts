@@ -7,6 +7,7 @@ import { dateStrToUTC } from "@/lib/serverDates";
 import { notifyAssignment } from "@/lib/notifications";
 import { logActivity, describeTaskChanges, loadNameLookups } from "@/lib/activity";
 import { createNextOccurrence } from "@/lib/recurrence";
+import { resolveTags } from "@/lib/tags";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await requireSession();
@@ -76,11 +77,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
   }
 
+  const tags = data.tags !== undefined ? await resolveTags(data.tags) : null;
+
   try {
     const task = await prisma.task.update({
       where: { id: params.id },
       data: {
         ...(data.code !== undefined ? { code: data.code || null } : {}),
+        ...(tags !== null ? { tags: { set: tags.map((t) => ({ id: t.id })) } } : {}),
         ...(data.title !== undefined ? { title: data.title } : {}),
         ...(data.description !== undefined ? { description: data.description || null } : {}),
         ...(data.projectId !== undefined ? { projectId: data.projectId || null } : {}),

@@ -189,6 +189,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
               startDate: draft.startDate || null, dueDate: draft.dueDate || null,
               progress: draft.progress, isMilestone: draft.isMilestone, dependsOn: draft.dependsOn,
               recurrenceFreq: draft.recurrenceFreq || null, recurrenceEndDate: draft.recurrenceEndDate || null,
+              tags: draft.tags,
             }
           : { status: draft.status, progress: draft.progress };
         await api.updateTask(draft.id, payload);
@@ -199,6 +200,8 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
           priority: draft.priority, status: draft.status,
           startDate: draft.startDate || null, dueDate: draft.dueDate || null,
           progress: draft.progress, isMilestone: draft.isMilestone, dependsOn: draft.dependsOn,
+          recurrenceFreq: draft.recurrenceFreq || null, recurrenceEndDate: draft.recurrenceEndDate || null,
+          tags: draft.tags,
         });
       }
       await mutateTasks();

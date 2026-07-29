@@ -51,6 +51,9 @@ export default function TaskListRow({
           {task.code && <span className="font-mono text-[11px] text-brand-sub">{task.code}</span>}
           <span className="font-semibold text-[13.5px] text-brand-text">{task.title}</span>
           {project && <Chip small style={{ background: "#EEF2F0", color: "#5B6B64" }}>{project.name}</Chip>}
+          {task.tags.map((tag) => (
+            <Chip key={tag} small style={{ background: "#EDE7F5", color: "#5B4A8A" }}>{tag}</Chip>
+          ))}
           {blocked && <Chip small style={{ background: "#FBE7E5", color: "#9A3530" }}>Blocked</Chip>}
         </div>
         <div className="flex items-center gap-2">

@@ -53,6 +53,7 @@ export interface Task {
   dependsOn: string[]; // predecessor task ids
   recurrenceFreq: RecurrenceFreq | null;
   recurrenceEndDate: string | null; // "YYYY-MM-DD"
+  tags: string[];
   createdById: string | null;
   createdAt: string;
   updatedAt: string;

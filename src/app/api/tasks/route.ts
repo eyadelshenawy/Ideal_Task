@@ -7,6 +7,7 @@ import { dateStrToUTC } from "@/lib/serverDates";
 import { notifyAssignment } from "@/lib/notifications";
 import { logActivity } from "@/lib/activity";
 import { createNextOccurrence } from "@/lib/recurrence";
+import { resolveTags } from "@/lib/tags";
 
 export async function GET() {
   const { session, error } = await requireSession();
@@ -53,6 +54,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "You don't have admin rights on this project" }, { status: 403 });
   }
 
+  const tags = await resolveTags(data.tags);
+
   try {
     const task = await prisma.task.create({
       data: {
@@ -61,6 +64,7 @@ export async function POST(req: NextRequest) {
         description: data.description || null,
         projectId: data.projectId || null,
         ...assigneesToConnect(data.assignees),
+        tags: { connect: tags.map((t) => ({ id: t.id })) },
         priority: data.priority,
         status: data.status,
         startDate: dateStrToUTC(data.startDate),

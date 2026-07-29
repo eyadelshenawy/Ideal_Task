@@ -82,6 +82,14 @@ model ProjectAdmin {
   @@unique([userId, projectId])
 }
 
+// A free-form label a task can carry, independent of status/priority
+// (e.g. "client-facing", "on legal hold"). Created on demand by name.
+model Tag {
+  id    String @id @default(cuid())
+  name  String @unique
+  tasks Task[] @relation("TaskTags")
+}
+
 // A task assignee who isn't a system user — a client contact or other
 // external person. Just a display name, no login/credentials.
 model Contact {
@@ -105,6 +113,7 @@ model Task {
   // external Contacts.
   assignees        User[]    @relation("TaskAssignees")
   contactAssignees Contact[] @relation("TaskContactAssignees")
+  tags             Tag[]     @relation("TaskTags")
 
   priority Priority @default(MEDIUM)
   status   Status   @default(TODO)

@@ -30,6 +30,7 @@ export const taskCreateSchema = z.object({
   dependsOn: z.array(z.string()).default([]),
   recurrenceFreq: z.enum(["DAILY", "WEEKLY", "MONTHLY"]).nullable().default(null),
   recurrenceEndDate: dateOnly.default(null),
+  tags: z.array(z.string().trim().min(1).max(40)).default([]),
 });
 
 export const taskFullUpdateSchema = taskCreateSchema.partial();
