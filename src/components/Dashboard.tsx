@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
-import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks } from "lucide-react";
+import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks, BarChart3 } from "lucide-react";
 import useSWR from "swr";
 import type { Task, Project, TeamMember, Contact, Status, AssigneeDisplay } from "@/types/models";
 import type { ImportPreview } from "@/types/import";
@@ -18,6 +18,7 @@ import ContactsModal from "./ContactsModal";
 import TrashModal from "./TrashModal";
 import ImportPreviewModal from "./ImportPreviewModal";
 import BulkActionBar from "./BulkActionBar";
+import ReportsView from "./ReportsView";
 import LogoutButton from "./LogoutButton";
 import StatCard from "./ui/StatCard";
 
@@ -55,7 +56,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   const { data: projects, mutate: mutateProjects } = useSWR<Project[]>("/api/projects", fetcher);
   const { data: contacts, mutate: mutateContacts } = useSWR<Contact[]>("/api/contacts", fetcher);
 
-  const [view, setView] = useState<"board" | "list" | "timeline">("board");
+  const [view, setView] = useState<"board" | "list" | "timeline" | "reports">("board");
   const [modalOpen, setModalOpen] = useState(false);
   const [draft, setDraft] = useState<TaskDraft>(blankDraft());
   const [editingCanFullyEdit, setEditingCanFullyEdit] = useState(true);
@@ -349,6 +350,13 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
               >
                 <CalendarDays size={13} /> Timeline
               </button>
+              <button
+                onClick={() => setView("reports")}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-semibold"
+                style={{ background: view === "reports" ? "#fff" : "transparent", color: view === "reports" ? "#0A5A46" : "#fff" }}
+              >
+                <BarChart3 size={13} /> Reports
+              </button>
             </div>
             <span className="text-white text-xs">{userName}</span>
             {isSuperAdmin && (
@@ -442,6 +450,10 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
       )}
 
       <div className="px-4 py-3">
+        {view === "reports" ? (
+          <ReportsView tasks={taskList} projects={projectList} />
+        ) : (
+        <>
         <div className="flex gap-2 mb-3 flex-wrap">
           <StatCard label="Total" value={stats.total} color="#0A5A46" />
           <StatCard label="In Progress" value={stats.inProgress} color="#82B478" />
@@ -581,6 +593,8 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
         )}
 
         {view === "timeline" && <GanttView tasks={sortedGantt} onEditTask={openEdit} />}
+        </>
+        )}
       </div>
 
       {modalOpen && (

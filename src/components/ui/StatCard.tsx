@@ -2,7 +2,7 @@ export default function StatCard({
   label, value, color, onClick, active,
 }: {
   label: string;
-  value: number;
+  value: number | string;
   color: string;
   onClick?: () => void;
   active?: boolean;
