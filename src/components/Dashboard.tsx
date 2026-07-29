@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
-import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2 } from "lucide-react";
+import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks } from "lucide-react";
 import useSWR from "swr";
 import type { Task, Project, TeamMember, Contact, Status, AssigneeDisplay } from "@/types/models";
 import type { ImportPreview } from "@/types/import";
@@ -17,6 +17,7 @@ import ProjectsModal from "./ProjectsModal";
 import ContactsModal from "./ContactsModal";
 import TrashModal from "./TrashModal";
 import ImportPreviewModal from "./ImportPreviewModal";
+import BulkActionBar from "./BulkActionBar";
 import LogoutButton from "./LogoutButton";
 import StatCard from "./ui/StatCard";
 
@@ -69,6 +70,8 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   const [importError, setImportError] = useState("");
   const [importSubmitting, setImportSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const taskList = tasks ?? [];
   const teamList = team ?? [];
@@ -173,6 +176,40 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   async function deleteTask(id: string) {
     await api.deleteTask(id);
     await mutateTasks();
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function exitSelectMode() {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  }
+
+  async function bulkSetStatus(status: Status) {
+    await api.bulkUpdateTasks({ taskIds: Array.from(selectedIds), status });
+    await mutateTasks();
+  }
+
+  async function bulkSetAssignee(userId: string) {
+    await api.bulkUpdateTasks({ taskIds: Array.from(selectedIds), assignees: [{ type: "user", id: userId }] });
+    await mutateTasks();
+  }
+
+  async function bulkSetProject(projectId: string | null) {
+    await api.bulkUpdateTasks({ taskIds: Array.from(selectedIds), projectId });
+    await mutateTasks();
+  }
+
+  async function bulkDelete() {
+    await api.bulkDeleteTasks(Array.from(selectedIds));
+    await mutateTasks();
+    exitSelectMode();
   }
 
   async function moveTask(task: Task, dir: 1 | -1) {
@@ -344,6 +381,14 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
                 <ContactIcon size={15} />
               </button>
             )}
+            <button
+              onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
+              title={selectMode ? "Exit select mode" : "Select multiple tasks"}
+              className="p-2 rounded-lg text-white"
+              style={{ background: selectMode ? "#fff" : "rgba(255,255,255,0.12)", color: selectMode ? "#0A5A46" : "#fff" }}
+            >
+              <ListChecks size={15} />
+            </button>
             {canCreateAnywhere && (
               <button
                 onClick={() => setTrashModalOpen(true)}
@@ -459,6 +504,19 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
           </select>
         </div>
 
+        {selectMode && selectedIds.size > 0 && (
+          <BulkActionBar
+            selectedCount={selectedIds.size}
+            team={teamList}
+            projects={modalProjects}
+            onClear={() => setSelectedIds(new Set())}
+            onSetStatus={bulkSetStatus}
+            onSetAssignee={bulkSetAssignee}
+            onSetProject={bulkSetProject}
+            onDelete={bulkDelete}
+          />
+        )}
+
         {view === "board" && (
           <div className="flex gap-3 overflow-x-auto pb-2">
             {STATUSES.map((status) => {
@@ -487,6 +545,9 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
                         onEdit={openEdit}
                         onDelete={deleteTask}
                         onMove={moveTask}
+                        selectMode={selectMode}
+                        selected={selectedIds.has(task.id)}
+                        onToggleSelect={toggleSelect}
                       />
                     ))}
                   </div>
@@ -511,6 +572,9 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
                 canManage={canManage(task)}
                 onEdit={openEdit}
                 onDelete={deleteTask}
+                selectMode={selectMode}
+                selected={selectedIds.has(task.id)}
+                onToggleSelect={toggleSelect}
               />
             ))}
           </div>

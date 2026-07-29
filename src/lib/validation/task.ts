@@ -52,6 +52,20 @@ export function assigneesToSet(assignees: AssigneeEntry[]) {
   };
 }
 
+// Bulk edit — applied identically to every task id in the request. Only
+// fields relevant to a batch change; each is optional so callers can send
+// just the one thing they're changing (e.g. status only).
+export const taskBulkUpdateSchema = z.object({
+  taskIds: z.array(z.string().min(1)).min(1),
+  status: z.enum(["TODO", "INPROGRESS", "REVIEW", "DONE"]).optional(),
+  assignees: assigneesSchema.optional(),
+  projectId: z.string().nullable().optional(),
+});
+
+export const taskBulkDeleteSchema = z.object({
+  taskIds: z.array(z.string().min(1)).min(1),
+});
+
 // Members (and anyone without project admin rights on a task) may only move
 // its status and adjust its progress.
 export const taskStatusUpdateSchema = z

@@ -16,10 +16,14 @@ interface TaskListRowProps {
   canManage: boolean;
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
+  selectMode?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }
 
 export default function TaskListRow({
   task, assignees, project, allTasks, canManage, onEdit, onDelete,
+  selectMode, selected, onToggleSelect,
 }: TaskListRowProps) {
   const [confirming, setConfirming] = useState(false);
   const priority = PRIORITIES.find((p) => p.id === task.priority)!;
@@ -34,6 +38,14 @@ export default function TaskListRow({
     >
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap flex-1 min-w-[180px]">
+          {selectMode && (
+            <input
+              type="checkbox"
+              checked={!!selected}
+              onChange={() => onToggleSelect?.(task.id)}
+              className="flex-shrink-0"
+            />
+          )}
           <AvatarStack assignees={assignees} />
           {task.isMilestone && <Diamond size={12} className="text-brand-dark" />}
           {task.code && <span className="font-mono text-[11px] text-brand-sub">{task.code}</span>}
@@ -44,18 +56,22 @@ export default function TaskListRow({
         <div className="flex items-center gap-2">
           <Chip small style={{ background: status.color + "22", color: status.color }}>{status.label}</Chip>
           {badge && <Chip small style={toneStyle(badge.tone)}>{badge.label}</Chip>}
-          <button onClick={() => onEdit(task)} title="Edit" className="p-1 rounded hover:bg-gray-100 text-brand-sub">
-            <Pencil size={14} />
-          </button>
-          {canManage && (
-            <button
-              onClick={() => (confirming ? onDelete(task.id) : setConfirming(true))}
-              title={confirming ? "Click to confirm" : "Move to Trash"}
-              className="p-1 rounded hover:bg-gray-100"
-              style={{ color: confirming ? "#C4443D" : "#5B6B64" }}
-            >
-              {confirming ? <Check size={14} /> : <Trash2 size={14} />}
-            </button>
+          {!selectMode && (
+            <>
+              <button onClick={() => onEdit(task)} title="Edit" className="p-1 rounded hover:bg-gray-100 text-brand-sub">
+                <Pencil size={14} />
+              </button>
+              {canManage && (
+                <button
+                  onClick={() => (confirming ? onDelete(task.id) : setConfirming(true))}
+                  title={confirming ? "Click to confirm" : "Move to Trash"}
+                  className="p-1 rounded hover:bg-gray-100"
+                  style={{ color: confirming ? "#C4443D" : "#5B6B64" }}
+                >
+                  {confirming ? <Check size={14} /> : <Trash2 size={14} />}
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>

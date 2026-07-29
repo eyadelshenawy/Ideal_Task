@@ -19,4 +19,6 @@ export const api = {
   createTask: (data: unknown) => request("/api/tasks", "POST", data),
   updateTask: (id: string, data: unknown) => request(`/api/tasks/${id}`, "PATCH", data),
   deleteTask: (id: string) => request(`/api/tasks/${id}`, "DELETE"),
+  bulkUpdateTasks: (data: unknown) => request("/api/tasks/bulk", "PATCH", data),
+  bulkDeleteTasks: (taskIds: string[]) => request("/api/tasks/bulk", "DELETE", { taskIds }),
 };
