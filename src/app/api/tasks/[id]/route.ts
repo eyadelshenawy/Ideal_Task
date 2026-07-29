@@ -6,6 +6,7 @@ import { serializeTask, taskInclude } from "@/lib/serializers/task";
 import { dateStrToUTC } from "@/lib/serverDates";
 import { notifyAssignment } from "@/lib/notifications";
 import { logActivity, describeTaskChanges, loadNameLookups } from "@/lib/activity";
+import { createNextOccurrence } from "@/lib/recurrence";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await requireSession();
@@ -41,6 +42,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         },
         include: taskInclude,
       });
+      if (nextStatus === "DONE" && existing.status !== "DONE" && task.recurrenceFreq) {
+        createNextOccurrence(task).catch((err) => console.error("createNextOccurrence failed:", err));
+      }
       if (nextStatus !== existing.status) {
         const lines = describeTaskChanges(
           { ...existing, assigneeIds: [], contactAssigneeIds: [] },
@@ -88,9 +92,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         progress: nextStatus === "DONE" ? 100 : data.progress ?? existing.progress,
         ...(data.isMilestone !== undefined ? { isMilestone: data.isMilestone } : {}),
         ...(dependsOn !== undefined ? { dependsOn: { set: dependsOn.map((id) => ({ id })) } } : {}),
+        ...(data.recurrenceFreq !== undefined ? { recurrenceFreq: data.recurrenceFreq } : {}),
+        ...(data.recurrenceEndDate !== undefined ? { recurrenceEndDate: dateStrToUTC(data.recurrenceEndDate) } : {}),
       },
       include: taskInclude,
     });
+
+    if (nextStatus === "DONE" && existing.status !== "DONE" && task.recurrenceFreq) {
+      createNextOccurrence(task).catch((err) => console.error("createNextOccurrence failed:", err));
+    }
 
     if (data.assignees !== undefined) {
       const existingUserIds = new Set(existing.assignees.map((a) => a.id));

@@ -1,6 +1,7 @@
 export type Role = "SUPER_ADMIN" | "MEMBER";
 export type Priority = "HIGH" | "MEDIUM" | "LOW";
 export type Status = "TODO" | "INPROGRESS" | "REVIEW" | "DONE";
+export type RecurrenceFreq = "DAILY" | "WEEKLY" | "MONTHLY";
 
 export interface TeamMember {
   id: string;
@@ -50,6 +51,8 @@ export interface Task {
   progress: number;
   isMilestone: boolean;
   dependsOn: string[]; // predecessor task ids
+  recurrenceFreq: RecurrenceFreq | null;
+  recurrenceEndDate: string | null; // "YYYY-MM-DD"
   createdById: string | null;
   createdAt: string;
   updatedAt: string;

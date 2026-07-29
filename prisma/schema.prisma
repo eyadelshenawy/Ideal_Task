@@ -30,6 +30,12 @@ enum TaskEventType {
   ACTIVITY
 }
 
+enum RecurrenceFreq {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
 model User {
   id                 String   @id @default(cuid())
   name               String
@@ -112,6 +118,12 @@ model Task {
   // "tomorrow" re-triggers the reminder. Overdue reminders have no such gate —
   // they resend daily for as long as the task stays overdue.
   dueSoonNotifiedAt DateTime?
+
+  // Recurrence: when set, completing this task auto-creates the next
+  // occurrence (same project/assignees/priority), due one interval later.
+  // Null recurrenceFreq means "not a recurring task".
+  recurrenceFreq     RecurrenceFreq?
+  recurrenceEndDate  DateTime?
 
   isMilestone Boolean @default(false)
 

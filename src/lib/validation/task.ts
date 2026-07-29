@@ -28,6 +28,8 @@ export const taskCreateSchema = z.object({
   progress: z.number().min(0).max(100).default(0),
   isMilestone: z.boolean().default(false),
   dependsOn: z.array(z.string()).default([]),
+  recurrenceFreq: z.enum(["DAILY", "WEEKLY", "MONTHLY"]).nullable().default(null),
+  recurrenceEndDate: dateOnly.default(null),
 });
 
 export const taskFullUpdateSchema = taskCreateSchema.partial();

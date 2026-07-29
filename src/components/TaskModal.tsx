@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { X } from "lucide-react";
-import type { Task, Project, TeamMember, Contact, Priority, Status } from "@/types/models";
+import type { Task, Project, TeamMember, Contact, Priority, Status, RecurrenceFreq } from "@/types/models";
 import { PRIORITIES, STATUSES } from "@/lib/taskHelpers";
 import TaskActivityPanel from "./TaskActivityPanel";
 
@@ -22,6 +22,8 @@ export interface TaskDraft {
   progress: number;
   isMilestone: boolean;
   dependsOn: string[];
+  recurrenceFreq: RecurrenceFreq | "";
+  recurrenceEndDate: string;
 }
 
 export function blankDraft(): TaskDraft {
@@ -29,6 +31,7 @@ export function blankDraft(): TaskDraft {
     code: "", title: "", description: "", projectId: "", assignees: [],
     priority: "MEDIUM", status: "TODO", startDate: "", dueDate: "",
     progress: 0, isMilestone: false, dependsOn: [],
+    recurrenceFreq: "", recurrenceEndDate: "",
   };
 }
 
@@ -50,6 +53,8 @@ export function draftFromTask(task: Task): TaskDraft {
     progress: task.progress,
     isMilestone: task.isMilestone,
     dependsOn: task.dependsOn,
+    recurrenceFreq: task.recurrenceFreq ?? "",
+    recurrenceEndDate: task.recurrenceEndDate ?? "",
   };
 }
 
@@ -348,6 +353,36 @@ export default function TaskModal({
                 />
               </div>
             )}
+
+            <div>
+              <label className="text-xs font-semibold text-brand-sub">Repeat</label>
+              <div className="flex gap-2 mt-1">
+                <select
+                  value={draft.recurrenceFreq}
+                  onChange={(e) => setDraft({ ...draft, recurrenceFreq: e.target.value as RecurrenceFreq | "" })}
+                  className="flex-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
+                >
+                  <option value="">Doesn&apos;t repeat</option>
+                  <option value="DAILY">Daily</option>
+                  <option value="WEEKLY">Weekly</option>
+                  <option value="MONTHLY">Monthly</option>
+                </select>
+                {draft.recurrenceFreq && (
+                  <input
+                    type="date"
+                    value={draft.recurrenceEndDate}
+                    onChange={(e) => setDraft({ ...draft, recurrenceEndDate: e.target.value })}
+                    title="Stop repeating after (optional)"
+                    className="flex-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
+                  />
+                )}
+              </div>
+              {draft.recurrenceFreq && (
+                <div className="text-[11px] text-brand-sub mt-1">
+                  Marking this task Done will auto-create the next occurrence, due one {draft.recurrenceFreq === "DAILY" ? "day" : draft.recurrenceFreq === "WEEKLY" ? "week" : "month"} after this one{draft.recurrenceEndDate ? ` (until ${draft.recurrenceEndDate})` : ""}.
+                </div>
+              )}
+            </div>
 
             <div>
               <label className="text-xs font-semibold text-brand-sub">Depends on (predecessor tasks)</label>

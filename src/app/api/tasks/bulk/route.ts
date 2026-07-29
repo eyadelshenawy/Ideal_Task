@@ -4,6 +4,7 @@ import { requireSession, getUserAccess } from "@/lib/permissions";
 import { taskBulkUpdateSchema, taskBulkDeleteSchema, assigneesToSet } from "@/lib/validation/task";
 import { notifyAssignment } from "@/lib/notifications";
 import { logActivity, describeTaskChanges, loadNameLookups } from "@/lib/activity";
+import { createNextOccurrence } from "@/lib/recurrence";
 
 // Bulk edit: same patch (status / assignees / project) applied to every task
 // id the requester is allowed to manage. Ids they can't manage are silently
@@ -51,6 +52,10 @@ export async function PATCH(req: NextRequest) {
       include: { assignees: { select: { id: true } }, contactAssignees: { select: { id: true } } },
     });
     updated.push(task.id);
+
+    if (status === "DONE" && task.status !== "DONE" && updatedTask.recurrenceFreq) {
+      createNextOccurrence(updatedTask).catch((err) => console.error("createNextOccurrence failed:", err));
+    }
 
     if (assignees !== undefined) {
       const existingUserIds = new Set(task.assignees.map((a) => a.id));

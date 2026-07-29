@@ -31,6 +31,8 @@ export function serializeTask(t: TaskWithRelations): Task {
     progress: t.progress,
     isMilestone: t.isMilestone,
     dependsOn: t.dependsOn.map((d) => d.id),
+    recurrenceFreq: t.recurrenceFreq,
+    recurrenceEndDate: utcToDateStr(t.recurrenceEndDate),
     createdById: t.createdById,
     createdAt: t.createdAt.toISOString(),
     updatedAt: t.updatedAt.toISOString(),
