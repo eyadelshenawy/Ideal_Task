@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
-import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks, BarChart3 } from "lucide-react";
+import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks, BarChart3, FileDown } from "lucide-react";
 import useSWR from "swr";
 import type { Task, Project, TeamMember, Contact, Status, AssigneeDisplay } from "@/types/models";
 import type { ImportPreview } from "@/types/import";
@@ -258,6 +258,39 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
     URL.revokeObjectURL(url);
   }
 
+  function exportToExcel() {
+    const rows = filteredTasks.map((t) => ({
+      Code: t.code ?? "",
+      Title: t.title,
+      Project: projectList.find((p) => p.id === t.projectId)?.name ?? "",
+      Assignees: getAssigneeDisplays(t).map((a) => a.name).join(", "),
+      Priority: PRIORITIES.find((p) => p.id === t.priority)?.label ?? t.priority,
+      Status: STATUSES.find((s) => s.id === t.status)?.label ?? t.status,
+      "Start Date": t.startDate ?? "",
+      "Due Date": t.dueDate ?? "",
+      Progress: t.progress,
+      Milestone: t.isMilestone ? "Yes" : "No",
+      "Depends On": t.dependsOn
+        .map((id) => taskList.find((dt) => dt.id === id))
+        .filter((dt): dt is Task => !!dt)
+        .map((dt) => dt.code || dt.title)
+        .join(", "),
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wbOut = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wbOut, ws, "Tasks");
+    const wbout = XLSX.write(wbOut, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([wbout], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `IDEAL-Tasks-Export-${todayStr()}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -405,6 +438,16 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
                 style={{ background: "rgba(255,255,255,0.12)" }}
               >
                 <Trash2 size={15} />
+              </button>
+            )}
+            {isSuperAdmin && (
+              <button
+                onClick={exportToExcel}
+                title="Export tasks to Excel"
+                className="p-2 rounded-lg text-white"
+                style={{ background: "rgba(255,255,255,0.12)" }}
+              >
+                <FileDown size={15} />
               </button>
             )}
             {isSuperAdmin && (
