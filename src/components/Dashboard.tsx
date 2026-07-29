@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
-import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks, BarChart3, FileDown } from "lucide-react";
+import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks, BarChart3, FileDown, Bookmark, X } from "lucide-react";
 import useSWR from "swr";
 import type { Task, Project, TeamMember, Contact, Status, AssigneeDisplay } from "@/types/models";
 import type { ImportPreview } from "@/types/import";
@@ -63,6 +63,9 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   const [formError, setFormError] = useState("");
   const [filters, setFilters] = useState<Filters>(defaultFilters);
   const [sortBy, setSortBy] = useState<SortBy>("dueDate");
+  const savedFiltersKey = `idealtasks:savedFilters:${userId}`;
+  const [savedFilters, setSavedFilters] = useState<{ id: string; name: string; filters: Filters }[]>([]);
+  const [savingFilterName, setSavingFilterName] = useState<string | null>(null);
   const [teamModalOpen, setTeamModalOpen] = useState(false);
   const [projectsModalOpen, setProjectsModalOpen] = useState(false);
   const [contactsModalOpen, setContactsModalOpen] = useState(false);
@@ -121,6 +124,35 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
     }
     return true;
   }), [taskList, filters, today, projectList]);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(savedFiltersKey);
+      if (raw) setSavedFilters(JSON.parse(raw));
+    } catch {
+      // ignore malformed/unavailable localStorage
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function persistSavedFilters(next: { id: string; name: string; filters: Filters }[]) {
+    setSavedFilters(next);
+    try {
+      window.localStorage.setItem(savedFiltersKey, JSON.stringify(next));
+    } catch {
+      // ignore — worst case the saved filter just doesn't persist
+    }
+  }
+
+  function confirmSaveCurrentFilter() {
+    if (!savingFilterName || !savingFilterName.trim()) return;
+    persistSavedFilters([...savedFilters, { id: `${Date.now()}`, name: savingFilterName.trim(), filters }]);
+    setSavingFilterName(null);
+  }
+
+  function deleteSavedFilter(id: string) {
+    persistSavedFilters(savedFilters.filter((f) => f.id !== id));
+  }
 
   function openNew() {
     const d = blankDraft();
@@ -558,7 +590,48 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             <option value="assignee">Sort: Assignee</option>
             <option value="created">Sort: Newest</option>
           </select>
+          <button
+            onClick={() => setSavingFilterName("")}
+            title="Save current filter combination"
+            className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs bg-white border border-brand-border text-brand-sub"
+          >
+            <Bookmark size={13} /> Save filter
+          </button>
         </div>
+
+        {savingFilterName !== null && (
+          <div className="flex items-center gap-1.5 mb-3">
+            <input
+              autoFocus
+              value={savingFilterName}
+              onChange={(e) => setSavingFilterName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") confirmSaveCurrentFilter(); if (e.key === "Escape") setSavingFilterName(null); }}
+              placeholder="Name this filter…"
+              className="rounded-lg px-2.5 py-1.5 text-xs bg-white border border-brand-border w-[160px]"
+            />
+            <button onClick={confirmSaveCurrentFilter} className="rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-brand-dark text-white">
+              Save
+            </button>
+            <button onClick={() => setSavingFilterName(null)} className="text-xs text-brand-sub px-1">
+              Cancel
+            </button>
+          </div>
+        )}
+
+        {savedFilters.length > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap mb-3">
+            {savedFilters.map((sf) => (
+              <div key={sf.id} className="flex items-center gap-1 rounded-full pl-2.5 pr-1 py-1 bg-white border border-brand-border">
+                <button onClick={() => setFilters(sf.filters)} className="text-[11.5px] font-medium text-brand-text">
+                  {sf.name}
+                </button>
+                <button onClick={() => deleteSavedFilter(sf.id)} className="p-0.5 rounded-full hover:bg-gray-100 text-brand-sub">
+                  <X size={11} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
         {selectMode && selectedIds.size > 0 && (
           <BulkActionBar
