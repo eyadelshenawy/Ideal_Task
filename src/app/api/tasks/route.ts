@@ -5,6 +5,7 @@ import { taskCreateSchema, assigneesToConnect } from "@/lib/validation/task";
 import { serializeTask, taskInclude } from "@/lib/serializers/task";
 import { dateStrToUTC } from "@/lib/serverDates";
 import { notifyAssignment } from "@/lib/notifications";
+import { logActivity } from "@/lib/activity";
 
 export async function GET() {
   const { error } = await requireSession();
@@ -59,6 +60,7 @@ export async function POST(req: NextRequest) {
 
     const newAssigneeUserIds = data.assignees.filter((a) => a.type === "user").map((a) => a.id);
     notifyAssignment(task, newAssigneeUserIds).catch((err) => console.error("notifyAssignment failed:", err));
+    logActivity(task.id, session.user.id, "Created this task").catch((err) => console.error("logActivity failed:", err));
 
     return NextResponse.json(serializeTask(task), { status: 201 });
   } catch {

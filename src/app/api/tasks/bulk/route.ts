@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireSession, getUserAccess } from "@/lib/permissions";
 import { taskBulkUpdateSchema, taskBulkDeleteSchema, assigneesToSet } from "@/lib/validation/task";
 import { notifyAssignment } from "@/lib/notifications";
+import { logActivity, describeTaskChanges, loadNameLookups } from "@/lib/activity";
 
 // Bulk edit: same patch (status / assignees / project) applied to every task
 // id the requester is allowed to manage. Ids they can't manage are silently
@@ -21,7 +22,7 @@ export async function PATCH(req: NextRequest) {
 
   const tasks = await prisma.task.findMany({
     where: { id: { in: taskIds }, deletedAt: null },
-    include: { assignees: { select: { id: true } } },
+    include: { assignees: { select: { id: true } }, contactAssignees: { select: { id: true } } },
   });
 
   const updated: string[] = [];
@@ -47,6 +48,7 @@ export async function PATCH(req: NextRequest) {
         ...(assignees !== undefined ? assigneesToSet(assignees) : {}),
         ...(projectId !== undefined ? { projectId: projectId || null } : {}),
       },
+      include: { assignees: { select: { id: true } }, contactAssignees: { select: { id: true } } },
     });
     updated.push(task.id);
 
@@ -55,6 +57,26 @@ export async function PATCH(req: NextRequest) {
       const newlyAssignedUserIds = assignees.filter((a) => a.type === "user" && !existingUserIds.has(a.id)).map((a) => a.id);
       notifyAssignment(updatedTask, newlyAssignedUserIds).catch((err) => console.error("notifyAssignment failed:", err));
     }
+
+    (async () => {
+      const beforeSnapshot = {
+        title: task.title, status: task.status, priority: task.priority, projectId: task.projectId,
+        dueDate: task.dueDate, startDate: task.startDate, isMilestone: task.isMilestone,
+        assigneeIds: task.assignees.map((a) => a.id), contactAssigneeIds: task.contactAssignees.map((c) => c.id),
+      };
+      const afterSnapshot = {
+        title: updatedTask.title, status: updatedTask.status, priority: updatedTask.priority, projectId: updatedTask.projectId,
+        dueDate: updatedTask.dueDate, startDate: updatedTask.startDate, isMilestone: updatedTask.isMilestone,
+        assigneeIds: updatedTask.assignees.map((a) => a.id), contactAssigneeIds: updatedTask.contactAssignees.map((c) => c.id),
+      };
+      const lookups = await loadNameLookups({
+        userIds: [...beforeSnapshot.assigneeIds, ...afterSnapshot.assigneeIds],
+        contactIds: [...beforeSnapshot.contactAssigneeIds, ...afterSnapshot.contactAssigneeIds],
+        projectIds: [task.projectId, updatedTask.projectId].filter((id): id is string => !!id),
+      });
+      const lines = describeTaskChanges(beforeSnapshot, afterSnapshot, lookups);
+      if (lines.length > 0) await logActivity(task.id, session.user.id, lines.join("\n"));
+    })().catch((err) => console.error("activity logging failed:", err));
   }
 
   return NextResponse.json({ updated, skipped });

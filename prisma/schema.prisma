@@ -25,6 +25,11 @@ enum Status {
   DONE
 }
 
+enum TaskEventType {
+  COMMENT
+  ACTIVITY
+}
+
 model User {
   id                 String   @id @default(cuid())
   name               String
@@ -40,6 +45,7 @@ model User {
 
   tasksAssigned Task[] @relation("TaskAssignees")
   tasksCreated  Task[] @relation("CreatedTasks")
+  taskEvents    TaskEvent[]
 
   // Per-project admin grants — presence of a row means this user can create/
   // edit/delete tasks in that project, independent of their global Role.
@@ -124,7 +130,28 @@ model Task {
   // Soft-delete: set when moved to Trash instead of being deleted outright.
   deletedAt DateTime?
 
+  events TaskEvent[]
+
   @@index([projectId])
   @@index([status])
   @@index([deletedAt])
+}
+
+// A single chronological entry on a task — either a user-written comment or
+// a system-generated activity line (status/assignee/project/date changes).
+model TaskEvent {
+  id     String        @id @default(cuid())
+  taskId String
+  task   Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  type   TaskEventType
+  // Comment text (verbatim) or a human-readable activity description.
+  message String
+
+  // Nullable so deleting a user doesn't delete their comment/activity history.
+  authorId String?
+  author   User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([taskId])
 }

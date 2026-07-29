@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import type { Task, Project, TeamMember, Contact, Priority, Status } from "@/types/models";
 import { PRIORITIES, STATUSES } from "@/lib/taskHelpers";
+import TaskActivityPanel from "./TaskActivityPanel";
 
 export type AssigneeEntry = { type: "user" | "contact"; id: string };
 
@@ -375,6 +376,8 @@ export default function TaskModal({
             Cancel
           </button>
         </div>
+
+        {draft.id && <TaskActivityPanel taskId={draft.id} />}
       </div>
     </div>
   );

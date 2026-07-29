@@ -5,6 +5,7 @@ import { taskFullUpdateSchema, taskStatusUpdateSchema, assigneesToSet } from "@/
 import { serializeTask, taskInclude } from "@/lib/serializers/task";
 import { dateStrToUTC } from "@/lib/serverDates";
 import { notifyAssignment } from "@/lib/notifications";
+import { logActivity, describeTaskChanges, loadNameLookups } from "@/lib/activity";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await requireSession();
@@ -12,7 +13,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   const existing = await prisma.task.findUnique({
     where: { id: params.id },
-    include: { assignees: { select: { id: true } } },
+    include: { assignees: { select: { id: true } }, contactAssignees: { select: { id: true } } },
   });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -40,6 +41,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         },
         include: taskInclude,
       });
+      if (nextStatus !== existing.status) {
+        const lines = describeTaskChanges(
+          { ...existing, assigneeIds: [], contactAssigneeIds: [] },
+          { ...existing, status: nextStatus, assigneeIds: [], contactAssigneeIds: [] },
+          { userNames: new Map(), contactNames: new Map(), projectNames: new Map() }
+        );
+        logActivity(task.id, session.user.id, lines.join("\n")).catch((err) => console.error("logActivity failed:", err));
+      }
       return NextResponse.json(serializeTask(task));
     } catch {
       return NextResponse.json({ error: "Couldn't update task" }, { status: 400 });
@@ -90,6 +99,26 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         .map((a) => a.id);
       notifyAssignment(task, newlyAssignedUserIds).catch((err) => console.error("notifyAssignment failed:", err));
     }
+
+    (async () => {
+      const beforeSnapshot = {
+        title: existing.title, status: existing.status, priority: existing.priority, projectId: existing.projectId,
+        dueDate: existing.dueDate, startDate: existing.startDate, isMilestone: existing.isMilestone,
+        assigneeIds: existing.assignees.map((a) => a.id), contactAssigneeIds: existing.contactAssignees.map((c) => c.id),
+      };
+      const afterSnapshot = {
+        title: task.title, status: task.status, priority: task.priority, projectId: task.projectId,
+        dueDate: task.dueDate, startDate: task.startDate, isMilestone: task.isMilestone,
+        assigneeIds: task.assignees.map((a) => a.id), contactAssigneeIds: task.contactAssignees.map((c) => c.id),
+      };
+      const lookups = await loadNameLookups({
+        userIds: [...beforeSnapshot.assigneeIds, ...afterSnapshot.assigneeIds],
+        contactIds: [...beforeSnapshot.contactAssigneeIds, ...afterSnapshot.contactAssigneeIds],
+        projectIds: [existing.projectId, task.projectId].filter((id): id is string => !!id),
+      });
+      const lines = describeTaskChanges(beforeSnapshot, afterSnapshot, lookups);
+      if (lines.length > 0) await logActivity(task.id, session.user.id, lines.join("\n"));
+    })().catch((err) => console.error("activity logging failed:", err));
 
     return NextResponse.json(serializeTask(task));
   } catch {
