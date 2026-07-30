@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { utcToDateStr } from "@/lib/serverDates";
 import { dueSoonEmailHtml, overdueEmailHtml } from "@/lib/notifications";
+import { sendWeeklyReports } from "@/lib/weeklyReport";
 
 function startOfTodayUTC(): Date {
   const now = new Date();
@@ -81,5 +82,13 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, checked: tasks.length, dueSoonSent, overdueSent });
+  // The daily check runs every morning; the weekly summary only goes out on
+  // Sundays (day 0), the start of the work week here.
+  let weeklyReportsSent: number | null = null;
+  if (today.getUTCDay() === 0) {
+    const result = await sendWeeklyReports();
+    weeklyReportsSent = result.sent;
+  }
+
+  return NextResponse.json({ ok: true, checked: tasks.length, dueSoonSent, overdueSent, weeklyReportsSent });
 }
