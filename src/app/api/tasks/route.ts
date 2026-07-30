@@ -8,27 +8,15 @@ import { notifyAssignment } from "@/lib/notifications";
 import { logActivity } from "@/lib/activity";
 import { createNextOccurrence } from "@/lib/recurrence";
 import { resolveTags } from "@/lib/tags";
+import { visibleTasksWhere } from "@/lib/taskVisibility";
 
 export async function GET() {
   const { session, error } = await requireSession();
   if (error) return error;
 
-  // Visibility: Super Admins see every task. Everyone else sees only tasks
-  // in a project they administer (Project Admin grant), plus any task
-  // they're personally assigned to even outside those projects.
   const access = await getUserAccess(session);
-  const where = access.isSuperAdmin
-    ? { deletedAt: null }
-    : {
-        deletedAt: null,
-        OR: [
-          { assignees: { some: { id: session.user.id } } },
-          ...(access.administeredProjectIds.length > 0 ? [{ projectId: { in: access.administeredProjectIds } }] : []),
-        ],
-      };
-
   const tasks = await prisma.task.findMany({
-    where,
+    where: visibleTasksWhere(session.user.id, access.isSuperAdmin, access.administeredProjectIds),
     include: taskInclude,
     orderBy: { createdAt: "desc" },
   });

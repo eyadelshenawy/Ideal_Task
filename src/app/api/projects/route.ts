@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession, requireSuperAdmin } from "@/lib/permissions";
 import { projectCreateSchema } from "@/lib/validation/project";
+import { logAudit } from "@/lib/audit";
 
 export async function GET() {
   const { error } = await requireSession();
@@ -12,7 +13,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const { error } = await requireSuperAdmin();
+  const { session, error } = await requireSuperAdmin();
   if (error) return error;
 
   const parsed = projectCreateSchema.safeParse(await req.json().catch(() => null));
@@ -22,6 +23,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const project = await prisma.project.create({ data: { name: parsed.data.name, code: parsed.data.code } });
+    logAudit(session.user.id, `Created project "${project.name}" (${project.code})`);
     return NextResponse.json(project, { status: 201 });
   } catch {
     return NextResponse.json({ error: "That project code is already in use" }, { status: 400 });

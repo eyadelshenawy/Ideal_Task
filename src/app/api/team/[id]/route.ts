@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireSuperAdmin } from "@/lib/permissions";
 import { teamUpdateSchema } from "@/lib/validation/team";
 import { generateTempPassword } from "@/lib/tempPassword";
+import { logAudit } from "@/lib/audit";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await requireSuperAdmin();
@@ -68,6 +69,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return { ...updated, projectAdminOf: grants.map((g) => g.projectId) };
     });
 
+    const changes: string[] = [];
+    if (data.name !== undefined) changes.push(`renamed to "${data.name}"`);
+    if (data.active !== undefined) changes.push(data.active ? "reactivated" : "deactivated");
+    if (data.role !== undefined) changes.push(`role set to ${data.role}`);
+    if (data.projectAdminIds !== undefined) changes.push("project-admin grants changed");
+    if (data.resetPassword) changes.push("password reset");
+    if (changes.length > 0) {
+      logAudit(session.user.id, `Updated team member "${user.name}": ${changes.join(", ")}`);
+    }
+
     return NextResponse.json({ user, tempPassword });
   } catch {
     return NextResponse.json({ error: "Couldn't update member" }, { status: 400 });
@@ -86,7 +97,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   }
 
   try {
-    await prisma.user.delete({ where: { id: params.id } });
+    const deleted = await prisma.user.delete({ where: { id: params.id }, select: { name: true, email: true } });
+    logAudit(session.user.id, `Permanently deleted team member "${deleted.name}" (${deleted.email})`);
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Couldn't delete member" }, { status: 400 });

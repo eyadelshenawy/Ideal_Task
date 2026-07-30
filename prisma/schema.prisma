@@ -53,6 +53,7 @@ model User {
   tasksCreated  Task[] @relation("CreatedTasks")
   taskEvents    TaskEvent[]
   notifications Notification[]
+  auditLogs     AuditLog[]
 
   // Per-project admin grants — presence of a row means this user can create/
   // edit/delete tasks in that project, independent of their global Role.
@@ -165,6 +166,20 @@ model Task {
   @@index([projectId])
   @@index([status])
   @@index([deletedAt])
+}
+
+// System-wide audit trail — logins, team/project management, permission
+// grants. Separate from TaskEvent, which is per-task activity only. Useful
+// once there's more than one admin and you need to know who did what,
+// anywhere in the system.
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  actor     User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  message   String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 // In-app notification bell — created when someone is assigned a task or

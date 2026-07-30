@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireSession, requireSuperAdmin } from "@/lib/permissions";
 import { teamCreateSchema } from "@/lib/validation/team";
 import { generateTempPassword } from "@/lib/tempPassword";
+import { logAudit } from "@/lib/audit";
 
 export async function GET() {
   const { error } = await requireSession();
@@ -28,7 +29,7 @@ export async function GET() {
 // once in the response so the admin can hand it to the new member — no email
 // service).
 export async function POST(req: NextRequest) {
-  const { error } = await requireSuperAdmin();
+  const { session, error } = await requireSuperAdmin();
   if (error) return error;
 
   const parsed = teamCreateSchema.safeParse(await req.json().catch(() => null));
@@ -49,6 +50,8 @@ export async function POST(req: NextRequest) {
     data: { name, email, passwordHash, role, active: true, mustChangePassword: true },
     select: { id: true, name: true, email: true, role: true, active: true },
   });
+
+  logAudit(session.user.id, `Added team member "${name}" (${email}) as ${role}`);
 
   return NextResponse.json({ user: { ...user, projectAdminOf: [] }, tempPassword }, { status: 201 });
 }

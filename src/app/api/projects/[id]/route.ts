@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSuperAdmin } from "@/lib/permissions";
 import { projectUpdateSchema } from "@/lib/validation/project";
+import { logAudit } from "@/lib/audit";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  const { error } = await requireSuperAdmin();
+  const { session, error } = await requireSuperAdmin();
   if (error) return error;
 
   const parsed = projectUpdateSchema.safeParse(await req.json().catch(() => null));
@@ -20,6 +21,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         ...(parsed.data.code !== undefined ? { code: parsed.data.code } : {}),
       },
     });
+    logAudit(session.user.id, `Updated project "${project.name}" (${project.code})`);
     return NextResponse.json(project);
   } catch {
     return NextResponse.json({ error: "Couldn't update project — code may already be in use" }, { status: 400 });
@@ -31,9 +33,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 // unassigned (Task.projectId's onDelete: SetNull) if it's later purged for
 // good via /api/trash. See /api/projects/[id]/restore to undo.
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  const { error } = await requireSuperAdmin();
+  const { session, error } = await requireSuperAdmin();
   if (error) return error;
 
-  await prisma.project.update({ where: { id: params.id }, data: { deletedAt: new Date() } }).catch(() => null);
+  const project = await prisma.project.update({ where: { id: params.id }, data: { deletedAt: new Date() } }).catch(() => null);
+  if (project) logAudit(session.user.id, `Moved project "${project.name}" to Trash`);
   return NextResponse.json({ ok: true });
 }

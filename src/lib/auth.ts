@@ -2,6 +2,7 @@ import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
+import { logAudit } from "./audit";
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -83,6 +84,11 @@ export const authOptions: NextAuthOptions = {
         session.user.inactive = token.inactive;
       }
       return session;
+    },
+  },
+  events: {
+    async signIn({ user }) {
+      logAudit(user.id, `Logged in`);
     },
   },
   secret: process.env.NEXTAUTH_SECRET,
