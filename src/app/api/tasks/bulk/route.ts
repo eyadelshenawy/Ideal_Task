@@ -28,10 +28,15 @@ export async function PATCH(req: NextRequest) {
 
   const updated: string[] = [];
   const skipped: string[] = [];
+  // A status-only bulk change (no assignee/project change bundled in) follows
+  // the same rule as a single-task status update: any assignee may do it,
+  // not just Super Admin / a project-admin grant holder.
+  const isStatusOnly = assignees === undefined && projectId === undefined;
 
   for (const task of tasks) {
     const canManage = access.isSuperAdmin || (task.projectId !== null && access.administeredProjectIds.includes(task.projectId));
-    if (!canManage) {
+    const isAssignee = task.assignees.some((a) => a.id === session.user.id);
+    if (!canManage && !(isStatusOnly && isAssignee)) {
       skipped.push(task.id);
       continue;
     }
