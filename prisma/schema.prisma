@@ -54,6 +54,7 @@ model User {
   taskEvents    TaskEvent[]
   notifications Notification[]
   auditLogs     AuditLog[]
+  attachmentsUploaded Attachment[]
 
   // Per-project admin grants — presence of a row means this user can create/
   // edit/delete tasks in that project, independent of their global Role.
@@ -162,6 +163,7 @@ model Task {
 
   events TaskEvent[]
   checklistItems ChecklistItem[]
+  attachments Attachment[]
 
   @@index([projectId])
   @@index([status])
@@ -206,6 +208,26 @@ model ChecklistItem {
   text      String
   done      Boolean  @default(false)
   order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([taskId])
+}
+
+// A file uploaded to a task, stored in Cloudflare R2 (S3-compatible). `fileKey`
+// is the R2 object key; the file itself never touches the database.
+model Attachment {
+  id       String @id @default(cuid())
+  taskId   String
+  task     Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  fileName String
+  fileKey  String
+  fileSize Int
+  mimeType String
+
+  // Nullable so deleting a user doesn't delete their uploaded files.
+  uploadedById String?
+  uploadedBy   User?   @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
 
   @@index([taskId])

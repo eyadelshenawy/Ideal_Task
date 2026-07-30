@@ -6,6 +6,7 @@ import type { Task, Project, TeamMember, Contact, Priority, Status, RecurrenceFr
 import { PRIORITIES, STATUSES } from "@/lib/taskHelpers";
 import TaskActivityPanel from "./TaskActivityPanel";
 import TaskChecklistPanel from "./TaskChecklistPanel";
+import TaskAttachmentsPanel from "./TaskAttachmentsPanel";
 
 export type AssigneeEntry = { type: "user" | "contact"; id: string };
 
@@ -483,6 +484,7 @@ export default function TaskModal({
         )}
 
         {draft.id && <TaskChecklistPanel taskId={draft.id} />}
+        {draft.id && <TaskAttachmentsPanel taskId={draft.id} />}
         {draft.id && <TaskActivityPanel taskId={draft.id} />}
       </div>
     </div>
