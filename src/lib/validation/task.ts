@@ -14,8 +14,10 @@ export const assigneeEntrySchema = z.union([
 export const assigneesSchema = z.array(assigneeEntrySchema);
 type AssigneeEntry = z.infer<typeof assigneeEntrySchema>;
 
-// Full task shape — used for admin/project-admin create and full-edit (as a .partial()).
-export const taskCreateSchema = z.object({
+// Full task shape — shared fields for both create (strict, below) and
+// full-edit (as a lenient .partial(), so editing an older task that predates
+// a mandatory-field rule doesn't get blocked).
+const taskFields = z.object({
   code: z.string().trim().default(""),
   title: z.string().trim().min(1, "Title is required"),
   description: z.string().default(""),
@@ -33,7 +35,25 @@ export const taskCreateSchema = z.object({
   tags: z.array(z.string().trim().min(1).max(40)).default([]),
 });
 
-export const taskFullUpdateSchema = taskCreateSchema.partial();
+// Creating a task requires: Code, Title, Project, at least one Assignee, and
+// dates — Due Date always, Start Date too unless it's a Milestone (a
+// milestone is a single-date marker, no range).
+export const taskCreateSchema = taskFields
+  .extend({
+    code: z.string().trim().min(1, "Code is required"),
+    projectId: z.string().min(1, "Project is required"),
+    assignees: assigneesSchema.min(1, "At least one assignee is required"),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.dueDate) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: data.isMilestone ? "Date is required" : "Due date is required", path: ["dueDate"] });
+    }
+    if (!data.isMilestone && !data.startDate) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Start date is required", path: ["startDate"] });
+    }
+  });
+
+export const taskFullUpdateSchema = taskFields.partial();
 
 /** Prisma nested-write payload connecting a fresh task to its assignees (create only). */
 export function assigneesToConnect(assignees: AssigneeEntry[]) {

@@ -16,6 +16,8 @@ export interface TeamMember {
 export interface Project {
   id: string;
   name: string;
+  code: string;
+  taskCodeSeq: number;
 }
 
 export interface TrashedProject extends Project {

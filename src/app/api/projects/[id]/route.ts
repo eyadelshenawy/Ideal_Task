@@ -13,10 +13,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 
   try {
-    const project = await prisma.project.update({ where: { id: params.id }, data: { name: parsed.data.name } });
+    const project = await prisma.project.update({
+      where: { id: params.id },
+      data: {
+        ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
+        ...(parsed.data.code !== undefined ? { code: parsed.data.code } : {}),
+      },
+    });
     return NextResponse.json(project);
   } catch {
-    return NextResponse.json({ error: "Couldn't update project" }, { status: 400 });
+    return NextResponse.json({ error: "Couldn't update project — code may already be in use" }, { status: 400 });
   }
 }
 

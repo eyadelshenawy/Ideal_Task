@@ -179,6 +179,13 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
       setFormError("Title is required");
       return;
     }
+    if (!draft.id) {
+      if (!draft.code.trim()) return setFormError("Code is required");
+      if (!draft.projectId) return setFormError("Project is required");
+      if (draft.assignees.length === 0) return setFormError("At least one assignee is required");
+      if (!draft.dueDate) return setFormError(draft.isMilestone ? "Date is required" : "Due date is required");
+      if (!draft.isMilestone && !draft.startDate) return setFormError("Start date is required");
+    }
     try {
       if (draft.id) {
         const payload = fullEdit

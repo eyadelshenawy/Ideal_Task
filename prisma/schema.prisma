@@ -52,6 +52,7 @@ model User {
   tasksAssigned Task[] @relation("TaskAssignees")
   tasksCreated  Task[] @relation("CreatedTasks")
   taskEvents    TaskEvent[]
+  notifications Notification[]
 
   // Per-project admin grants — presence of a row means this user can create/
   // edit/delete tasks in that project, independent of their global Role.
@@ -61,6 +62,13 @@ model User {
 model Project {
   id        String    @id @default(cuid())
   name      String
+  // Short prefix used to auto-generate task codes for this project, e.g.
+  // "APEX" -> "APEX-0001", "APEX-0002". taskCodeSeq is the running counter;
+  // it advances on every task created for this project (import included),
+  // but the resulting code is just a suggestion the task form pre-fills —
+  // users can still edit it per task (e.g. "APEX-FI-0001" for a department).
+  code        String @unique
+  taskCodeSeq Int    @default(0)
   createdAt DateTime  @default(now())
   // Soft-delete: set when moved to Trash. Tasks referencing this project are
   // left untouched while it sits in Trash — only permanently unassigned (via
@@ -157,6 +165,21 @@ model Task {
   @@index([projectId])
   @@index([status])
   @@index([deletedAt])
+}
+
+// In-app notification bell — created when someone is assigned a task or
+// a task they're on gets a new comment. Separate from the email
+// notifications in src/lib/notifications.ts.
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message   String
+  taskId    String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 // A checklist line within a task — a lightweight step, not a full Task (no

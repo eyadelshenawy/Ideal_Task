@@ -50,7 +50,8 @@ async function main() {
   for (const name of DEFAULT_PROJECTS) {
     const existing = await prisma.project.findFirst({ where: { name } });
     if (!existing) {
-      await prisma.project.create({ data: { name } });
+      const code = name.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6) || "PROJ";
+      await prisma.project.create({ data: { name, code } });
     }
   }
   console.log(`Seeded ${DEFAULT_PROJECTS.length} default projects (skipping any that already exist).`);

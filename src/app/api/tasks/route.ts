@@ -82,6 +82,9 @@ export async function POST(req: NextRequest) {
     const newAssigneeUserIds = data.assignees.filter((a) => a.type === "user").map((a) => a.id);
     notifyAssignment(task, newAssigneeUserIds).catch((err) => console.error("notifyAssignment failed:", err));
     logActivity(task.id, session.user.id, "Created this task").catch((err) => console.error("logActivity failed:", err));
+    if (task.projectId) {
+      prisma.project.update({ where: { id: task.projectId }, data: { taskCodeSeq: { increment: 1 } } }).catch((err) => console.error("taskCodeSeq bump failed:", err));
+    }
     if (task.status === "DONE" && task.recurrenceFreq) {
       createNextOccurrence(task).catch((err) => console.error("createNextOccurrence failed:", err));
     }

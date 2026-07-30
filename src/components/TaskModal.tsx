@@ -181,12 +181,12 @@ export default function TaskModal({
         ) : (
           <div className="flex flex-col gap-3">
             <div className="flex gap-2">
-              <div className="w-[90px] flex-shrink-0">
-                <label className="text-xs font-semibold text-brand-sub">Code</label>
+              <div className="w-[110px] flex-shrink-0">
+                <label className="text-xs font-semibold text-brand-sub">Code *</label>
                 <input
                   value={draft.code}
                   onChange={(e) => setDraft({ ...draft, code: e.target.value })}
-                  placeholder="e.g. IDT-01"
+                  placeholder="e.g. APEX-0001"
                   className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none font-mono"
                 />
               </div>
@@ -214,13 +214,25 @@ export default function TaskModal({
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-brand-sub">Project{!isSuperAdmin && " *"}</label>
+              <label className="text-xs font-semibold text-brand-sub">Project *</label>
               <select
                 value={draft.projectId}
-                onChange={(e) => setDraft({ ...draft, projectId: e.target.value })}
+                onChange={(e) => {
+                  const projectId = e.target.value;
+                  const project = projects.find((p) => p.id === projectId);
+                  // Only auto-suggest a code for a brand-new task whose Code
+                  // field is still untouched — never overwrite a manual edit
+                  // or an existing task's real code.
+                  const suggestCode = !draft.id && !draft.code.trim() && project;
+                  setDraft({
+                    ...draft,
+                    projectId,
+                    ...(suggestCode ? { code: `${project.code}-${String(project.taskCodeSeq + 1).padStart(4, "0")}` } : {}),
+                  });
+                }}
                 className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
               >
-                {isSuperAdmin && <option value="">No project</option>}
+                <option value="" disabled>Select a project…</option>
                 {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
               {!isSuperAdmin && (
@@ -264,7 +276,7 @@ export default function TaskModal({
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-brand-sub">Assignees</label>
+              <label className="text-xs font-semibold text-brand-sub">Assignees *</label>
               <div className="border border-brand-border rounded-[10px] max-h-[160px] overflow-y-auto p-2 mt-1">
                 {activeMembers.length === 0 && inactiveMembers.length === 0 && contacts.length === 0 && (
                   <div className="text-xs text-brand-sub">No team members or contacts yet</div>
@@ -344,7 +356,7 @@ export default function TaskModal({
             <div className="grid grid-cols-2 gap-3">
               {!draft.isMilestone && (
                 <div>
-                  <label className="text-xs font-semibold text-brand-sub">Start Date</label>
+                  <label className="text-xs font-semibold text-brand-sub">Start Date *</label>
                   <input
                     type="date"
                     value={draft.startDate}
@@ -355,7 +367,7 @@ export default function TaskModal({
               )}
               <div>
                 <label className="text-xs font-semibold text-brand-sub">
-                  {draft.isMilestone ? "Milestone Date" : "Due Date"}
+                  {draft.isMilestone ? "Milestone Date *" : "Due Date *"}
                 </label>
                 <input
                   type="date"

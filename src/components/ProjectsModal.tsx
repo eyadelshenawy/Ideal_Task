@@ -12,21 +12,23 @@ interface ProjectsModalProps {
 
 export default function ProjectsModal({ projects, onClose, onChanged }: ProjectsModalProps) {
   const [newName, setNewName] = useState("");
+  const [newCode, setNewCode] = useState("");
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   async function addProject() {
-    if (!newName.trim()) return;
+    if (!newName.trim() || !newCode.trim()) return;
     setError("");
     try {
       const res = await fetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName.trim() }),
+        body: JSON.stringify({ name: newName.trim(), code: newCode.trim() }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || "Couldn't add project");
       setNewName("");
+      setNewCode("");
       onChanged();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't add project");
@@ -40,6 +42,21 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: name.trim() }),
     });
+    onChanged();
+  }
+
+  async function recodeProject(id: string, code: string) {
+    if (!code.trim()) return;
+    setError("");
+    const res = await fetch(`/api/projects/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: code.trim() }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setError(body.error || "Couldn't update code");
+    }
     onChanged();
   }
 
@@ -74,6 +91,15 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
                   }}
                   className="flex-1 text-[13px] bg-transparent outline-none text-brand-text"
                 />
+                <input
+                  defaultValue={p.code}
+                  onBlur={(e) => {
+                    const v = e.target.value.trim().toUpperCase();
+                    if (v && v !== p.code) recodeProject(p.id, v);
+                  }}
+                  title="Task code prefix"
+                  className="w-[70px] flex-shrink-0 text-[12px] font-mono bg-transparent outline-none text-brand-sub uppercase"
+                />
                 <button
                   onClick={() => (isConfirming ? deleteProject(p.id) : setConfirmingId(p.id))}
                   title={isConfirming ? "Click to confirm delete" : "Delete"}
@@ -92,6 +118,13 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
             onChange={(e) => setNewName(e.target.value)}
             placeholder="New project or client name"
             className="flex-1 rounded-lg border border-brand-border px-3 py-2 text-sm outline-none"
+          />
+          <input
+            value={newCode}
+            onChange={(e) => setNewCode(e.target.value.toUpperCase())}
+            placeholder="CODE"
+            title="Task code prefix, e.g. APEX"
+            className="w-[80px] rounded-lg border border-brand-border px-2 py-2 text-sm font-mono outline-none uppercase"
           />
           <button onClick={addProject} className="rounded-lg px-3 bg-brand-dark text-white">
             <Plus size={16} />

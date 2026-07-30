@@ -20,6 +20,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid project" }, { status: 400 });
   }
 
-  const project = await prisma.project.create({ data: { name: parsed.data.name } });
-  return NextResponse.json(project, { status: 201 });
+  try {
+    const project = await prisma.project.create({ data: { name: parsed.data.name, code: parsed.data.code } });
+    return NextResponse.json(project, { status: 201 });
+  } catch {
+    return NextResponse.json({ error: "That project code is already in use" }, { status: 400 });
+  }
 }
