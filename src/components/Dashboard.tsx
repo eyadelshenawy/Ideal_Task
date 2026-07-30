@@ -20,6 +20,7 @@ import ImportPreviewModal from "./ImportPreviewModal";
 import BulkActionBar from "./BulkActionBar";
 import ReportsView from "./ReportsView";
 import NeedsAttentionView from "./NeedsAttentionView";
+import NotificationBell from "./NotificationBell";
 import LogoutButton from "./LogoutButton";
 import StatCard from "./ui/StatCard";
 
@@ -164,6 +165,11 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
     setEditingCanFullyEdit(true);
     setFormError("");
     setModalOpen(true);
+  }
+
+  function openTaskById(taskId: string) {
+    const task = taskList.find((t) => t.id === taskId);
+    if (task) openEdit(task);
   }
 
   function openEdit(task: Task) {
@@ -443,6 +449,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
               </button>
             </div>
             <span className="text-white text-xs">{userName}</span>
+            <NotificationBell onOpenTask={openTaskById} />
             {isSuperAdmin && (
               <button
                 onClick={() => setTeamModalOpen(true)}

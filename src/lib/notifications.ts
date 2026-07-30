@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { utcToDateStr } from "@/lib/serverDates";
+import { notify } from "@/lib/inAppNotify";
 
 const APP_URL = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
 
@@ -57,6 +58,7 @@ export async function notifyAssignment(
       priority: task.priority,
     }),
   });
+  await notify(newlyAssignedUserIds, `You've been assigned: "${task.title}"`, task.id);
 }
 
 export function dueSoonEmailHtml(task: TaskSummary) {

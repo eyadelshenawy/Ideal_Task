@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/permissions";
 import { addComment } from "@/lib/activity";
+import { notify } from "@/lib/inAppNotify";
 
 function serializeEvent(e: { id: string; type: string; message: string; createdAt: Date; author: { name: string } | null }) {
   return {
@@ -37,7 +38,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: "Comment can't be empty" }, { status: 400 });
   }
 
-  const task = await prisma.task.findUnique({ where: { id: params.id }, select: { id: true } });
+  const task = await prisma.task.findUnique({
+    where: { id: params.id },
+    select: { id: true, title: true, assignees: { select: { id: true } } },
+  });
   if (!task) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const event = await addComment(params.id, session.user.id, parsed.data.message);
@@ -45,5 +49,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     where: { id: event.id },
     include: { author: { select: { name: true } } },
   });
+
+  const notifyIds = task.assignees.map((a) => a.id).filter((id) => id !== session.user.id);
+  notify(notifyIds, `${withAuthor.author?.name ?? "Someone"} commented on "${task.title}"`, task.id);
+
   return NextResponse.json(serializeEvent(withAuthor), { status: 201 });
 }
