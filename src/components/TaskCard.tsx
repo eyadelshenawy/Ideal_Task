@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Trash2, Check, ChevronLeft, ChevronRight, Diamond, AlertTriangle } from "lucide-react";
+import { Pencil, Trash2, Check, ChevronLeft, ChevronRight, Diamond, AlertTriangle, Copy } from "lucide-react";
 import type { Task, Project, AssigneeDisplay } from "@/types/models";
 import { PRIORITIES, STATUSES, dueBadge, toneStyle, isBlocked } from "@/lib/taskHelpers";
 import AvatarStack from "./ui/AvatarStack";
@@ -18,6 +18,7 @@ interface TaskCardProps {
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
   onMove: (task: Task, dir: 1 | -1) => void;
+  onDuplicate: (id: string) => void;
   /** Bulk-select mode: shows a checkbox instead of the usual edit/delete affordances. */
   selectMode?: boolean;
   selected?: boolean;
@@ -25,7 +26,7 @@ interface TaskCardProps {
 }
 
 export default function TaskCard({
-  task, assignees, project, allTasks, canManage, onEdit, onDelete, onMove,
+  task, assignees, project, allTasks, canManage, onEdit, onDelete, onMove, onDuplicate,
   selectMode, selected, onToggleSelect,
 }: TaskCardProps) {
   const [confirming, setConfirming] = useState(false);
@@ -61,6 +62,11 @@ export default function TaskCard({
             <button onClick={() => onEdit(task)} title="Edit" className="p-1 rounded hover:bg-gray-100 text-brand-sub">
               <Pencil size={14} />
             </button>
+            {canManage && (
+              <button onClick={() => onDuplicate(task.id)} title="Duplicate" className="p-1 rounded hover:bg-gray-100 text-brand-sub">
+                <Copy size={14} />
+              </button>
+            )}
             {canManage && (
               <button
                 onClick={() => (confirming ? onDelete(task.id) : setConfirming(true))}

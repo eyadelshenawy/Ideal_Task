@@ -13,10 +13,11 @@ interface NeedsAttentionViewProps {
   getAssigneeDisplays: (task: Task) => AssigneeDisplay[];
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
 }
 
 export default function NeedsAttentionView({
-  tasks, projectList, allTasks, canManage, getAssigneeDisplays, onEdit, onDelete,
+  tasks, projectList, allTasks, canManage, getAssigneeDisplays, onEdit, onDelete, onDuplicate,
 }: NeedsAttentionViewProps) {
   const today = todayStr();
 
@@ -43,6 +44,7 @@ export default function NeedsAttentionView({
         canManage={canManage(task)}
         onEdit={onEdit}
         onDelete={onDelete}
+        onDuplicate={onDuplicate}
       />
     );
   }

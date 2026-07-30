@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Trash2, Check, Diamond } from "lucide-react";
+import { Pencil, Trash2, Check, Diamond, Copy } from "lucide-react";
 import type { Task, Project, AssigneeDisplay } from "@/types/models";
 import { PRIORITIES, STATUSES, dueBadge, toneStyle, isBlocked } from "@/lib/taskHelpers";
 import AvatarStack from "./ui/AvatarStack";
@@ -16,13 +16,14 @@ interface TaskListRowProps {
   canManage: boolean;
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
   selectMode?: boolean;
   selected?: boolean;
   onToggleSelect?: (id: string) => void;
 }
 
 export default function TaskListRow({
-  task, assignees, project, allTasks, canManage, onEdit, onDelete,
+  task, assignees, project, allTasks, canManage, onEdit, onDelete, onDuplicate,
   selectMode, selected, onToggleSelect,
 }: TaskListRowProps) {
   const [confirming, setConfirming] = useState(false);
@@ -64,6 +65,11 @@ export default function TaskListRow({
               <button onClick={() => onEdit(task)} title="Edit" className="p-1 rounded hover:bg-gray-100 text-brand-sub">
                 <Pencil size={14} />
               </button>
+              {canManage && (
+                <button onClick={() => onDuplicate(task.id)} title="Duplicate" className="p-1 rounded hover:bg-gray-100 text-brand-sub">
+                  <Copy size={14} />
+                </button>
+              )}
               {canManage && (
                 <button
                   onClick={() => (confirming ? onDelete(task.id) : setConfirming(true))}

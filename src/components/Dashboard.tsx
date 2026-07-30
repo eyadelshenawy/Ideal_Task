@@ -229,6 +229,12 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
     await mutateTasks();
   }
 
+  async function duplicateTask(id: string, projectId?: string) {
+    await api.duplicateTask(id, projectId);
+    await mutateTasks();
+    setModalOpen(false);
+  }
+
   function toggleSelect(id: string) {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -562,6 +568,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             getAssigneeDisplays={getAssigneeDisplays}
             onEdit={openEdit}
             onDelete={deleteTask}
+            onDuplicate={duplicateTask}
           />
         ) : (
         <>
@@ -708,6 +715,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
                         canManage={canManage(task)}
                         onEdit={openEdit}
                         onDelete={deleteTask}
+                        onDuplicate={duplicateTask}
                         onMove={moveTask}
                         selectMode={selectMode}
                         selected={selectedIds.has(task.id)}
@@ -736,6 +744,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
                 canManage={canManage(task)}
                 onEdit={openEdit}
                 onDelete={deleteTask}
+                onDuplicate={duplicateTask}
                 selectMode={selectMode}
                 selected={selectedIds.has(task.id)}
                 onToggleSelect={toggleSelect}
@@ -763,6 +772,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
           canFullyEdit={editingCanFullyEdit}
           isSuperAdmin={isSuperAdmin}
           onCreateContact={createContact}
+          onDuplicate={editingCanFullyEdit ? duplicateTask : undefined}
         />
       )}
 

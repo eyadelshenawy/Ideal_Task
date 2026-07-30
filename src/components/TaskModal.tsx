@@ -73,14 +73,16 @@ interface TaskModalProps {
   allTasks: Task[];
   /** Full create/edit form vs the Status+Progress-only form. */
   canFullyEdit: boolean;
-  /** Super Admins get an unrestricted "No project" option; Project Admins must pick one of their administered projects (already pre-filtered into `projects`). */
+  /** Project Admins must pick one of their administered projects (already pre-filtered into `projects`); Super Admins can pick any. */
   isSuperAdmin: boolean;
   onCreateContact: (name: string) => Promise<Contact | null>;
+  onDuplicate?: (taskId: string, projectId?: string) => void;
 }
 
 export default function TaskModal({
-  draft, setDraft, onClose, onSave, error, team, projects, contacts, allTasks, canFullyEdit, isSuperAdmin, onCreateContact,
+  draft, setDraft, onClose, onSave, error, team, projects, contacts, allTasks, canFullyEdit, isSuperAdmin, onCreateContact, onDuplicate,
 }: TaskModalProps) {
+  const [duplicateProjectId, setDuplicateProjectId] = useState("");
   const [addingContact, setAddingContact] = useState(false);
   const [newContactName, setNewContactName] = useState("");
   const [contactError, setContactError] = useState("");
@@ -460,6 +462,25 @@ export default function TaskModal({
             Cancel
           </button>
         </div>
+
+        {draft.id && onDuplicate && (
+          <div className="flex items-center gap-1.5 mt-3">
+            <select
+              value={duplicateProjectId}
+              onChange={(e) => setDuplicateProjectId(e.target.value)}
+              className="flex-1 rounded-lg border border-brand-border px-2 py-1.5 text-xs outline-none"
+            >
+              <option value="">Duplicate into same project…</option>
+              {projects.map((p) => <option key={p.id} value={p.id}>Duplicate into {p.name}</option>)}
+            </select>
+            <button
+              onClick={() => onDuplicate(draft.id!, duplicateProjectId || undefined)}
+              className="rounded-lg px-3 py-1.5 text-xs font-semibold border border-brand-border text-brand-text"
+            >
+              Duplicate
+            </button>
+          </div>
+        )}
 
         {draft.id && <TaskChecklistPanel taskId={draft.id} />}
         {draft.id && <TaskActivityPanel taskId={draft.id} />}
