@@ -4,6 +4,8 @@ import { requireSuperAdmin } from "@/lib/permissions";
 import { importCommitSchema } from "@/lib/validation/import";
 import { dateStrToUTC } from "@/lib/serverDates";
 import { nextTaskCode } from "@/lib/taskCode";
+import { resolveTags } from "@/lib/tags";
+import { addComment } from "@/lib/activity";
 
 export async function POST(req: NextRequest) {
   const { session, error } = await requireSuperAdmin();
@@ -15,6 +17,7 @@ export async function POST(req: NextRequest) {
   }
   const { tasksToAdd, newProjectNames } = parsed.data;
   const createdById = session.user.id;
+  const commentsToAdd: { taskId: string; message: string }[] = [];
 
   try {
     const created = await prisma.$transaction(async (tx) => {
@@ -45,11 +48,17 @@ export async function POST(req: NextRequest) {
         // Code column, which only matters here for resolving "Depends On"
         // references between rows (handled separately, by id).
         const code = projectId ? await nextTaskCode(tx, projectId) : t.code || null;
+        // Tag upsert isn't part of this transaction (resolveTags uses the
+        // shared prisma client), but that's fine — tags have no dependency
+        // on the task row, only the connect below does.
+        const tagRows = t.tags.length > 0 ? await resolveTags(t.tags) : [];
         const task = await tx.task.create({
           data: {
             code,
             title: t.title,
             description: t.description || null,
+            module: t.module || null,
+            tags: { connect: tagRows.map((tag) => ({ id: tag.id })) },
             projectId,
             assignees: t.assigneeId ? { connect: [{ id: t.assigneeId }] } : undefined,
             priority: t.priority,
@@ -62,6 +71,7 @@ export async function POST(req: NextRequest) {
           },
         });
         tempIdToRealId.set(t.tempId, task.id);
+        if (t.comment.trim()) commentsToAdd.push({ taskId: task.id, message: t.comment.trim() });
       }
 
       for (const t of tasksToAdd) {
@@ -79,6 +89,12 @@ export async function POST(req: NextRequest) {
 
       return tasksToAdd.length;
     }, { timeout: 20000 });
+
+    // Comments reference the task by foreign key, so they can only be added
+    // once the transaction that created those tasks has actually committed.
+    for (const c of commentsToAdd) {
+      addComment(c.taskId, createdById, c.message).catch((err) => console.error("import addComment failed:", err));
+    }
 
     return NextResponse.json({ created });
   } catch {

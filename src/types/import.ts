@@ -5,6 +5,9 @@ export interface ImportPreviewTask {
   code: string;
   title: string;
   description: string;
+  module: string;
+  tags: string[];
+  comment: string;
   projectId: string | null;
   newProjectName: string | null;
   assigneeId: string | null;

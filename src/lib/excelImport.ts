@@ -59,6 +59,9 @@ export interface RawParsedRow {
   code: string;
   title: string;
   description: string;
+  module: string;
+  tags: string[];
+  comment: string;
   projectName: string;
   assigneeName: string;
   priority: Priority;
@@ -82,6 +85,10 @@ export function parseSheetRows(rows: Record<string, unknown>[]): { parsed: RawPa
       return;
     }
     const code = pick(nrow, ["code", "id", "task id", "wbs"]);
+    const descriptionRaw = pick(nrow, ["description", "details", "notes"]);
+    const moduleRaw = pick(nrow, ["module", "component"]);
+    const tagsRaw = pick(nrow, ["tags", "tag", "labels"]);
+    const commentRaw = pick(nrow, ["comment", "comments"]);
     const projectRaw = pick(nrow, ["project", "client", "project/client", "project / client"]);
     const assigneeRaw = pick(nrow, ["assignee", "owner", "assigned to"]);
     const priorityRaw = pick(nrow, ["priority"]);
@@ -96,7 +103,10 @@ export function parseSheetRows(rows: Record<string, unknown>[]): { parsed: RawPa
       tempId: `row-${idx}`,
       code: code.trim(),
       title: title.trim(),
-      description: "",
+      description: descriptionRaw.trim(),
+      module: moduleRaw.trim(),
+      tags: tagsRaw ? tagsRaw.split(",").map((t) => t.trim()).filter(Boolean) : [],
+      comment: commentRaw.trim(),
       projectName: projectRaw.trim(),
       assigneeName: assigneeRaw.trim(),
       priority: matchPriority(priorityRaw),
