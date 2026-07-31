@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/permissions";
 import { addComment } from "@/lib/activity";
 import { notify } from "@/lib/inAppNotify";
+import { resolveMentions } from "@/lib/mentions";
 
 function serializeEvent(e: { id: string; type: string; message: string; createdAt: Date; author: { name: string } | null }) {
   return {
@@ -52,8 +53,19 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     include: { author: { select: { name: true } } },
   });
 
-  const notifyIds = task.assignees.map((a) => a.id).filter((id) => id !== session.user.id);
-  notify(notifyIds, `${withAuthor.author?.name ?? "Someone"} commented on "${task.title}"`, task.id);
+  const authorName = withAuthor.author?.name ?? "Someone";
+  const assigneeIds = new Set(task.assignees.map((a) => a.id));
+  const notifyIds = [...assigneeIds].filter((id) => id !== session.user.id);
+  notify(notifyIds, `${authorName} commented on "${task.title}"`, task.id);
+
+  // A mention gets its own, more specific notification — including for
+  // someone who isn't an assignee at all, and skipping anyone who'd already
+  // get the generic "commented on" one above.
+  const mentioned = await resolveMentions(parsed.data.message);
+  const mentionIds = mentioned.map((m) => m.id).filter((id) => id !== session.user.id && !assigneeIds.has(id));
+  if (mentionIds.length > 0) {
+    notify(mentionIds, `${authorName} mentioned you in a comment on "${task.title}"`, task.id);
+  }
 
   return NextResponse.json(serializeEvent(withAuthor), { status: 201 });
 }
