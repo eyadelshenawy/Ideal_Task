@@ -87,7 +87,11 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(serializeTask(task), { status: 201 });
-  } catch {
-    return NextResponse.json({ error: "Couldn't create task — check the selected project/assignees/dependencies" }, { status: 400 });
+  } catch (e) {
+    const isDuplicateCode = e instanceof Error && "code" in e && (e as { code?: string }).code === "P2002";
+    return NextResponse.json(
+      { error: isDuplicateCode ? "That code is already used by another task" : "Couldn't create task — check the selected project/assignees/dependencies" },
+      { status: 400 },
+    );
   }
 }

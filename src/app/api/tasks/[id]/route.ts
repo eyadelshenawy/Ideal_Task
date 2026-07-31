@@ -9,6 +9,7 @@ import { logActivity, describeTaskChanges, loadNameLookups } from "@/lib/activit
 import { createNextOccurrence } from "@/lib/recurrence";
 import { resolveTags } from "@/lib/tags";
 import { codeMatchesProject } from "@/lib/taskCode";
+import { wouldCreateCycle } from "@/lib/taskDependencies";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await requireSession();
@@ -92,6 +93,31 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
   }
 
+  if (dependsOn !== undefined && dependsOn.length > 0 && (await wouldCreateCycle(prisma, params.id, dependsOn))) {
+    return NextResponse.json({ error: "That would create a circular dependency between tasks" }, { status: 400 });
+  }
+
+  // Only re-check date ordering when a relevant date is actually changing —
+  // same "don't punish older tasks" reasoning as the code/project check above.
+  if (data.startDate !== undefined || data.dueDate !== undefined) {
+    const existingStartStr = existing.startDate ? existing.startDate.toISOString().slice(0, 10) : null;
+    const existingDueStr = existing.dueDate ? existing.dueDate.toISOString().slice(0, 10) : null;
+    const finalStart = data.startDate !== undefined ? data.startDate : existingStartStr;
+    const finalDue = data.dueDate !== undefined ? data.dueDate : existingDueStr;
+    if (finalStart && finalDue && finalStart > finalDue) {
+      return NextResponse.json({ error: "Start date can't be after Due date" }, { status: 400 });
+    }
+  }
+  if (data.recurrenceEndDate !== undefined || data.dueDate !== undefined) {
+    const existingDueStr = existing.dueDate ? existing.dueDate.toISOString().slice(0, 10) : null;
+    const existingRecurrenceEndStr = existing.recurrenceEndDate ? existing.recurrenceEndDate.toISOString().slice(0, 10) : null;
+    const finalDue = data.dueDate !== undefined ? data.dueDate : existingDueStr;
+    const finalRecurrenceEnd = data.recurrenceEndDate !== undefined ? data.recurrenceEndDate : existingRecurrenceEndStr;
+    if (finalRecurrenceEnd && finalDue && finalRecurrenceEnd < finalDue) {
+      return NextResponse.json({ error: "Repeat end date can't be before Due date" }, { status: 400 });
+    }
+  }
+
   const tags = data.tags !== undefined ? await resolveTags(data.tags) : null;
 
   try {
@@ -151,8 +177,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     })().catch((err) => console.error("activity logging failed:", err));
 
     return NextResponse.json(serializeTask(task));
-  } catch {
-    return NextResponse.json({ error: "Couldn't update task — check the selected project/assignees/dependencies" }, { status: 400 });
+  } catch (e) {
+    const isDuplicateCode = e instanceof Error && "code" in e && (e as { code?: string }).code === "P2002";
+    return NextResponse.json(
+      { error: isDuplicateCode ? "That code is already used by another task" : "Couldn't update task — check the selected project/assignees/dependencies" },
+      { status: 400 },
+    );
   }
 }
 

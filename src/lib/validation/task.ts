@@ -52,6 +52,13 @@ export const taskCreateSchema = taskFields
     if (!data.isMilestone && !data.startDate) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Start date is required", path: ["startDate"] });
     }
+    // "YYYY-MM-DD" strings sort correctly with a plain comparison.
+    if (data.startDate && data.dueDate && data.startDate > data.dueDate) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Start date can't be after Due date", path: ["startDate"] });
+    }
+    if (data.recurrenceEndDate && data.dueDate && data.recurrenceEndDate < data.dueDate) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Repeat end date can't be before Due date", path: ["recurrenceEndDate"] });
+    }
   });
 
 export const taskFullUpdateSchema = taskFields.partial();
