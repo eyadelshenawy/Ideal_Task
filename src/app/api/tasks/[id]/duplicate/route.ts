@@ -40,6 +40,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       code,
       title: `${original.title} (Copy)`,
       description: original.description,
+      module: original.module,
       projectId: targetProjectId,
       assignees: { connect: original.assignees.map((a) => ({ id: a.id })) },
       contactAssignees: { connect: original.contactAssignees.map((c) => ({ id: c.id })) },

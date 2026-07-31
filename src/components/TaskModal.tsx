@@ -15,6 +15,7 @@ export interface TaskDraft {
   code: string;
   title: string;
   description: string;
+  module: string;
   projectId: string;
   assignees: AssigneeEntry[];
   priority: Priority;
@@ -31,7 +32,7 @@ export interface TaskDraft {
 
 export function blankDraft(): TaskDraft {
   return {
-    code: "", title: "", description: "", projectId: "", assignees: [],
+    code: "", title: "", description: "", module: "", projectId: "", assignees: [],
     priority: "MEDIUM", status: "TODO", startDate: "", dueDate: "",
     progress: 0, isMilestone: false, dependsOn: [],
     recurrenceFreq: "", recurrenceEndDate: "", tags: [],
@@ -44,6 +45,7 @@ export function draftFromTask(task: Task): TaskDraft {
     code: task.code ?? "",
     title: task.title,
     description: task.description ?? "",
+    module: task.module ?? "",
     projectId: task.projectId ?? "",
     assignees: [
       ...task.assigneeIds.map((id): AssigneeEntry => ({ type: "user", id })),
@@ -102,7 +104,9 @@ export default function TaskModal({
 
   const activeMembers = team.filter((m) => m.active);
   const inactiveMembers = team.filter((m) => !m.active);
-  const otherTasks = allTasks.filter((t) => t.id !== draft.id);
+  // Only tasks in the same project make sense as a predecessor — cuts a
+  // list of everything down to something actually findable.
+  const otherTasks = allTasks.filter((t) => t.id !== draft.id && t.projectId === draft.projectId);
 
   function isAssigned(type: AssigneeEntry["type"], id: string) {
     return draft.assignees.some((a) => a.type === type && a.id === id);
@@ -131,9 +135,16 @@ export default function TaskModal({
   }
 
   function toggleDepend(id: string) {
+    const adding = !draft.dependsOn.includes(id);
+    // Soft suggestion only: picking a predecessor fills in this task's Start
+    // Date from its Due Date, if Start Date is still blank — never overwrites
+    // a date already set.
+    const predecessor = adding ? otherTasks.find((t) => t.id === id) : undefined;
+    const suggestedStart = adding && predecessor?.dueDate && !draft.startDate ? predecessor.dueDate : undefined;
     setDraft({
       ...draft,
-      dependsOn: draft.dependsOn.includes(id) ? draft.dependsOn.filter((d) => d !== id) : [...draft.dependsOn, id],
+      dependsOn: adding ? [...draft.dependsOn, id] : draft.dependsOn.filter((d) => d !== id),
+      ...(suggestedStart ? { startDate: suggestedStart } : {}),
     });
   }
 
@@ -213,6 +224,16 @@ export default function TaskModal({
                 rows={2}
                 placeholder="Optional details"
                 className="w-full mt-1 rounded-lg border border-brand-border px-3 py-2 text-sm outline-none resize-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-brand-sub">Module</label>
+              <input
+                value={draft.module}
+                onChange={(e) => setDraft({ ...draft, module: e.target.value })}
+                placeholder="e.g. Billing, Auth (optional)"
+                className="w-full mt-1 rounded-lg border border-brand-border px-3 py-2 text-sm outline-none"
               />
             </div>
 
@@ -439,7 +460,11 @@ export default function TaskModal({
             <div>
               <label className="text-xs font-semibold text-brand-sub">Depends on (predecessor tasks)</label>
               <div className="border border-brand-border rounded-[10px] max-h-[120px] overflow-y-auto p-2 mt-1">
-                {otherTasks.length === 0 && <div className="text-xs text-brand-sub">No other tasks yet</div>}
+                {otherTasks.length === 0 && (
+                  <div className="text-xs text-brand-sub">
+                    {draft.projectId ? "No other tasks in this project yet" : "Pick a project first"}
+                  </div>
+                )}
                 {otherTasks.map((t) => (
                   <label key={t.id} className="flex items-center gap-2 text-xs py-0.5 text-brand-text">
                     <input
@@ -447,6 +472,7 @@ export default function TaskModal({
                       checked={draft.dependsOn.includes(t.id)}
                       onChange={() => toggleDepend(t.id)}
                     />
+                    {t.code && <span className="font-mono text-[11px] text-brand-sub">{t.code}</span>}
                     {t.title}
                   </label>
                 ))}

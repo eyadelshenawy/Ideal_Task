@@ -9,6 +9,7 @@ import { logActivity } from "@/lib/activity";
 import { createNextOccurrence } from "@/lib/recurrence";
 import { resolveTags } from "@/lib/tags";
 import { visibleTasksWhere } from "@/lib/taskVisibility";
+import { codeMatchesProject } from "@/lib/taskCode";
 
 export async function GET() {
   const { session, error } = await requireSession();
@@ -42,6 +43,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "You don't have admin rights on this project" }, { status: 403 });
   }
 
+  if (data.projectId) {
+    const project = await prisma.project.findUnique({ where: { id: data.projectId }, select: { code: true } });
+    if (project && !codeMatchesProject(data.code, project.code)) {
+      return NextResponse.json({ error: `Code must start with "${project.code}-" for this project` }, { status: 400 });
+    }
+  }
+
   const tags = await resolveTags(data.tags);
 
   try {
@@ -50,6 +58,7 @@ export async function POST(req: NextRequest) {
         code: data.code || null,
         title: data.title,
         description: data.description || null,
+        module: data.module || null,
         projectId: data.projectId || null,
         ...assigneesToConnect(data.assignees),
         tags: { connect: tags.map((t) => ({ id: t.id })) },

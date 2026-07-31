@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
-import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks, BarChart3, FileDown, Bookmark, X, AlertTriangle, ScrollText } from "lucide-react";
+import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks, BarChart3, FileDown, Bookmark, X, AlertTriangle, ScrollText, BookOpen } from "lucide-react";
 import useSWR from "swr";
 import type { Task, Project, TeamMember, Contact, Status, AssigneeDisplay } from "@/types/models";
 import type { ImportPreview } from "@/types/import";
@@ -194,11 +194,19 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
       if (!draft.dueDate) return setFormError(draft.isMilestone ? "Date is required" : "Due date is required");
       if (!draft.isMilestone && !draft.startDate) return setFormError("Start date is required");
     }
+    if (fullEdit && draft.projectId && draft.code.trim()) {
+      const project = projectList.find((p) => p.id === draft.projectId);
+      const prefix = `${project?.code ?? ""}-`;
+      if (project?.code && !draft.code.trim().toUpperCase().startsWith(prefix.toUpperCase())) {
+        setFormError(`Code must start with "${prefix}" for this project`);
+        return;
+      }
+    }
     try {
       if (draft.id) {
         const payload = fullEdit
           ? {
-              code: draft.code, title: draft.title, description: draft.description,
+              code: draft.code, title: draft.title, description: draft.description, module: draft.module,
               projectId: draft.projectId || null, assignees: draft.assignees,
               priority: draft.priority, status: draft.status,
               startDate: draft.startDate || null, dueDate: draft.dueDate || null,
@@ -210,7 +218,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
         await api.updateTask(draft.id, payload);
       } else {
         await api.createTask({
-          code: draft.code, title: draft.title, description: draft.description,
+          code: draft.code, title: draft.title, description: draft.description, module: draft.module,
           projectId: draft.projectId || null, assignees: draft.assignees,
           priority: draft.priority, status: draft.status,
           startDate: draft.startDate || null, dueDate: draft.dueDate || null,
@@ -298,8 +306,8 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
 
   function downloadTemplate() {
     const sampleRows = [
-      { Code: "IDT-001", Title: "Kickoff meeting", Project: "Fayendra", Assignee: "Eyad Badran", Priority: "High", Status: "To Do", "Start Date": "2026-08-01", "Due Date": "2026-08-03", Progress: 0, Milestone: "No", "Depends On": "" },
-      { Code: "IDT-002", Title: "Go-live", Project: "Fayendra", Assignee: "", Priority: "High", Status: "To Do", "Start Date": "", "Due Date": "2026-09-15", Progress: 0, Milestone: "Yes", "Depends On": "IDT-001" },
+      { Code: "IDT-001", Title: "Kickoff meeting", Description: "Align on scope and timeline", Module: "", Tags: "onboarding", Comment: "", Project: "Fayendra", Assignee: "Eyad Badran", Priority: "High", Status: "To Do", "Start Date": "2026-08-01", "Due Date": "2026-08-03", Progress: 0, Milestone: "No", "Depends On": "" },
+      { Code: "IDT-002", Title: "Go-live", Description: "", Module: "Billing", Tags: "", Comment: "", Project: "Fayendra", Assignee: "", Priority: "High", Status: "To Do", "Start Date": "", "Due Date": "2026-09-15", Progress: 0, Milestone: "Yes", "Depends On": "IDT-001" },
     ];
     const ws = XLSX.utils.json_to_sheet(sampleRows);
     const wbOut = XLSX.utils.book_new();
@@ -320,6 +328,9 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
     const rows = filteredTasks.map((t) => ({
       Code: t.code ?? "",
       Title: t.title,
+      Description: t.description ?? "",
+      Module: t.module ?? "",
+      Tags: t.tags.join(", "),
       Project: projectList.find((p) => p.id === t.projectId)?.name ?? "",
       Assignees: getAssigneeDisplays(t).map((a) => a.name).join(", "),
       Priority: PRIORITIES.find((p) => p.id === t.priority)?.label ?? t.priority,
@@ -458,6 +469,16 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             </div>
             <span className="text-white text-xs">{userName}</span>
             <NotificationBell onOpenTask={openTaskById} />
+            <a
+              href="/guide.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="User Guide"
+              className="p-2 rounded-lg text-white"
+              style={{ background: "rgba(255,255,255,0.12)" }}
+            >
+              <BookOpen size={15} />
+            </a>
             {isSuperAdmin && (
               <button
                 onClick={() => setTeamModalOpen(true)}

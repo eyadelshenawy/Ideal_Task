@@ -21,7 +21,8 @@ enum Priority {
 enum Status {
   TODO
   INPROGRESS
-  REVIEW
+  INTERNAL_TEST
+  CUSTOMER_TEST
   DONE
 }
 
@@ -115,6 +116,9 @@ model Task {
   code        String?
   title       String
   description String?
+  // Free-text software/work module this task belongs to (e.g. "Billing",
+  // "Auth"). Not required — purely informational, filled in when relevant.
+  module      String?
 
   projectId String?
   project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)

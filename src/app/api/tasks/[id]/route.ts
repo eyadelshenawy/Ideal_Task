@@ -8,6 +8,7 @@ import { notifyAssignment } from "@/lib/notifications";
 import { logActivity, describeTaskChanges, loadNameLookups } from "@/lib/activity";
 import { createNextOccurrence } from "@/lib/recurrence";
 import { resolveTags } from "@/lib/tags";
+import { codeMatchesProject } from "@/lib/taskCode";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await requireSession();
@@ -77,6 +78,20 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
   }
 
+  // Only re-check the code-vs-project-prefix rule when either is actually
+  // being changed — an older task that predates this rule shouldn't get
+  // blocked from unrelated edits just because its existing code is mismatched.
+  if ((data.code !== undefined || data.projectId !== undefined)) {
+    const finalCode = (data.code !== undefined ? data.code : existing.code) ?? "";
+    const finalProjectId = data.projectId !== undefined ? data.projectId : existing.projectId;
+    if (finalProjectId) {
+      const project = await prisma.project.findUnique({ where: { id: finalProjectId }, select: { code: true } });
+      if (project && !codeMatchesProject(finalCode, project.code)) {
+        return NextResponse.json({ error: `Code must start with "${project.code}-" for this project` }, { status: 400 });
+      }
+    }
+  }
+
   const tags = data.tags !== undefined ? await resolveTags(data.tags) : null;
 
   try {
@@ -87,6 +102,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         ...(tags !== null ? { tags: { set: tags.map((t) => ({ id: t.id })) } } : {}),
         ...(data.title !== undefined ? { title: data.title } : {}),
         ...(data.description !== undefined ? { description: data.description || null } : {}),
+        ...(data.module !== undefined ? { module: data.module || null } : {}),
         ...(data.projectId !== undefined ? { projectId: data.projectId || null } : {}),
         ...(data.assignees !== undefined ? assigneesToSet(data.assignees) : {}),
         ...(data.priority !== undefined ? { priority: data.priority } : {}),

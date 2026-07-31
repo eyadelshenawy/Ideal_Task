@@ -23,6 +23,7 @@ export function serializeTask(t: TaskWithRelations): Task {
     code: t.code,
     title: t.title,
     description: t.description,
+    module: t.module,
     projectId: t.projectId,
     assigneeIds: t.assignees.map((a) => a.id),
     contactAssigneeIds: t.contactAssignees.map((c) => c.id),
