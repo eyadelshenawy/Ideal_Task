@@ -26,6 +26,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   const updateData: Record<string, unknown> = {};
   if (data.name !== undefined) updateData.name = data.name;
+  if (data.email !== undefined) updateData.email = data.email;
   if (data.active !== undefined) updateData.active = data.active;
   if (data.role !== undefined) updateData.role = data.role;
 
@@ -71,6 +72,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     const changes: string[] = [];
     if (data.name !== undefined) changes.push(`renamed to "${data.name}"`);
+    if (data.email !== undefined) changes.push(`email changed to "${data.email}"`);
     if (data.active !== undefined) changes.push(data.active ? "reactivated" : "deactivated");
     if (data.role !== undefined) changes.push(`role set to ${data.role}`);
     if (data.projectAdminIds !== undefined) changes.push("project-admin grants changed");
@@ -80,8 +82,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     return NextResponse.json({ user, tempPassword });
-  } catch {
-    return NextResponse.json({ error: "Couldn't update member" }, { status: 400 });
+  } catch (e) {
+    const isUniqueEmailClash = e instanceof Error && "code" in e && (e as { code?: string }).code === "P2002";
+    return NextResponse.json(
+      { error: isUniqueEmailClash ? "That email is already in use by another account" : "Couldn't update member" },
+      { status: 400 },
+    );
   }
 }
 

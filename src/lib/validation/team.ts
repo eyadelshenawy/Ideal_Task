@@ -8,6 +8,7 @@ export const teamCreateSchema = z.object({
 
 export const teamUpdateSchema = z.object({
   name: z.string().trim().min(1).optional(),
+  email: z.string().trim().email("Enter a valid email").optional(),
   active: z.boolean().optional(),
   role: z.enum(["SUPER_ADMIN", "MEMBER"]).optional(),
   resetPassword: z.boolean().optional(),

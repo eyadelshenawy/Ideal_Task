@@ -126,8 +126,15 @@ export default function TeamModal({ team, projects, currentUserId, onClose, onCh
                       }}
                       className="text-[13px] bg-transparent outline-none w-full text-brand-text"
                     />
-                    <div className="text-[11px] text-brand-sub truncate">
-                      {m.email}
+                    <div className="text-[11px] text-brand-sub truncate flex items-center gap-1">
+                      <input
+                        defaultValue={m.email}
+                        onBlur={(e) => {
+                          const v = e.target.value.trim();
+                          if (v && v !== m.email) patchMember(m.id, { email: v });
+                        }}
+                        className="bg-transparent outline-none w-full text-[11px] text-brand-sub"
+                      />
                       {m.role === "MEMBER" && m.projectAdminOf.length > 0 && (
                         <span> · admin on {m.projectAdminOf.length} project{m.projectAdminOf.length === 1 ? "" : "s"}</span>
                       )}
