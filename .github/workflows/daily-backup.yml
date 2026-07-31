@@ -1,0 +1,51 @@
+name: Daily database backup
+
+# A full dump of the database, uploaded to the same R2 bucket used for
+# attachments (under backups/), so a mistake in the data is recoverable.
+# Backups older than 14 days are deleted automatically to avoid unbounded
+# growth (each dump is tiny for this app's data volume either way).
+on:
+  schedule:
+    - cron: "0 1 * * *" # 01:00 UTC = 03:00 Cairo time
+  workflow_dispatch: {}
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install PostgreSQL client
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+
+      - name: Install AWS CLI (R2 is S3-compatible)
+        run: pip install --quiet awscli
+
+      - name: Dump the database
+        run: |
+          DATE=$(date -u +%Y-%m-%d)
+          echo "DATE=$DATE" >> "$GITHUB_ENV"
+          pg_dump "${{ secrets.DIRECT_DATABASE_URL }}" --no-owner --no-privileges | gzip > "backup-$DATE.sql.gz"
+
+      - name: Upload to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          aws s3 cp "backup-$DATE.sql.gz" "s3://${{ secrets.R2_BUCKET_NAME }}/backups/backup-$DATE.sql.gz" \
+            --endpoint-url "${{ secrets.R2_ENDPOINT }}"
+
+      - name: Delete backups older than 14 days
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          CUTOFF=$(date -u -d '14 days ago' +%Y-%m-%d)
+          aws s3api list-objects-v2 --bucket "${{ secrets.R2_BUCKET_NAME }}" --prefix "backups/backup-" \
+            --endpoint-url "${{ secrets.R2_ENDPOINT }}" --query "Contents[].Key" --output text \
+          | tr '\t' '\n' | while read -r key; do
+              [ -z "$key" ] && continue
+              FILEDATE=$(echo "$key" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}')
+              if [ -n "$FILEDATE" ] && [[ "$FILEDATE" < "$CUTOFF" ]]; then
+                echo "Deleting old backup: $key"
+                aws s3 rm "s3://${{ secrets.R2_BUCKET_NAME }}/$key" --endpoint-url "${{ secrets.R2_ENDPOINT }}"
+              fi
+            done
