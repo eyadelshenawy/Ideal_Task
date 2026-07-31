@@ -65,18 +65,20 @@ export default function TaskActivityPanel({ taskId }: { taskId: string }) {
         )}
       </div>
 
-      <div className="flex gap-1.5">
-        <input
+      <div className="flex flex-col gap-1.5">
+        <textarea
           value={draft}
           onChange={(ev) => setDraft(ev.target.value)}
-          onKeyDown={(ev) => { if (ev.key === "Enter") submit(); }}
-          placeholder="Add a comment…"
-          className="flex-1 min-w-0 rounded-lg border border-brand-border px-2.5 py-1.5 text-xs outline-none"
+          onKeyDown={(ev) => { if (ev.key === "Enter" && (ev.metaKey || ev.ctrlKey)) submit(); }}
+          placeholder="Add a comment… (Ctrl/Cmd + Enter to post)"
+          rows={4}
+          maxLength={20000}
+          className="w-full rounded-lg border border-brand-border px-2.5 py-1.5 text-xs outline-none resize-y"
         />
         <button
           onClick={submit}
           disabled={submitting || !draft.trim()}
-          className="rounded-lg px-3 text-xs font-semibold bg-brand-dark text-white disabled:opacity-50"
+          className="self-end rounded-lg px-3 py-1.5 text-xs font-semibold bg-brand-dark text-white disabled:opacity-50"
         >
           Post
         </button>

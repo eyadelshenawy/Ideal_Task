@@ -27,7 +27,9 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   return NextResponse.json(events.map(serializeEvent));
 }
 
-const commentSchema = z.object({ message: z.string().trim().min(1).max(4000) });
+// Long-form comments (specs, pasted logs, test notes) — cap is generous
+// headroom, not a realistic ceiling anyone should hit.
+const commentSchema = z.object({ message: z.string().trim().min(1).max(20000) });
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await requireSession();
