@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireSession } from "@/lib/permissions";
+import { requireTaskAccess } from "@/lib/permissions";
 
 const updateSchema = z.object({
   done: z.boolean().optional(),
@@ -9,7 +9,7 @@ const updateSchema = z.object({
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string; itemId: string } }) {
-  const { error } = await requireSession();
+  const { error } = await requireTaskAccess(params.id);
   if (error) return error;
 
   const parsed = updateSchema.safeParse(await req.json().catch(() => null));
@@ -31,7 +31,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string; itemId: string } }) {
-  const { error } = await requireSession();
+  const { error } = await requireTaskAccess(params.id);
   if (error) return error;
 
   const item = await prisma.checklistItem.findUnique({ where: { id: params.itemId } });

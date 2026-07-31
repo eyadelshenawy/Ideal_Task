@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireSession } from "@/lib/permissions";
+import { requireTaskAccess } from "@/lib/permissions";
 import { uploadToR2, r2Configured } from "@/lib/r2";
 import { logActivity } from "@/lib/activity";
 
@@ -25,7 +25,7 @@ function serialize(a: {
 }
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  const { error } = await requireSession();
+  const { error } = await requireTaskAccess(params.id);
   if (error) return error;
 
   const attachments = await prisma.attachment.findMany({
@@ -37,7 +37,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 }
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const { session, error } = await requireSession();
+  const { session, error } = await requireTaskAccess(params.id);
   if (error) return error;
 
   if (!r2Configured()) {

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireSession } from "@/lib/permissions";
+import { requireTaskAccess } from "@/lib/permissions";
 import { getR2DownloadUrl, deleteFromR2 } from "@/lib/r2";
 import { logActivity } from "@/lib/activity";
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string; attachmentId: string } }) {
-  const { error } = await requireSession();
+  const { error } = await requireTaskAccess(params.id);
   if (error) return error;
 
   const attachment = await prisma.attachment.findUnique({ where: { id: params.attachmentId } });
@@ -18,7 +18,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string;
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string; attachmentId: string } }) {
-  const { session, error } = await requireSession();
+  const { session, error } = await requireTaskAccess(params.id);
   if (error) return error;
 
   const attachment = await prisma.attachment.findUnique({ where: { id: params.attachmentId } });

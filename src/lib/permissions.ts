@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession, type Session } from "next-auth";
 import { authOptions } from "./auth";
 import { prisma } from "./prisma";
+import { canViewTask } from "./taskVisibility";
 
 type SessionResult =
   | { session: Session; error: null }
@@ -65,4 +66,23 @@ export async function requireProjectAccess(projectId: string | null): Promise<Pr
     return { ...result, access };
   }
   return { session: null, error: NextResponse.json({ error: "You don't have admin rights on this project" }, { status: 403 }) };
+}
+
+/**
+ * Gate for the per-task detail endpoints (comments, checklist, attachments):
+ * signed in AND the task is actually visible to them under the same rule as
+ * the main task list — otherwise knowing a task's id would be enough to read
+ * or write to it even when the UI would never have shown it to them. Returns
+ * 404 rather than 403 so a hidden task's existence isn't confirmed either way.
+ */
+export async function requireTaskAccess(taskId: string): Promise<SessionResult> {
+  const result = await requireSession();
+  if (result.error) return result;
+
+  const access = await getUserAccess(result.session);
+  const visible = await canViewTask(taskId, result.session.user.id, access.isSuperAdmin, access.administeredProjectIds);
+  if (!visible) {
+    return { session: null, error: NextResponse.json({ error: "Not found" }, { status: 404 }) };
+  }
+  return result;
 }

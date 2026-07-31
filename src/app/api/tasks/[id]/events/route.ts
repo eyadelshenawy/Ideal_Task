@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireSession } from "@/lib/permissions";
+import { requireTaskAccess } from "@/lib/permissions";
 import { addComment } from "@/lib/activity";
 import { notify } from "@/lib/inAppNotify";
 import { resolveMentions } from "@/lib/mentions";
@@ -17,7 +17,7 @@ function serializeEvent(e: { id: string; type: string; message: string; createdA
 }
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  const { error } = await requireSession();
+  const { error } = await requireTaskAccess(params.id);
   if (error) return error;
 
   const events = await prisma.taskEvent.findMany({
@@ -33,7 +33,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 const commentSchema = z.object({ message: z.string().trim().min(1).max(20000) });
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const { session, error } = await requireSession();
+  const { session, error } = await requireTaskAccess(params.id);
   if (error) return error;
 
   const parsed = commentSchema.safeParse(await req.json().catch(() => null));
