@@ -48,10 +48,15 @@ export async function POST(req: NextRequest) {
         // Code column, which only matters here for resolving "Depends On"
         // references between rows (handled separately, by id).
         const code = projectId ? await nextTaskCode(tx, projectId) : t.code || null;
+        // The sheet's original code isn't just discarded if it differs — old
+        // projects have real historical codes worth keeping searchable, so it
+        // survives as a "legacy-<code>" tag instead.
+        const tagNames = [...t.tags];
+        if (t.code.trim() && t.code.trim() !== code) tagNames.push(`legacy-${t.code.trim()}`);
         // Tag upsert isn't part of this transaction (resolveTags uses the
         // shared prisma client), but that's fine — tags have no dependency
         // on the task row, only the connect below does.
-        const tagRows = t.tags.length > 0 ? await resolveTags(t.tags) : [];
+        const tagRows = tagNames.length > 0 ? await resolveTags(tagNames) : [];
         const task = await tx.task.create({
           data: {
             code,
