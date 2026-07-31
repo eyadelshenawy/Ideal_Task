@@ -21,9 +21,20 @@ jobs:
 
       - name: Dump the database
         run: |
+          set -euo pipefail
           DATE=$(date -u +%Y-%m-%d)
           echo "DATE=$DATE" >> "$GITHUB_ENV"
           pg_dump "${{ secrets.DIRECT_DATABASE_URL }}" --no-owner --no-privileges | gzip > "backup-$DATE.sql.gz"
+          # A real dump of this app's data is at least a few KB (schema alone
+          # guarantees that) — anything smaller means pg_dump silently failed
+          # and gzip just compressed empty input. Fail loudly instead of
+          # uploading a useless "backup".
+          SIZE=$(stat -c%s "backup-$DATE.sql.gz")
+          echo "Backup file size: $SIZE bytes"
+          if [ "$SIZE" -lt 1000 ]; then
+            echo "::error::Backup is suspiciously small ($SIZE bytes) — pg_dump likely failed silently."
+            exit 1
+          fi
 
       - name: Upload to R2
         env:
