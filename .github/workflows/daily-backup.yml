@@ -14,7 +14,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install PostgreSQL client
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+        # pg_dump refuses to dump a server newer than its own major version,
+        # and Ubuntu's default apt package lags Neon's Postgres version — so
+        # pull the client straight from the official PGDG repo instead.
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq curl ca-certificates gnupg
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /usr/share/keyrings/postgresql.gpg
+          echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-18
 
       - name: Install AWS CLI (R2 is S3-compatible)
         run: pip install --quiet awscli
