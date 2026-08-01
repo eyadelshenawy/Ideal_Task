@@ -33,7 +33,11 @@ jobs:
           set -euo pipefail
           DATE=$(date -u +%Y-%m-%d)
           echo "DATE=$DATE" >> "$GITHUB_ENV"
-          pg_dump "${{ secrets.DIRECT_DATABASE_URL }}" --no-owner --no-privileges | gzip > "backup-$DATE.sql.gz"
+          # The runner image already has an older postgresql-client on PATH,
+          # so the bare `pg_dump` command still resolves to that one even
+          # after installing v18 above — call the versioned binary directly.
+          /usr/lib/postgresql/18/bin/pg_dump --version
+          /usr/lib/postgresql/18/bin/pg_dump "${{ secrets.DIRECT_DATABASE_URL }}" --no-owner --no-privileges | gzip > "backup-$DATE.sql.gz"
           # A real dump of this app's data is at least a few KB (schema alone
           # guarantees that) — anything smaller means pg_dump silently failed
           # and gzip just compressed empty input. Fail loudly instead of
