@@ -30,7 +30,7 @@ export default function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-brand-bg px-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-brand-bg px-4">
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-brand-border p-6">
         <div className="flex items-center gap-2.5 mb-6">
           <div className="relative w-8 h-8 flex-shrink-0">
@@ -87,6 +87,9 @@ export default function LoginForm() {
         <div className="mt-4 text-xs text-brand-sub text-center">
           Don&apos;t have an account? Ask an admin to add you from Team Management.
         </div>
+      </div>
+      <div className="mt-6 text-[11px] text-brand-sub text-center">
+        © {new Date().getFullYear()} IDEAL for Digital Transformation (ايدل للتحول الرقمي). All rights reserved.
       </div>
     </div>
   );

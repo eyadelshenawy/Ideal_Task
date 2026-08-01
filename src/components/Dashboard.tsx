@@ -810,6 +810,10 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
         )}
       </div>
 
+      <div className="px-4 py-4 text-[11px] text-brand-sub text-center">
+        © {new Date().getFullYear()} IDEAL for Digital Transformation (ايدل للتحول الرقمي). All rights reserved.
+      </div>
+
       {modalOpen && (
         <TaskModal
           draft={draft}
