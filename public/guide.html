@@ -5,6 +5,7 @@
 <title>IDEAL Tasks — Full User Guide</title>
 <style>
   :root {
+    color-scheme: light;
     --dark: #0A5A46;
     --light: #82B478;
     --bg: #F6F8F7;
@@ -150,19 +151,6 @@
   ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 6px; }
   #sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); }
 
-  @media (prefers-color-scheme: dark) {
-    body { background: #14201b; color: #E8EFEC; }
-    .hero { background: linear-gradient(135deg, #0A3D30, #0A5A46); }
-    .card { background: #1C2A24; border-color: #2b3d35; }
-    .shot { border-color: #2b3d35; }
-    .shot figcaption { background: #182420; border-color: #2b3d35; color: #9db3aa; }
-    section.doc-section h2 { border-color: #2b3d35; }
-    code { background: #22322b; color: #d8e6e0; }
-    table.perm-table th { background: #1c2a24; }
-    table.perm-table td, table.perm-table th { border-color: #2b3d35; }
-    details.faq { border-color: #2b3d35; }
-    .pill { background: #1e3a30; color: #a9d6bd; }
-  }
   @media (max-width: 900px) {
     body { flex-direction: column; }
     #sidebar { position: relative; width: 100%; height: auto; }
