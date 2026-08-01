@@ -216,6 +216,11 @@
       <figcaption>The login screen — email + password, nothing else.</figcaption>
     </figure>
     <p>The first time you log in, you'll be asked to set your own password (a temporary one is generated for you when your account is created). If your account is ever deactivated, you'll see a message here instead of the app.</p>
+    <h3>Forgot your password?</h3>
+    <p>Click <strong>Forgot password?</strong> on the login screen and enter your email — if an account exists for it, a reset link is sent that's valid for 1 hour. You don't need an admin for this anymore.</p>
+    <div class="card warn">
+      <strong>Too many wrong passwords locks the account for 2 minutes.</strong> After 5 incorrect attempts in a row, further tries (even with the correct password) are blocked for 2 minutes as a brute-force protection. The counter resets on the next successful login.
+    </div>
   </section>
 
   <!-- ============ ROLES ============ -->
@@ -501,6 +506,10 @@
     <details class="faq">
       <summary>Who can see the Audit Log?</summary>
       <div class="faq-body">Super Admins only. It's a system-wide history (logins, team/project changes) — separate from a task's own Comments &amp; Activity log, which anyone who can open that task can see.</div>
+    </details>
+    <details class="faq">
+      <summary>I got locked out after typing my password wrong — what now?</summary>
+      <div class="faq-body">Wait 2 minutes and try again — the lock clears itself automatically. If you're not sure of your password at all, use <strong>Forgot password?</strong> on the login screen instead of continuing to guess.</div>
     </details>
   </section>
 

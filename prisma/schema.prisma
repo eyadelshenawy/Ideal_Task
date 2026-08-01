@@ -55,6 +55,16 @@ model User {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
+  // Brute-force protection: incremented on each wrong password, reset on
+  // success; lockedUntil is set once the threshold is hit (see auth.ts).
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+
+  // Self-service "forgot password" — resetTokenHash stores a sha256 of the
+  // token actually emailed to the user, never the raw token itself.
+  resetTokenHash    String?   @unique
+  resetTokenExpires DateTime?
+
   tasksAssigned Task[] @relation("TaskAssignees")
   tasksCreated  Task[] @relation("CreatedTasks")
   taskEvents    TaskEvent[]

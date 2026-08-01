@@ -4,6 +4,11 @@ import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 import { logAudit } from "./audit";
 
+// Brute-force lockout: after this many wrong passwords in a row, the account
+// is locked for LOCKOUT_MINUTES. Resets to 0 on any successful login.
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_MINUTES = 2;
+
 export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
@@ -27,8 +32,30 @@ export const authOptions: NextAuthOptions = {
         });
         if (!user || !user.active) return null;
 
+        if (user.lockedUntil && user.lockedUntil > new Date()) {
+          const minutesLeft = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
+          throw new Error(`Too many failed attempts. Try again in ${minutesLeft} minute${minutesLeft === 1 ? "" : "s"}.`);
+        }
+
         const valid = await bcrypt.compare(credentials.password, user.passwordHash);
-        if (!valid) return null;
+        if (!valid) {
+          const attempts = user.failedLoginAttempts + 1;
+          const lockingOut = attempts >= MAX_FAILED_ATTEMPTS;
+          await prisma.user.update({
+            where: { id: user.id },
+            data: lockingOut
+              ? { failedLoginAttempts: 0, lockedUntil: new Date(Date.now() + LOCKOUT_MINUTES * 60000) }
+              : { failedLoginAttempts: attempts },
+          });
+          return null;
+        }
+
+        if (user.failedLoginAttempts > 0 || user.lockedUntil) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { failedLoginAttempts: 0, lockedUntil: null },
+          });
+        }
 
         return {
           id: user.id,

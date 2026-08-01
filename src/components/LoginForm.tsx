@@ -22,7 +22,10 @@ export default function LoginForm() {
     setLoading(false);
 
     if (!res || res.error) {
-      setError("Incorrect email or password.");
+      // A thrown Error inside authorize() (the lockout case) surfaces its
+      // message here verbatim; a plain `return null` (wrong password) always
+      // comes through as the generic "CredentialsSignin" code.
+      setError(res?.error && res.error !== "CredentialsSignin" ? res.error : "Incorrect email or password.");
       return;
     }
     router.push("/");
@@ -63,7 +66,10 @@ export default function LoginForm() {
             />
           </div>
           <div>
-            <label className="text-xs font-semibold text-brand-sub">Password</label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-brand-sub">Password</label>
+              <a href="/forgot-password" className="text-xs text-brand-dark font-medium">Forgot password?</a>
+            </div>
             <input
               type="password"
               required

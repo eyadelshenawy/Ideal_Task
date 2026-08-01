@@ -8,7 +8,7 @@ import type { NextRequest } from "next/server";
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  if (pathname === "/login") {
+  if (pathname === "/login" || pathname === "/forgot-password" || pathname === "/reset-password") {
     return NextResponse.next();
   }
 
