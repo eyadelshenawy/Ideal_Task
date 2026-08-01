@@ -81,6 +81,73 @@ export function priorityWeight(p: Priority): number {
   return p === "HIGH" ? 0 : p === "MEDIUM" ? 1 : 2;
 }
 
+/** Direct + transitive descendant ids of `taskId` within `tasks`, not including itself. */
+export function descendantIds(taskId: string, tasks: Task[]): Set<string> {
+  const childrenOf = new Map<string, string[]>();
+  for (const t of tasks) {
+    if (!t.parentId) continue;
+    if (!childrenOf.has(t.parentId)) childrenOf.set(t.parentId, []);
+    childrenOf.get(t.parentId)!.push(t.id);
+  }
+  const result = new Set<string>();
+  let frontier = [taskId];
+  while (frontier.length > 0) {
+    const next: string[] = [];
+    for (const id of frontier) {
+      for (const childId of childrenOf.get(id) ?? []) {
+        if (!result.has(childId)) { result.add(childId); next.push(childId); }
+      }
+    }
+    frontier = next;
+  }
+  return result;
+}
+
+export interface TaskTreeRow {
+  task: Task;
+  depth: number;
+  hasChildren: boolean;
+  doneChildCount: number;
+  totalChildCount: number;
+}
+
+/**
+ * Re-orders `tasks` (already sorted however the caller likes) into
+ * depth-first tree order — each task immediately followed by its children,
+ * recursively — skipping the subtree of any id in `collapsed`. A task whose
+ * parent isn't present in `tasks` (e.g. filtered out) is treated as a root,
+ * so it's never silently dropped.
+ */
+export function toTreeRows(tasks: Task[], collapsed: Set<string>): TaskTreeRow[] {
+  const byId = new Map(tasks.map((t) => [t.id, t]));
+  const childrenMap = new Map<string, Task[]>();
+  const roots: Task[] = [];
+  for (const t of tasks) {
+    if (t.parentId && byId.has(t.parentId)) {
+      if (!childrenMap.has(t.parentId)) childrenMap.set(t.parentId, []);
+      childrenMap.get(t.parentId)!.push(t);
+    } else {
+      roots.push(t);
+    }
+  }
+  const result: TaskTreeRow[] = [];
+  function walk(list: Task[], depth: number) {
+    for (const t of list) {
+      const kids = childrenMap.get(t.id) ?? [];
+      result.push({
+        task: t,
+        depth,
+        hasChildren: kids.length > 0,
+        doneChildCount: kids.filter((k) => k.status === "DONE").length,
+        totalChildCount: kids.length,
+      });
+      if (kids.length > 0 && !collapsed.has(t.id)) walk(kids, depth + 1);
+    }
+  }
+  walk(roots, 0);
+  return result;
+}
+
 export function isBlocked(task: Pick<Task, "dependsOn">, allTasks: Task[]): boolean {
   return (task.dependsOn || []).some((id) => {
     const dep = allTasks.find((t) => t.id === id);

@@ -5,6 +5,7 @@ import { taskBulkUpdateSchema, taskBulkDeleteSchema, assigneesToSet } from "@/li
 import { notifyAssignment } from "@/lib/notifications";
 import { logActivity, describeTaskChanges, loadNameLookups } from "@/lib/activity";
 import { createNextOccurrence } from "@/lib/recurrence";
+import { getDescendantIds, syncAncestorChain } from "@/lib/taskHierarchy";
 
 // Bulk edit: same patch (status / assignees / project) applied to every task
 // id the requester is allowed to manage. Ids they can't manage are silently
@@ -46,6 +47,15 @@ export async function PATCH(req: NextRequest) {
         continue;
       }
     }
+    // Moving a task with subtasks to a different project would strand them —
+    // same guard as the single-task PATCH endpoint.
+    if (projectId !== undefined && projectId !== task.projectId) {
+      const childCount = await prisma.task.count({ where: { parentId: task.id, deletedAt: null } });
+      if (childCount > 0) {
+        skipped.push(task.id);
+        continue;
+      }
+    }
 
     const updatedTask = await prisma.task.update({
       where: { id: task.id },
@@ -60,6 +70,10 @@ export async function PATCH(req: NextRequest) {
 
     if (status === "DONE" && task.status !== "DONE" && updatedTask.recurrenceFreq) {
       createNextOccurrence(updatedTask).catch((err) => console.error("createNextOccurrence failed:", err));
+    }
+
+    if (status !== undefined && status !== task.status && updatedTask.parentId) {
+      await syncAncestorChain(prisma, updatedTask.parentId);
     }
 
     if (assignees !== undefined) {
@@ -105,19 +119,26 @@ export async function DELETE(req: NextRequest) {
 
   const tasks = await prisma.task.findMany({
     where: { id: { in: taskIds }, deletedAt: null },
-    select: { id: true, projectId: true },
+    select: { id: true, projectId: true, parentId: true },
   });
 
   const deleted: string[] = [];
   const skipped: string[] = [];
+  const parentIdsToSync = new Set<string>();
   for (const task of tasks) {
     const canManage = access.isSuperAdmin || (task.projectId !== null && access.administeredProjectIds.includes(task.projectId));
     if (!canManage) {
       skipped.push(task.id);
       continue;
     }
-    await prisma.task.update({ where: { id: task.id }, data: { deletedAt: new Date() } });
+    const descendantIds = await getDescendantIds(prisma, task.id);
+    await prisma.task.updateMany({ where: { id: { in: [task.id, ...descendantIds] } }, data: { deletedAt: new Date() } });
     deleted.push(task.id);
+    if (task.parentId) parentIdsToSync.add(task.parentId);
+  }
+
+  for (const parentId of parentIdsToSync) {
+    await syncAncestorChain(prisma, parentId);
   }
 
   return NextResponse.json({ deleted, skipped });

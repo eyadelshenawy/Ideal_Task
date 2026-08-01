@@ -31,6 +31,7 @@ const taskFields = z.object({
   progress: z.number().min(0).max(100).default(0),
   isMilestone: z.boolean().default(false),
   dependsOn: z.array(z.string()).default([]),
+  parentId: z.string().nullable().default(null),
   recurrenceFreq: z.enum(["DAILY", "WEEKLY", "MONTHLY"]).nullable().default(null),
   recurrenceEndDate: dateOnly.default(null),
   tags: z.array(z.string().trim().min(1).max(40)).default([]),

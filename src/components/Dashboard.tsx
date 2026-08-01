@@ -6,7 +6,7 @@ import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Buildi
 import useSWR from "swr";
 import type { Task, Project, TeamMember, Contact, Status, AssigneeDisplay } from "@/types/models";
 import type { ImportPreview } from "@/types/import";
-import { colorForIndex, STATUSES, PRIORITIES, todayStr, sortTasks, type SortBy } from "@/lib/taskHelpers";
+import { colorForIndex, STATUSES, PRIORITIES, todayStr, sortTasks, toTreeRows, type SortBy } from "@/lib/taskHelpers";
 import { api } from "@/lib/apiClient";
 import TaskCard from "./TaskCard";
 import TaskListRow from "./TaskListRow";
@@ -81,6 +81,16 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // Which parent tasks have their subtasks collapsed in List view — purely
+  // client-side display state, not persisted.
+  const [collapsedParentIds, setCollapsedParentIds] = useState<Set<string>>(new Set());
+  function toggleCollapse(taskId: string) {
+    setCollapsedParentIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(taskId)) next.delete(taskId); else next.add(taskId);
+      return next;
+    });
+  }
 
   const taskList = tasks ?? [];
   const teamList = team ?? [];
@@ -223,7 +233,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
               startDate: draft.startDate || null, dueDate: draft.dueDate || null,
               progress: draft.progress, isMilestone: draft.isMilestone, dependsOn: draft.dependsOn,
               recurrenceFreq: draft.recurrenceFreq || null, recurrenceEndDate: draft.recurrenceEndDate || null,
-              tags: draft.tags,
+              tags: draft.tags, parentId: draft.parentId || null,
             }
           : { status: draft.status, progress: draft.progress };
         await api.updateTask(draft.id, payload);
@@ -235,7 +245,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
           startDate: draft.startDate || null, dueDate: draft.dueDate || null,
           progress: draft.progress, isMilestone: draft.isMilestone, dependsOn: draft.dependsOn,
           recurrenceFreq: draft.recurrenceFreq || null, recurrenceEndDate: draft.recurrenceEndDate || null,
-          tags: draft.tags,
+          tags: draft.tags, parentId: draft.parentId || null,
         });
       }
       await mutateTasks();
@@ -317,8 +327,9 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
 
   function downloadTemplate() {
     const sampleRows = [
-      { Code: "IDT-001", Title: "Kickoff meeting", Description: "Align on scope and timeline", Module: "", Tags: "onboarding", Comment: "", Project: "Fayendra", Assignee: "Eyad Badran", Priority: "High", Status: "To Do", "Start Date": "2026-08-01", "Due Date": "2026-08-03", Progress: 0, Milestone: "No", "Depends On": "" },
-      { Code: "IDT-002", Title: "Go-live", Description: "", Module: "Billing", Tags: "", Comment: "", Project: "Fayendra", Assignee: "", Priority: "High", Status: "To Do", "Start Date": "", "Due Date": "2026-09-15", Progress: 0, Milestone: "Yes", "Depends On": "IDT-001" },
+      { Code: "IDT-001", Title: "Kickoff meeting", Description: "Align on scope and timeline", Module: "", Tags: "onboarding", Comment: "", Project: "Fayendra", Assignee: "Eyad Badran", Priority: "High", Status: "To Do", "Start Date": "2026-08-01", "Due Date": "2026-08-03", Progress: 0, Milestone: "No", "Depends On": "", "Parent Code": "" },
+      { Code: "IDT-002", Title: "Go-live", Description: "", Module: "Billing", Tags: "", Comment: "", Project: "Fayendra", Assignee: "", Priority: "High", Status: "To Do", "Start Date": "", "Due Date": "2026-09-15", Progress: 0, Milestone: "Yes", "Depends On": "IDT-001", "Parent Code": "" },
+      { Code: "", Title: "Draft launch announcement", Description: "", Module: "", Tags: "", Comment: "", Project: "Fayendra", Assignee: "", Priority: "Medium", Status: "To Do", "Start Date": "", "Due Date": "2026-09-10", Progress: 0, Milestone: "No", "Depends On": "", "Parent Code": "IDT-002" },
     ];
     const ws = XLSX.utils.json_to_sheet(sampleRows);
     const wbOut = XLSX.utils.book_new();
@@ -355,6 +366,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
         .filter((dt): dt is Task => !!dt)
         .map((dt) => dt.code || dt.title)
         .join(", "),
+      "Parent Code": (t.parentId && taskList.find((pt) => pt.id === t.parentId)?.code) || "",
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     const wbOut = XLSX.utils.book_new();
@@ -786,7 +798,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             {sortedList.length === 0 && (
               <div className="text-center text-brand-sub text-sm py-10">No tasks match your filters</div>
             )}
-            {sortedList.map((task) => (
+            {toTreeRows(sortedList, collapsedParentIds).map(({ task, depth, hasChildren, doneChildCount, totalChildCount }) => (
               <TaskListRow
                 key={task.id}
                 task={task}
@@ -800,6 +812,12 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
                 selectMode={selectMode}
                 selected={selectedIds.has(task.id)}
                 onToggleSelect={toggleSelect}
+                depth={depth}
+                hasChildren={hasChildren}
+                collapsed={collapsedParentIds.has(task.id)}
+                onToggleCollapse={toggleCollapse}
+                doneChildCount={doneChildCount}
+                totalChildCount={totalChildCount}
               />
             ))}
           </div>

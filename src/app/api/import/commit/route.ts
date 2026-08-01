@@ -41,15 +41,49 @@ export async function POST(req: NextRequest) {
       projectNameToId.set(name, project.id);
     }
 
+    // ---- Parent-task references: another row in this same file, or an
+    // existing task already in the DB (see excelImport.ts's "Parent Code"
+    // column). ----
+    const parentRefByTempId = new Map<string, { existingId?: string; tempId?: string }>();
+    for (const t of tasksToAdd) {
+      if (t.parentTempId) parentRefByTempId.set(t.tempId, { tempId: t.parentTempId });
+      else if (t.parentExistingId) parentRefByTempId.set(t.tempId, { existingId: t.parentExistingId });
+    }
+    const existingParentIds = [...new Set(tasksToAdd.map((t) => t.parentExistingId).filter((id): id is string => !!id))];
+    const existingParents = existingParentIds.length > 0
+      ? await prisma.task.findMany({ where: { id: { in: existingParentIds } }, select: { id: true, code: true, projectId: true, childCodeSeq: true } })
+      : [];
+    const existingParentById = new Map(existingParents.map((p) => [p.id, p]));
+
     const resolvedProjectId = new Map<string, string | null>();
     for (const t of tasksToAdd) {
       resolvedProjectId.set(t.tempId, t.projectId ?? (t.newProjectName ? projectNameToId.get(t.newProjectName) ?? null : null));
     }
+    // A subtask always lives in its parent's project — push that down from
+    // parent to child, looping so a multi-level chain within the same file
+    // (grandchild -> child -> parent) converges regardless of row order.
+    for (let pass = 0; pass < tasksToAdd.length + 5; pass++) {
+      let changed = false;
+      for (const t of tasksToAdd) {
+        const ref = parentRefByTempId.get(t.tempId);
+        if (!ref) continue;
+        const parentProjectId = ref.existingId
+          ? existingParentById.get(ref.existingId)?.projectId ?? null
+          : resolvedProjectId.get(ref.tempId!);
+        if (parentProjectId !== undefined && resolvedProjectId.get(t.tempId) !== parentProjectId) {
+          resolvedProjectId.set(t.tempId, parentProjectId);
+          changed = true;
+        }
+      }
+      if (!changed) break;
+    }
 
     // Batch-reserve codes per project — one counter bump per project (not
-    // per row).
+    // per row). Rows with a resolved parent are excluded here; they get a
+    // hierarchical code off their parent's own counter instead, below.
     const rowsByProject = new Map<string, string[]>(); // projectId -> tempIds
     for (const t of tasksToAdd) {
+      if (parentRefByTempId.has(t.tempId)) continue;
       const projectId = resolvedProjectId.get(t.tempId);
       if (!projectId) continue;
       if (!rowsByProject.has(projectId)) rowsByProject.set(projectId, []);
@@ -57,7 +91,7 @@ export async function POST(req: NextRequest) {
     }
     const codeByTempId = new Map<string, string | null>();
     for (const t of tasksToAdd) {
-      if (!resolvedProjectId.get(t.tempId)) codeByTempId.set(t.tempId, t.code || null);
+      if (!resolvedProjectId.get(t.tempId) && !parentRefByTempId.has(t.tempId)) codeByTempId.set(t.tempId, t.code || null);
     }
     for (const [projectId, tempIds] of rowsByProject) {
       const project = await prisma.project.update({
@@ -70,6 +104,52 @@ export async function POST(req: NextRequest) {
       tempIds.forEach((tempId, i) => {
         codeByTempId.set(tempId, `${project.code}-${String(startSeq + i).padStart(4, "0")}`);
       });
+    }
+
+    // Ids are generated up front (rather than left to Prisma's createMany
+    // default) so a same-batch parent reference can resolve to a real id
+    // before that parent row is actually inserted.
+    const idByTempId = new Map(tasksToAdd.map((t) => [t.tempId, randomUUID()]));
+    const tempIdByTask = new Map(tasksToAdd.map((t) => [t.tempId, t]));
+
+    // ---- Hierarchical (child) codes: ABC-0001 -> ABC-0001-01, -02, ...
+    // Resolved iteratively so a multi-level chain within the same file
+    // works regardless of row order — a grandchild just waits until its
+    // parent's own code becomes known in an earlier pass. ----
+    const parentIdByTempId = new Map<string, string>(); // real id of the resolved parent, once known
+    const childCodeSeqDelta = new Map<string, number>(); // real parent id -> how much this import bumps it
+    const childCodeSeqStart = new Map<string, number>(existingParents.map((p) => [p.id, p.childCodeSeq]));
+    const remainingChildren = new Set(tasksToAdd.filter((t) => parentRefByTempId.has(t.tempId)).map((t) => t.tempId));
+
+    for (let pass = 0; pass < tasksToAdd.length + 5 && remainingChildren.size > 0; pass++) {
+      let progressed = false;
+      for (const tempId of [...remainingChildren]) {
+        const ref = parentRefByTempId.get(tempId)!;
+        const parentRealId = ref.existingId ?? (ref.tempId ? idByTempId.get(ref.tempId) : undefined);
+        const parentCode = ref.existingId ? existingParentById.get(ref.existingId)?.code ?? null : (ref.tempId ? codeByTempId.get(ref.tempId) ?? null : null);
+        if (!parentRealId || !parentCode) continue; // parent not resolved yet — retry next pass
+        parentIdByTempId.set(tempId, parentRealId);
+        const nextSeq = (childCodeSeqStart.get(parentRealId) ?? 0) + (childCodeSeqDelta.get(parentRealId) ?? 0) + 1;
+        childCodeSeqDelta.set(parentRealId, (childCodeSeqDelta.get(parentRealId) ?? 0) + 1);
+        const t = tempIdByTask.get(tempId)!;
+        codeByTempId.set(tempId, t.code.trim() ? t.code : `${parentCode}-${String(nextSeq).padStart(2, "0")}`);
+        remainingChildren.delete(tempId);
+        progressed = true;
+      }
+      if (!progressed) break;
+    }
+    // Any row whose parent reference never resolved (parent code missing or
+    // circular) just falls back to its own given/blank code as a top-level
+    // task — preview-time warnings already flagged the unknown code.
+
+    // Existing (already-in-DB) parents' counters bump right away, same as
+    // the per-project bump above. Same-batch parents that are new this
+    // import get their starting childCodeSeq baked straight into their
+    // createMany row below instead (nothing to update yet — they don't exist).
+    for (const [parentId, delta] of childCodeSeqDelta) {
+      if (existingParentById.has(parentId)) {
+        await prisma.task.update({ where: { id: parentId }, data: { childCodeSeq: { increment: delta } } });
+      }
     }
 
     // Same reasoning for tags: resolve every unique name (including the
@@ -87,11 +167,6 @@ export async function POST(req: NextRequest) {
     const resolvedTags = allTagNames.size > 0 ? await resolveTags([...allTagNames]) : [];
     const tagIdByName = new Map(resolvedTags.map((tag) => [tag.name, tag.id]));
 
-    // Ids are generated up front (rather than left to Prisma's createMany
-    // default) so the join-table rows below can be built without a
-    // round trip to find out what was just inserted.
-    const idByTempId = new Map(tasksToAdd.map((t) => [t.tempId, randomUUID()]));
-
     const created = await prisma.$transaction(async (tx) => {
       // One bulk insert for every task row — a plain per-row task.create()
       // with nested tags/assignees `connect` measured at ~2s/row through
@@ -100,21 +175,29 @@ export async function POST(req: NextRequest) {
       // plus raw bulk inserts into the two join tables below is the same
       // end result in 3 round trips total instead of one query per relation.
       await tx.task.createMany({
-        data: tasksToAdd.map((t) => ({
-          id: idByTempId.get(t.tempId),
-          code: codeByTempId.get(t.tempId) ?? null,
-          title: t.title,
-          description: t.description || null,
-          module: t.module || null,
-          projectId: resolvedProjectId.get(t.tempId) ?? null,
-          priority: t.priority,
-          status: t.status,
-          startDate: dateStrToUTC(t.startDate),
-          dueDate: dateStrToUTC(t.dueDate),
-          progress: t.status === "DONE" ? 100 : t.progress,
-          isMilestone: t.isMilestone,
-          createdById,
-        })),
+        data: tasksToAdd.map((t) => {
+          const ownRealId = idByTempId.get(t.tempId)!;
+          return {
+            id: ownRealId,
+            code: codeByTempId.get(t.tempId) ?? null,
+            title: t.title,
+            description: t.description || null,
+            module: t.module || null,
+            projectId: resolvedProjectId.get(t.tempId) ?? null,
+            parentId: parentIdByTempId.get(t.tempId) ?? null,
+            // A new-this-import parent's counter starts at however many
+            // subtask codes were just handed out under it, so future
+            // additions (single-create or a later import) don't collide.
+            childCodeSeq: childCodeSeqDelta.get(ownRealId) ?? 0,
+            priority: t.priority,
+            status: t.status,
+            startDate: dateStrToUTC(t.startDate),
+            dueDate: dateStrToUTC(t.dueDate),
+            progress: t.status === "DONE" ? 100 : t.progress,
+            isMilestone: t.isMilestone,
+            createdById,
+          };
+        }),
       });
 
       const tagLinks: { tagId: string; taskId: string }[] = [];

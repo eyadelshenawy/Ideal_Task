@@ -40,5 +40,7 @@ export function serializeTask(t: TaskWithRelations): Task {
     createdById: t.createdById,
     createdAt: t.createdAt.toISOString(),
     updatedAt: t.updatedAt.toISOString(),
+    parentId: t.parentId,
+    childCodeSeq: t.childCodeSeq,
   };
 }

@@ -3,7 +3,7 @@
 import { Fragment, useMemo } from "react";
 import { Diamond } from "lucide-react";
 import type { Task } from "@/types/models";
-import { STATUSES, MONTHS, todayStr, addDays, diffDays } from "@/lib/taskHelpers";
+import { STATUSES, MONTHS, todayStr, addDays, diffDays, toTreeRows } from "@/lib/taskHelpers";
 
 interface GanttViewProps {
   tasks: Task[];
@@ -46,23 +46,29 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
     return arr;
   }, [start, end]);
 
+  // Parent/child tasks render in tree order (child rows directly beneath
+  // their parent, indented) rather than whatever order the caller sorted
+  // them in — Gantt isn't split into status columns like Board, so unlike
+  // there, full nesting works here without conflicting with anything.
+  const rows = useMemo(() => toTreeRows(tasks, new Set()), [tasks]);
+
   const totalWidth = sidebarWidth + days.length * dayWidth;
-  const totalHeight = headerHeight + tasks.length * rowHeight;
+  const totalHeight = headerHeight + rows.length * rowHeight;
   const xForDate = (dateStr: string) => sidebarWidth + diffDays(start, dateStr) * dayWidth;
 
   const bars = useMemo(
-    () => tasks
-      .map((t, i) => {
+    () => rows
+      .map(({ task: t, depth }, i) => {
         const effStart = t.startDate || t.dueDate;
         const effEnd = t.dueDate || t.startDate;
         if (!effStart || !effEnd) return null;
         const x1 = xForDate(effStart);
         const x2 = xForDate(effEnd) + dayWidth;
-        return { task: t, rowIndex: i, x: x1, width: Math.max(x2 - x1, dayWidth), y: headerHeight + i * rowHeight };
+        return { task: t, depth, rowIndex: i, x: x1, width: Math.max(x2 - x1, dayWidth), y: headerHeight + i * rowHeight };
       })
       .filter((b): b is NonNullable<typeof b> => b !== null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [tasks, start],
+    [rows, start],
   );
 
   const barById = useMemo(() => {
@@ -124,7 +130,7 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
             </div>
           ))}
 
-          {tasks.map((t) => (
+          {rows.map(({ task: t, depth }) => (
             <Fragment key={t.id}>
               <div
                 onClick={() => onEditTask(t)}
@@ -132,7 +138,7 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
                 style={{
                   position: "sticky", left: 0, zIndex: 3, background: "#fff",
                   borderBottom: "1px solid #E1E8E4", borderLeft: "1px solid #E1E8E4",
-                  height: rowHeight, display: "flex", alignItems: "center", gap: 6, padding: "0 10px",
+                  height: rowHeight, display: "flex", alignItems: "center", gap: 6, padding: `0 10px 0 ${10 + depth * 14}px`,
                 }}
               >
                 {t.isMilestone && <Diamond size={11} className="text-brand-dark flex-shrink-0" />}

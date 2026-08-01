@@ -71,6 +71,7 @@ export interface RawParsedRow {
   progress: number;
   isMilestone: boolean;
   dependsOnCodes: string[];
+  parentCode: string;
 }
 
 export function parseSheetRows(rows: Record<string, unknown>[]): { parsed: RawParsedRow[]; warnings: string[] } {
@@ -98,6 +99,7 @@ export function parseSheetRows(rows: Record<string, unknown>[]): { parsed: RawPa
     const progressRaw = pick(nrow, ["progress", "%", "% complete", "percent complete"]);
     const milestoneRaw = pick(nrow, ["milestone", "is milestone"]);
     const dependsRaw = pick(nrow, ["depends on", "dependencies", "predecessor", "predecessors"]);
+    const parentCodeRaw = pick(nrow, ["parent code", "parent", "parent task"]);
 
     parsed.push({
       tempId: `row-${idx}`,
@@ -116,6 +118,7 @@ export function parseSheetRows(rows: Record<string, unknown>[]): { parsed: RawPa
       progress: Math.max(0, Math.min(100, Number(progressRaw) || 0)),
       isMilestone: matchBool(milestoneRaw),
       dependsOnCodes: dependsRaw ? dependsRaw.split(",").map((c) => c.trim()).filter(Boolean) : [],
+      parentCode: parentCodeRaw.trim(),
     });
   });
 

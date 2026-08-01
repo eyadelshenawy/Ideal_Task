@@ -23,6 +23,8 @@ export const previewTaskSchema = z.object({
   isMilestone: z.boolean(),
   dependsOnTempIds: z.array(z.string()),
   dependsOnExistingIds: z.array(z.string()),
+  parentTempId: z.string().nullable(),
+  parentExistingId: z.string().nullable(),
 });
 
 export const importCommitSchema = z.object({

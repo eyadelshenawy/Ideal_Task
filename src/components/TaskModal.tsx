@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import type { Task, Project, TeamMember, Contact, Priority, Status, RecurrenceFreq } from "@/types/models";
-import { PRIORITIES, STATUSES } from "@/lib/taskHelpers";
+import { PRIORITIES, STATUSES, descendantIds } from "@/lib/taskHelpers";
 import TaskActivityPanel from "./TaskActivityPanel";
 import TaskChecklistPanel from "./TaskChecklistPanel";
 import TaskAttachmentsPanel from "./TaskAttachmentsPanel";
@@ -28,6 +28,7 @@ export interface TaskDraft {
   recurrenceFreq: RecurrenceFreq | "";
   recurrenceEndDate: string;
   tags: string[];
+  parentId: string;
 }
 
 export function blankDraft(): TaskDraft {
@@ -35,7 +36,7 @@ export function blankDraft(): TaskDraft {
     code: "", title: "", description: "", module: "", projectId: "", assignees: [],
     priority: "MEDIUM", status: "TODO", startDate: "", dueDate: "",
     progress: 0, isMilestone: false, dependsOn: [],
-    recurrenceFreq: "", recurrenceEndDate: "", tags: [],
+    recurrenceFreq: "", recurrenceEndDate: "", tags: [], parentId: "",
   };
 }
 
@@ -61,6 +62,7 @@ export function draftFromTask(task: Task): TaskDraft {
     recurrenceFreq: task.recurrenceFreq ?? "",
     recurrenceEndDate: task.recurrenceEndDate ?? "",
     tags: task.tags,
+    parentId: task.parentId ?? "",
   };
 }
 
@@ -107,6 +109,10 @@ export default function TaskModal({
   // Only tasks in the same project make sense as a predecessor — cuts a
   // list of everything down to something actually findable.
   const otherTasks = allTasks.filter((t) => t.id !== draft.id && t.projectId === draft.projectId);
+  // A task can't become its own parent, nor a parent of one of its own
+  // descendants (that would create a cycle) — server re-checks this too.
+  const excludedAsParent = draft.id ? descendantIds(draft.id, allTasks) : new Set<string>();
+  const parentCandidates = otherTasks.filter((t) => !excludedAsParent.has(t.id));
 
   function isAssigned(type: AssigneeEntry["type"], id: string) {
     return draft.assignees.some((a) => a.type === type && a.id === id);
@@ -132,6 +138,18 @@ export default function TaskModal({
     setDraft({ ...draft, assignees: [...draft.assignees, { type: "contact", id: contact.id }] });
     setNewContactName("");
     setAddingContact(false);
+  }
+
+  function selectParent(parentId: string) {
+    const parent = parentId ? otherTasks.find((t) => t.id === parentId) : undefined;
+    // Same "soft suggestion, never overwrite a manual edit" rule as the
+    // project-code suggestion below — only fills in a still-blank Code.
+    const suggestCode = !draft.id && !draft.code.trim() && parent?.code;
+    setDraft({
+      ...draft,
+      parentId,
+      ...(suggestCode ? { code: `${parent!.code}-${String(parent!.childCodeSeq + 1).padStart(2, "0")}` } : {}),
+    });
   }
 
   function toggleDepend(id: string) {
@@ -477,6 +495,25 @@ export default function TaskModal({
                   </label>
                 ))}
               </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-brand-sub">Parent task (make this a subtask)</label>
+              <select
+                value={draft.parentId}
+                onChange={(e) => selectParent(e.target.value)}
+                className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
+              >
+                <option value="">No parent — top-level task</option>
+                {parentCandidates.map((t) => (
+                  <option key={t.id} value={t.id}>{t.code ? `${t.code} — ` : ""}{t.title}</option>
+                ))}
+              </select>
+              {draft.parentId && (
+                <div className="text-[11px] text-brand-sub mt-1">
+                  Lives under its parent in List view; auto-marks the parent Done once every subtask is.
+                </div>
+              )}
             </div>
           </div>
         )}

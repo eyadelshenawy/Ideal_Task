@@ -60,6 +60,10 @@ export interface Task {
   createdById: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Parent task id, for a hierarchical subtask (e.g. ABC-0001-01 under ABC-0001). */
+  parentId: string | null;
+  /** This task's own running counter for ITS children's codes — used to suggest the next child code. */
+  childCodeSeq: number;
 }
 
 export interface TrashedTask extends Task {

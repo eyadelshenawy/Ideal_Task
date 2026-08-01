@@ -169,6 +169,15 @@ model Task {
   dependsOn Task[] @relation("TaskDependencies")
   blocks    Task[] @relation("TaskDependencies")
 
+  // Parent/child task hierarchy (e.g. ABC-0001 -> ABC-0001-01). A child must
+  // live in the same project as its parent — enforced in the API layer, not
+  // here. childCodeSeq is this task's own running counter for ITS children's
+  // codes, mirroring Project.taskCodeSeq one level down.
+  parentId     String?
+  parent       Task?   @relation("TaskHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children     Task[]  @relation("TaskHierarchy")
+  childCodeSeq Int     @default(0)
+
   // Nullable so a Super Admin can permanently delete a user's account even
   // after they've created tasks — the task survives, it just loses creator
   // attribution (not surfaced in the UI anyway).
@@ -187,6 +196,7 @@ model Task {
   @@index([projectId])
   @@index([status])
   @@index([deletedAt])
+  @@index([parentId])
 }
 
 // System-wide audit trail — logins, team/project management, permission

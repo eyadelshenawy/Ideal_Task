@@ -35,6 +35,9 @@ export default function TaskCard({
   const badge = dueBadge(task);
   const statusIdx = STATUSES.findIndex((s) => s.id === task.status);
   const blocked = isBlocked(task, allTasks);
+  const parent = task.parentId ? allTasks.find((t) => t.id === task.parentId) : undefined;
+  const children = allTasks.filter((t) => t.parentId === task.id);
+  const doneChildren = children.filter((t) => t.status === "DONE").length;
 
   return (
     <div
@@ -87,6 +90,16 @@ export default function TaskCard({
         {task.tags.map((tag) => (
           <Chip key={tag} small style={{ background: "#EDE7F5", color: "#5B4A8A" }}>{tag}</Chip>
         ))}
+        {parent && (
+          <Chip small style={{ background: "#F0F0F0", color: "#6B6B6B" }}>
+            ↳ {parent.code || parent.title}
+          </Chip>
+        )}
+        {children.length > 0 && (
+          <Chip small style={{ background: "#EAF3EE", color: "#0A5A46" }}>
+            {doneChildren}/{children.length} subtasks
+          </Chip>
+        )}
         {blocked && (
           <Chip small style={{ background: "#FBE7E5", color: "#9A3530" }}>
             <span className="flex items-center gap-1"><AlertTriangle size={10} /> Blocked</span>

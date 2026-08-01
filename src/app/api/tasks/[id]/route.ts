@@ -10,6 +10,7 @@ import { createNextOccurrence } from "@/lib/recurrence";
 import { resolveTags } from "@/lib/tags";
 import { codeMatchesProject } from "@/lib/taskCode";
 import { wouldCreateCycle } from "@/lib/taskDependencies";
+import { codeMatchesParent, wouldCreateHierarchyCycle, syncAncestorChain, getDescendantIds } from "@/lib/taskHierarchy";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await requireSession();
@@ -48,6 +49,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       if (nextStatus === "DONE" && existing.status !== "DONE" && task.recurrenceFreq) {
         createNextOccurrence(task).catch((err) => console.error("createNextOccurrence failed:", err));
       }
+      if (nextStatus !== existing.status && task.parentId) {
+        await syncAncestorChain(prisma, task.parentId);
+      }
       if (nextStatus !== existing.status) {
         const lines = describeTaskChanges(
           { ...existing, assigneeIds: [], contactAssigneeIds: [] },
@@ -79,13 +83,48 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
   }
 
-  // Only re-check the code-vs-project-prefix rule when either is actually
-  // being changed — an older task that predates this rule shouldn't get
-  // blocked from unrelated edits just because its existing code is mismatched.
-  if ((data.code !== undefined || data.projectId !== undefined)) {
+  const finalParentId = data.parentId !== undefined ? data.parentId : existing.parentId;
+
+  if (data.parentId !== undefined && data.parentId !== null) {
+    if (data.parentId === params.id) {
+      return NextResponse.json({ error: "A task can't be its own parent" }, { status: 400 });
+    }
+    if (await wouldCreateHierarchyCycle(prisma, params.id, data.parentId)) {
+      return NextResponse.json({ error: "That would create a circular task hierarchy" }, { status: 400 });
+    }
+  }
+
+  // Moving a task that already has subtasks to a different project would
+  // strand them in the old one — block it; move/detach the subtasks first.
+  if (data.projectId !== undefined && data.projectId !== existing.projectId) {
+    const childCount = await prisma.task.count({ where: { parentId: params.id, deletedAt: null } });
+    if (childCount > 0) {
+      return NextResponse.json({ error: "This task has subtasks — move or remove them before changing its project" }, { status: 400 });
+    }
+  }
+
+  // Only re-check the code-vs-project/parent-prefix rule when something
+  // relevant is actually changing — an older task that predates this rule
+  // shouldn't get blocked from unrelated edits just because its existing
+  // code is mismatched.
+  if (data.code !== undefined || data.projectId !== undefined || data.parentId !== undefined) {
     const finalCode = (data.code !== undefined ? data.code : existing.code) ?? "";
     const finalProjectId = data.projectId !== undefined ? data.projectId : existing.projectId;
-    if (finalProjectId) {
+    if (finalParentId) {
+      const parent = await prisma.task.findUnique({ where: { id: finalParentId }, select: { code: true, projectId: true, deletedAt: true } });
+      if (!parent || parent.deletedAt) {
+        return NextResponse.json({ error: "Parent task not found" }, { status: 400 });
+      }
+      if (!parent.code) {
+        return NextResponse.json({ error: "Parent task must have a code before it can have subtasks" }, { status: 400 });
+      }
+      if (!codeMatchesParent(finalCode, parent.code)) {
+        return NextResponse.json({ error: `Code must start with "${parent.code}-" for this subtask` }, { status: 400 });
+      }
+      if (finalProjectId !== parent.projectId) {
+        return NextResponse.json({ error: "A subtask must be in the same project as its parent" }, { status: 400 });
+      }
+    } else if (finalProjectId) {
       const project = await prisma.project.findUnique({ where: { id: finalProjectId }, select: { code: true } });
       if (project && !codeMatchesProject(finalCode, project.code)) {
         return NextResponse.json({ error: `Code must start with "${project.code}-" for this project` }, { status: 400 });
@@ -130,6 +169,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         ...(data.description !== undefined ? { description: data.description || null } : {}),
         ...(data.module !== undefined ? { module: data.module || null } : {}),
         ...(data.projectId !== undefined ? { projectId: data.projectId || null } : {}),
+        ...(data.parentId !== undefined ? { parentId: data.parentId } : {}),
         ...(data.assignees !== undefined ? assigneesToSet(data.assignees) : {}),
         ...(data.priority !== undefined ? { priority: data.priority } : {}),
         status: nextStatus,
@@ -146,6 +186,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     if (nextStatus === "DONE" && existing.status !== "DONE" && task.recurrenceFreq) {
       createNextOccurrence(task).catch((err) => console.error("createNextOccurrence failed:", err));
+    }
+
+    if (nextStatus !== existing.status || task.parentId !== existing.parentId) {
+      if (task.parentId) await syncAncestorChain(prisma, task.parentId);
+      if (existing.parentId && existing.parentId !== task.parentId) {
+        await syncAncestorChain(prisma, existing.parentId);
+      }
     }
 
     if (data.assignees !== undefined) {
@@ -187,12 +234,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 }
 
 // Soft-delete: moves the task to Trash instead of removing it outright.
+// Any subtasks (at any depth) move to Trash along with it.
 // See /api/tasks/[id]/restore to undo, and /api/trash to list/empty.
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await requireSession();
   if (error) return error;
 
-  const existing = await prisma.task.findUnique({ where: { id: params.id }, select: { projectId: true } });
+  const existing = await prisma.task.findUnique({ where: { id: params.id }, select: { projectId: true, parentId: true } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const access = await getUserAccess(session);
@@ -200,6 +248,14 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
     return NextResponse.json({ error: "You don't have admin rights on this project" }, { status: 403 });
   }
 
-  await prisma.task.update({ where: { id: params.id }, data: { deletedAt: new Date() } }).catch(() => null);
+  const descendantIds = await getDescendantIds(prisma, params.id);
+  await prisma.task.updateMany({
+    where: { id: { in: [params.id, ...descendantIds] } },
+    data: { deletedAt: new Date() },
+  }).catch(() => null);
+
+  if (existing.parentId) {
+    await syncAncestorChain(prisma, existing.parentId);
+  }
   return NextResponse.json({ ok: true });
 }

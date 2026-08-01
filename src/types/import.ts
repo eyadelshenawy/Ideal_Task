@@ -19,6 +19,8 @@ export interface ImportPreviewTask {
   isMilestone: boolean;
   dependsOnTempIds: string[];
   dependsOnExistingIds: string[];
+  parentTempId: string | null;
+  parentExistingId: string | null;
 }
 
 export interface ImportPreview {

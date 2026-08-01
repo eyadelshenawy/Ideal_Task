@@ -77,6 +77,23 @@ export async function POST(req: NextRequest) {
       warnings.push(`"${t.title}" depends on unknown code "${c}"`);
     });
 
+    let parentTempId: string | null = null;
+    let parentExistingId: string | null = null;
+    if (t.parentCode) {
+      const key = t.parentCode.toLowerCase();
+      const tempMatch = batchCodeToTempId.get(key);
+      if (tempMatch && tempMatch !== t.tempId) {
+        parentTempId = tempMatch;
+      } else {
+        const existingMatch = existingCodeToId.get(key);
+        if (existingMatch) {
+          parentExistingId = existingMatch;
+        } else {
+          warnings.push(`"${t.title}": parent code "${t.parentCode}" not found — imported as a top-level task instead.`);
+        }
+      }
+    }
+
     return {
       tempId: t.tempId,
       code: t.code,
@@ -96,6 +113,8 @@ export async function POST(req: NextRequest) {
       isMilestone: t.isMilestone,
       dependsOnTempIds,
       dependsOnExistingIds,
+      parentTempId,
+      parentExistingId,
     };
   });
 

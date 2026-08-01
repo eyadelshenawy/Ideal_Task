@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Trash2, Check, Diamond, Copy } from "lucide-react";
+import { Pencil, Trash2, Check, Diamond, Copy, ChevronDown, ChevronRight } from "lucide-react";
 import type { Task, Project, AssigneeDisplay } from "@/types/models";
 import { PRIORITIES, STATUSES, dueBadge, toneStyle, isBlocked } from "@/lib/taskHelpers";
 import AvatarStack from "./ui/AvatarStack";
@@ -20,11 +20,19 @@ interface TaskListRowProps {
   selectMode?: boolean;
   selected?: boolean;
   onToggleSelect?: (id: string) => void;
+  /** Nesting depth under a parent task — 0 for a top-level task. */
+  depth?: number;
+  hasChildren?: boolean;
+  collapsed?: boolean;
+  onToggleCollapse?: (id: string) => void;
+  doneChildCount?: number;
+  totalChildCount?: number;
 }
 
 export default function TaskListRow({
   task, assignees, project, allTasks, canManage, onEdit, onDelete, onDuplicate,
   selectMode, selected, onToggleSelect,
+  depth = 0, hasChildren = false, collapsed = false, onToggleCollapse, doneChildCount = 0, totalChildCount = 0,
 }: TaskListRowProps) {
   const [confirming, setConfirming] = useState(false);
   const priority = PRIORITIES.find((p) => p.id === task.priority)!;
@@ -35,7 +43,7 @@ export default function TaskListRow({
   return (
     <div
       className="bg-white border border-brand-border rounded-[10px] px-3 py-2.5 mb-2"
-      style={{ borderRight: `4px solid ${priority.color}` }}
+      style={{ borderRight: `4px solid ${priority.color}`, marginLeft: depth * 22 }}
     >
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap flex-1 min-w-[180px]">
@@ -47,6 +55,15 @@ export default function TaskListRow({
               className="flex-shrink-0"
             />
           )}
+          {hasChildren && (
+            <button
+              onClick={() => onToggleCollapse?.(task.id)}
+              title={collapsed ? "Expand subtasks" : "Collapse subtasks"}
+              className="p-0.5 text-brand-sub flex-shrink-0"
+            >
+              {collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+            </button>
+          )}
           <AvatarStack assignees={assignees} />
           {task.isMilestone && <Diamond size={12} className="text-brand-dark" />}
           {task.code && <span className="font-mono text-[11px] text-brand-sub">{task.code}</span>}
@@ -56,6 +73,11 @@ export default function TaskListRow({
           {task.tags.map((tag) => (
             <Chip key={tag} small style={{ background: "#EDE7F5", color: "#5B4A8A" }}>{tag}</Chip>
           ))}
+          {hasChildren && (
+            <Chip small style={{ background: "#EAF3EE", color: "#0A5A46" }}>
+              {doneChildCount}/{totalChildCount} subtasks
+            </Chip>
+          )}
           {blocked && <Chip small style={{ background: "#FBE7E5", color: "#9A3530" }}>Blocked</Chip>}
         </div>
         <div className="flex items-center gap-2">

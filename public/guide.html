@@ -315,6 +315,38 @@
     <p>The copy icon on any task creates a fresh copy — same title, assignees, tags, module, priority and dates, but a new code, status reset to <em>To Do</em>, and progress reset to 0%. From the task form you can also duplicate straight into a <em>different</em> project.</p>
   </section>
 
+  <!-- ============ TASK HIERARCHY ============ -->
+  <section class="doc-section" id="hierarchy" data-group="Working with tasks" data-icon="git-branch" data-label="Task hierarchy (subtasks)">
+    <h2>{{ICON:git-branch}} Task hierarchy — parent tasks & subtasks</h2>
+    <p class="lede">Break a big task down into real subtasks — each one a full task in its own right, with its own assignee, dates, and status — not just a checklist line.</p>
+
+    <h3>How it works</h3>
+    <p>Open the task form and pick a <strong>Parent task</strong> from the dropdown (only tasks in the same project are shown). The Code field auto-suggests a hierarchical code off the parent's own code — e.g. a parent <code>ABC-0001</code> gets subtasks <code>ABC-0001-01</code>, <code>ABC-0001-02</code>, and so on. A subtask can itself have subtasks (<code>ABC-0001-01-01</code>), with no limit on how many levels deep.</p>
+    <div class="card tip">
+      This is entirely optional — most tasks have no parent and no subtasks at all. Use it only where a task genuinely breaks down into a real sequence of sub-work.
+    </div>
+
+    <h3>The parent auto-completes — and reopens</h3>
+    <p>Once every subtask under a parent is marked <em>Done</em>, the parent is automatically marked Done too (progress jumps to 100%). Reopen any one of those subtasks afterward, and the parent automatically reverts to <em>In Progress</em>, with its progress recalculated from however many subtasks are still done. You never have to remember to close out the parent yourself.</p>
+
+    <h3>Where it shows up</h3>
+    <ul>
+      <li><strong>List view</strong> — the full picture: each subtask is nested directly beneath its parent, indented, with a collapse arrow to hide/show them.</li>
+      <li><strong>Board view</strong> — since Board is split into status columns, a parent and its subtasks can land in different columns and can't literally nest there. Instead, a subtask carries a small "↳ parent code" chip, and a parent carries a "<em>N/M subtasks</em>" chip.</li>
+      <li><strong>Timeline</strong> — subtasks are indented under their parent the same way as List, regardless of status.</li>
+    </ul>
+
+    <h3>A few rules</h3>
+    <ul>
+      <li>A subtask always lives in the <em>same project</em> as its parent — you can't move a task with subtasks to a different project until they're moved or removed first.</li>
+      <li>A task can't become its own ancestor — the app blocks any change that would create a loop.</li>
+      <li>Moving a parent task to Trash takes its whole subtask tree with it; restoring the parent brings them all back too.</li>
+    </ul>
+
+    <h3>Importing a hierarchy from Excel</h3>
+    <p>The import template has a <strong>Parent Code</strong> column. It can point at a code that already exists in the system, <em>or</em> at another row in the same file (handy for bringing in a brand-new project with its full breakdown structure in one upload) — leave a row's own Code blank and it gets a hierarchical code generated automatically, exactly like creating one by hand.</p>
+  </section>
+
   <!-- ============ TASK DETAILS ============ -->
   <section class="doc-section" id="task-details" data-group="Working with tasks" data-icon="list-checks" data-label="Checklist, attachments & comments">
     <h2>{{ICON:list-checks}} Checklist, attachments, tags & comments</h2>
@@ -543,6 +575,7 @@ const ICONS = {
   "file-spreadsheet": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>',
   smartphone: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>',
   "help-circle": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+  "git-branch": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>',
 };
 
 // Replace {{ICON:name}} placeholders with inline SVG
