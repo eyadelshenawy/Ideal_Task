@@ -44,12 +44,13 @@ interface Filters {
   assigneeId: string;
   priority: string;
   projectId: string;
+  module: string;
   overdueOnly: boolean;
   milestonesOnly: boolean;
 }
 
 const defaultFilters: Filters = {
-  search: "", assigneeId: "all", priority: "all", projectId: "all",
+  search: "", assigneeId: "all", priority: "all", projectId: "all", module: "all",
   overdueOnly: false, milestonesOnly: false,
 };
 
@@ -121,13 +122,23 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
     if (filters.assigneeId !== "all" && !t.assigneeIds.includes(filters.assigneeId)) return false;
     if (filters.priority !== "all" && t.priority !== filters.priority) return false;
     if (filters.projectId !== "all" && t.projectId !== filters.projectId) return false;
+    if (filters.module !== "all" && (t.module || "") !== filters.module) return false;
     if (filters.search) {
       const q = filters.search.trim().toLowerCase();
       const projectName = projectList.find((p) => p.id === t.projectId)?.name || "";
-      if (!t.title.toLowerCase().includes(q) && !projectName.toLowerCase().includes(q)) return false;
+      if (
+        !t.title.toLowerCase().includes(q) &&
+        !projectName.toLowerCase().includes(q) &&
+        !(t.module || "").toLowerCase().includes(q)
+      ) return false;
     }
     return true;
   }), [taskList, filters, today, projectList]);
+
+  const moduleList = useMemo(
+    () => Array.from(new Set(taskList.map((t) => t.module).filter((m): m is string => !!m && m.trim() !== ""))).sort(),
+    [taskList]
+  );
 
   useEffect(() => {
     try {
@@ -416,7 +427,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
 
   return (
     <div className="min-h-screen bg-brand-bg">
-      <div className="bg-brand-dark px-4 py-3">
+      <div className="bg-brand-dark px-4 py-3 sticky top-0 z-30">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2.5">
             <div className="relative w-[30px] h-[30px]">
@@ -656,6 +667,14 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             {projectList.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
           <select
+            value={filters.module}
+            onChange={(e) => setFilters((f) => ({ ...f, module: e.target.value }))}
+            className="rounded-lg px-2 py-1.5 text-xs bg-white border border-brand-border"
+          >
+            <option value="all">All Modules</option>
+            {moduleList.map((m) => <option key={m} value={m}>{m}</option>)}
+          </select>
+          <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortBy)}
             className="rounded-lg px-2 py-1.5 text-xs bg-white border border-brand-border"
@@ -697,7 +716,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
           <div className="flex items-center gap-1.5 flex-wrap mb-3">
             {savedFilters.map((sf) => (
               <div key={sf.id} className="flex items-center gap-1 rounded-full pl-2.5 pr-1 py-1 bg-white border border-brand-border">
-                <button onClick={() => setFilters(sf.filters)} className="text-[11.5px] font-medium text-brand-text">
+                <button onClick={() => setFilters({ ...defaultFilters, ...sf.filters })} className="text-[11.5px] font-medium text-brand-text">
                   {sf.name}
                 </button>
                 <button onClick={() => deleteSavedFilter(sf.id)} className="p-0.5 rounded-full hover:bg-gray-100 text-brand-sub">
