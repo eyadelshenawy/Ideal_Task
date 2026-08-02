@@ -85,6 +85,7 @@ export async function POST(req: NextRequest) {
         status: data.status,
         startDate: dateStrToUTC(data.startDate),
         dueDate: dateStrToUTC(data.dueDate),
+        completedAt: data.completedAt ? dateStrToUTC(data.completedAt) : data.status === "DONE" ? new Date() : null,
         progress: data.status === "DONE" ? 100 : data.progress,
         isMilestone: data.isMilestone,
         recurrenceFreq: data.recurrenceFreq,

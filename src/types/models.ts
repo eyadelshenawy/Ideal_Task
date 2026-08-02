@@ -51,6 +51,7 @@ export interface Task {
   status: Status;
   startDate: string | null; // "YYYY-MM-DD"
   dueDate: string | null; // "YYYY-MM-DD"
+  completedAt: string | null; // "YYYY-MM-DD" — when it actually finished, auto-set on DONE
   progress: number;
   isMilestone: boolean;
   dependsOn: string[]; // predecessor task ids

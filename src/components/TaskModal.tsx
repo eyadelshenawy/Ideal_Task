@@ -22,6 +22,7 @@ export interface TaskDraft {
   status: Status;
   startDate: string;
   dueDate: string;
+  completedAt: string;
   progress: number;
   isMilestone: boolean;
   dependsOn: string[];
@@ -34,7 +35,7 @@ export interface TaskDraft {
 export function blankDraft(): TaskDraft {
   return {
     code: "", title: "", description: "", module: "", projectId: "", assignees: [],
-    priority: "MEDIUM", status: "TODO", startDate: "", dueDate: "",
+    priority: "MEDIUM", status: "TODO", startDate: "", dueDate: "", completedAt: "",
     progress: 0, isMilestone: false, dependsOn: [],
     recurrenceFreq: "", recurrenceEndDate: "", tags: [], parentId: "",
   };
@@ -56,6 +57,7 @@ export function draftFromTask(task: Task): TaskDraft {
     status: task.status,
     startDate: task.startDate ?? "",
     dueDate: task.dueDate ?? "",
+    completedAt: task.completedAt ?? "",
     progress: task.progress,
     isMilestone: task.isMilestone,
     dependsOn: task.dependsOn,
@@ -184,14 +186,15 @@ export default function TaskModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(20,30,26,0.45)" }}>
-      <div className="bg-white rounded-2xl w-full max-w-[460px] max-h-[90vh] overflow-y-auto p-5">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-white rounded-2xl w-full max-w-[460px] max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-brand-border flex-shrink-0">
           <h2 className="font-bold text-[16px] text-brand-text">
             {draft.id ? (canFullyEdit ? "Edit Task" : "Update Status") : "New Task"}
           </h2>
           <button onClick={onClose} className="text-brand-sub"><X size={18} /></button>
         </div>
 
+        <div className="flex-1 overflow-y-auto px-5 py-4">
         {!canFullyEdit ? (
           <div className="flex flex-col gap-3">
             <div>
@@ -211,6 +214,9 @@ export default function TaskModal({
               >
                 {STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
               </select>
+              {draft.status === "DONE" && draft.completedAt && (
+                <div className="text-[11px] text-brand-sub mt-1">Completed on {draft.completedAt}</div>
+              )}
             </div>
             {!draft.isMilestone && (
               <div>
@@ -459,6 +465,19 @@ export default function TaskModal({
               </select>
             </div>
 
+            {draft.status === "DONE" && (
+              <div>
+                <label className="text-xs font-semibold text-brand-sub">Completed Date</label>
+                <input
+                  type="date"
+                  value={draft.completedAt}
+                  onChange={(e) => setDraft({ ...draft, completedAt: e.target.value })}
+                  className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
+                />
+                <div className="text-[11px] text-brand-sub mt-1">Auto-set to today when moved to Done — edit if it actually finished on a different day.</div>
+              </div>
+            )}
+
             {!draft.isMilestone && (
               <div>
                 <label className="text-xs font-semibold flex items-center justify-between text-brand-sub">
@@ -546,15 +565,6 @@ export default function TaskModal({
           </div>
         )}
 
-        <div className="flex items-center gap-2 mt-5">
-          <button onClick={onSave} className="flex-1 rounded-lg bg-brand-dark text-white py-2.5 text-sm font-semibold">
-            Save
-          </button>
-          <button onClick={onClose} className="flex-1 rounded-lg border border-brand-border text-brand-text py-2.5 text-sm font-semibold">
-            Cancel
-          </button>
-        </div>
-
         {draft.id && onDuplicate && (
           <div className="flex items-center gap-1.5 mt-3">
             <select
@@ -590,6 +600,16 @@ export default function TaskModal({
         {draft.id && <TaskChecklistPanel taskId={draft.id} />}
         {draft.id && <TaskAttachmentsPanel taskId={draft.id} />}
         {draft.id && <TaskActivityPanel taskId={draft.id} currentUserId={currentUserId} isSuperAdmin={isSuperAdmin} />}
+        </div>
+
+        <div className="flex items-center gap-2 px-5 py-4 border-t border-brand-border flex-shrink-0">
+          <button onClick={onSave} className="flex-1 rounded-lg bg-brand-dark text-white py-2.5 text-sm font-semibold">
+            Save
+          </button>
+          <button onClick={onClose} className="flex-1 rounded-lg border border-brand-border text-brand-text py-2.5 text-sm font-semibold">
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
   );

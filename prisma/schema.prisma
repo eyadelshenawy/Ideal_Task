@@ -151,6 +151,11 @@ model Task {
   dueDate   DateTime?
   progress  Int       @default(0)
 
+  // When this task actually finished — auto-set to today whenever status
+  // moves to DONE (and cleared if reopened), but editable by hand so a user
+  // can log a different actual completion date.
+  completedAt DateTime?
+
   // Set once the "due tomorrow" reminder email has been sent for the current
   // dueDate. Cleared whenever dueDate changes so a future move back to
   // "tomorrow" re-triggers the reminder. Overdue reminders have no such gate —

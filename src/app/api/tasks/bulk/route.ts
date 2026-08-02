@@ -57,10 +57,20 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
+    // Same auto-track rule as the single-task PATCH endpoint: stamp
+    // completedAt the moment a task first becomes DONE, clear it if reopened.
+    const completedAtUpdate =
+      status === "DONE" && task.status !== "DONE"
+        ? new Date()
+        : status !== undefined && status !== "DONE" && task.status === "DONE"
+          ? null
+          : undefined;
+
     const updatedTask = await prisma.task.update({
       where: { id: task.id },
       data: {
         ...(status !== undefined ? { status, progress: status === "DONE" ? 100 : undefined } : {}),
+        ...(completedAtUpdate !== undefined ? { completedAt: completedAtUpdate } : {}),
         ...(assignees !== undefined ? assigneesToSet(assignees) : {}),
         ...(projectId !== undefined ? { projectId: projectId || null } : {}),
       },

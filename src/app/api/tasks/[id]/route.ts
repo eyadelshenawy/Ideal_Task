@@ -37,12 +37,19 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
     const data = parsed.data;
     const nextStatus = data.status ?? existing.status;
+    const completedAtUpdate =
+      nextStatus === "DONE" && existing.status !== "DONE"
+        ? new Date()
+        : nextStatus !== "DONE" && existing.status === "DONE"
+          ? null
+          : undefined;
     try {
       const task = await prisma.task.update({
         where: { id: params.id },
         data: {
           status: nextStatus,
           progress: nextStatus === "DONE" ? 100 : data.progress ?? existing.progress,
+          ...(completedAtUpdate !== undefined ? { completedAt: completedAtUpdate } : {}),
         },
         include: taskInclude,
       });
@@ -159,6 +166,18 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   const tags = data.tags !== undefined ? await resolveTags(data.tags) : null;
 
+  // Auto-track actual completion date: stamped the moment a task first
+  // becomes DONE, cleared if reopened — but a manually-supplied value (the
+  // user editing Completed Date in the form) always wins over the auto rule.
+  const completedAtUpdate =
+    data.completedAt !== undefined
+      ? dateStrToUTC(data.completedAt)
+      : nextStatus === "DONE" && existing.status !== "DONE"
+        ? new Date()
+        : nextStatus !== "DONE" && existing.status === "DONE"
+          ? null
+          : undefined;
+
   try {
     const task = await prisma.task.update({
       where: { id: params.id },
@@ -175,6 +194,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         status: nextStatus,
         ...(data.startDate !== undefined ? { startDate: dateStrToUTC(data.startDate) } : {}),
         ...(data.dueDate !== undefined ? { dueDate: dateStrToUTC(data.dueDate), dueSoonNotifiedAt: null } : {}),
+        ...(completedAtUpdate !== undefined ? { completedAt: completedAtUpdate } : {}),
         progress: nextStatus === "DONE" ? 100 : data.progress ?? existing.progress,
         ...(data.isMilestone !== undefined ? { isMilestone: data.isMilestone } : {}),
         ...(dependsOn !== undefined ? { dependsOn: { set: dependsOn.map((id) => ({ id })) } } : {}),

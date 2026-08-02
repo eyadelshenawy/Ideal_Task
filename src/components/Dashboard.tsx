@@ -258,6 +258,10 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
               projectId: draft.projectId || null, assignees: draft.assignees,
               priority: draft.priority, status: draft.status,
               startDate: draft.startDate || null, dueDate: draft.dueDate || null,
+              // Only sent when the task is actually Done and the field holds a
+              // value — otherwise omitted so the server's own auto-set (on
+              // completion) / auto-clear (on reopen) logic takes over.
+              ...(draft.status === "DONE" && draft.completedAt ? { completedAt: draft.completedAt } : {}),
               progress: draft.progress, isMilestone: draft.isMilestone, dependsOn: draft.dependsOn,
               recurrenceFreq: draft.recurrenceFreq || null, recurrenceEndDate: draft.recurrenceEndDate || null,
               tags: draft.tags, parentId: draft.parentId || null,
@@ -270,6 +274,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
           projectId: draft.projectId || null, assignees: draft.assignees,
           priority: draft.priority, status: draft.status,
           startDate: draft.startDate || null, dueDate: draft.dueDate || null,
+          ...(draft.status === "DONE" && draft.completedAt ? { completedAt: draft.completedAt } : {}),
           progress: draft.progress, isMilestone: draft.isMilestone, dependsOn: draft.dependsOn,
           recurrenceFreq: draft.recurrenceFreq || null, recurrenceEndDate: draft.recurrenceEndDate || null,
           tags: draft.tags, parentId: draft.parentId || null,
