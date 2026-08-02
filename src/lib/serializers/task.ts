@@ -7,6 +7,8 @@ type TaskWithRelations = PrismaTask & {
   assignees: { id: string }[];
   contactAssignees: { id: string }[];
   tags: { name: string }[];
+  checklistItems: { done: boolean }[];
+  _count: { attachments: number; events: number };
 };
 
 /** Shared Prisma `include` for any query whose result will pass through serializeTask. */
@@ -15,6 +17,10 @@ export const taskInclude = {
   assignees: { select: { id: true } },
   contactAssignees: { select: { id: true } },
   tags: { select: { name: true } },
+  checklistItems: { select: { done: true } },
+  // Quick-glance counts shown directly on Board/List cards (no need to open
+  // the task to see it has attachments/comments/a checklist in progress).
+  _count: { select: { attachments: true, events: { where: { type: "COMMENT" } } } },
 } as const;
 
 export function serializeTask(t: TaskWithRelations): Task {
@@ -42,5 +48,9 @@ export function serializeTask(t: TaskWithRelations): Task {
     updatedAt: t.updatedAt.toISOString(),
     parentId: t.parentId,
     childCodeSeq: t.childCodeSeq,
+    attachmentCount: t._count.attachments,
+    commentCount: t._count.events,
+    checklistTotal: t.checklistItems.length,
+    checklistDone: t.checklistItems.filter((c) => c.done).length,
   };
 }

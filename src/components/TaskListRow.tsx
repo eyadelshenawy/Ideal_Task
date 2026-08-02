@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Trash2, Check, Diamond, Copy, ChevronDown, ChevronRight } from "lucide-react";
+import { Pencil, Trash2, Check, Diamond, Copy, ChevronDown, ChevronRight, Paperclip, MessageSquare, ListChecks } from "lucide-react";
 import type { Task, Project, AssigneeDisplay } from "@/types/models";
-import { PRIORITIES, STATUSES, dueBadge, toneStyle, isBlocked } from "@/lib/taskHelpers";
+import { PRIORITIES, STATUSES, dueBadge, toneStyle, isBlocked, splitModules } from "@/lib/taskHelpers";
 import AvatarStack from "./ui/AvatarStack";
 import Chip from "./ui/Chip";
 import ProgressBar from "./ui/ProgressBar";
@@ -34,11 +34,13 @@ export default function TaskListRow({
   selectMode, selected, onToggleSelect,
   depth = 0, hasChildren = false, collapsed = false, onToggleCollapse, doneChildCount = 0, totalChildCount = 0,
 }: TaskListRowProps) {
-  const [confirming, setConfirming] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [confirmingDuplicate, setConfirmingDuplicate] = useState(false);
   const priority = PRIORITIES.find((p) => p.id === task.priority)!;
   const status = STATUSES.find((s) => s.id === task.status)!;
   const badge = dueBadge(task);
   const blocked = isBlocked(task, allTasks);
+  const modules = splitModules(task.module);
 
   return (
     <div
@@ -69,7 +71,9 @@ export default function TaskListRow({
           {task.code && <span className="font-mono text-[11px] text-brand-sub">{task.code}</span>}
           <span className="font-semibold text-[13.5px] text-brand-text">{task.title}</span>
           {project && <Chip small style={{ background: "#EEF2F0", color: "#5B6B64" }}>{project.name}</Chip>}
-          {task.module && <Chip small style={{ background: "#E4EEF7", color: "#2A5C82" }}>{task.module}</Chip>}
+          {modules.map((m) => (
+            <Chip key={m} small style={{ background: "#E4EEF7", color: "#2A5C82" }}>{m}</Chip>
+          ))}
           {task.tags.map((tag) => (
             <Chip key={tag} small style={{ background: "#EDE7F5", color: "#5B4A8A" }}>{tag}</Chip>
           ))}
@@ -79,6 +83,15 @@ export default function TaskListRow({
             </Chip>
           )}
           {blocked && <Chip small style={{ background: "#FBE7E5", color: "#9A3530" }}>Blocked</Chip>}
+          {task.attachmentCount > 0 && (
+            <span className="flex items-center gap-0.5 text-[11px] text-brand-sub"><Paperclip size={11} /> {task.attachmentCount}</span>
+          )}
+          {task.commentCount > 0 && (
+            <span className="flex items-center gap-0.5 text-[11px] text-brand-sub"><MessageSquare size={11} /> {task.commentCount}</span>
+          )}
+          {task.checklistTotal > 0 && (
+            <span className="flex items-center gap-0.5 text-[11px] text-brand-sub"><ListChecks size={11} /> {task.checklistDone}/{task.checklistTotal}</span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Chip small style={{ background: status.color + "22", color: status.color }}>{status.label}</Chip>
@@ -89,18 +102,23 @@ export default function TaskListRow({
                 <Pencil size={14} />
               </button>
               {canManage && (
-                <button onClick={() => onDuplicate(task.id)} title="Duplicate" className="p-1 rounded hover:bg-gray-100 text-brand-sub">
-                  <Copy size={14} />
+                <button
+                  onClick={() => (confirmingDuplicate ? onDuplicate(task.id) : setConfirmingDuplicate(true))}
+                  title={confirmingDuplicate ? "Click to confirm" : "Duplicate"}
+                  className="p-1 rounded hover:bg-gray-100"
+                  style={{ color: confirmingDuplicate ? "#0A5A46" : "#5B6B64" }}
+                >
+                  {confirmingDuplicate ? <Check size={14} /> : <Copy size={14} />}
                 </button>
               )}
               {canManage && (
                 <button
-                  onClick={() => (confirming ? onDelete(task.id) : setConfirming(true))}
-                  title={confirming ? "Click to confirm" : "Move to Trash"}
+                  onClick={() => (confirmingDelete ? onDelete(task.id) : setConfirmingDelete(true))}
+                  title={confirmingDelete ? "Click to confirm" : "Move to Trash"}
                   className="p-1 rounded hover:bg-gray-100"
-                  style={{ color: confirming ? "#C4443D" : "#5B6B64" }}
+                  style={{ color: confirmingDelete ? "#C4443D" : "#5B6B64" }}
                 >
-                  {confirming ? <Check size={14} /> : <Trash2 size={14} />}
+                  {confirmingDelete ? <Check size={14} /> : <Trash2 size={14} />}
                 </button>
               )}
             </>

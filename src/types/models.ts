@@ -64,6 +64,11 @@ export interface Task {
   parentId: string | null;
   /** This task's own running counter for ITS children's codes — used to suggest the next child code. */
   childCodeSeq: number;
+  /** Quick-glance counts shown on Board/List cards. */
+  attachmentCount: number;
+  commentCount: number;
+  checklistTotal: number;
+  checklistDone: number;
 }
 
 export interface TrashedTask extends Task {

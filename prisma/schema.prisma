@@ -276,7 +276,9 @@ model TaskEvent {
   authorId String?
   author   User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
 
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
+  // Set when a comment (never an activity line) is edited after posting.
+  editedAt  DateTime?
 
   @@index([taskId])
 }

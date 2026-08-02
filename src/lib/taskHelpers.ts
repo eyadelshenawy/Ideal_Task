@@ -148,6 +148,11 @@ export function toTreeRows(tasks: Task[], collapsed: Set<string>): TaskTreeRow[]
   return result;
 }
 
+/** A task's `module` field holds a comma-separated list (e.g. "FICO, MM") — split it into its parts for display/filtering. */
+export function splitModules(module: string | null | undefined): string[] {
+  return (module ?? "").split(",").map((m) => m.trim()).filter(Boolean);
+}
+
 export function isBlocked(task: Pick<Task, "dependsOn">, allTasks: Task[]): boolean {
   return (task.dependsOn || []).some((id) => {
     const dep = allTasks.find((t) => t.id === id);
@@ -162,12 +167,15 @@ export function blockedByNames(task: Pick<Task, "dependsOn">, allTasks: Task[]):
     .map((d) => d.title);
 }
 
-export type SortBy = "dueDate" | "priority" | "assignee" | "created";
+export type SortBy = "dueDate" | "priority" | "assignee" | "created" | "code";
 
 export function sortTasks(list: Task[], sortBy: SortBy, team: TeamMember[]): Task[] {
   const arr = [...list];
   if (sortBy === "dueDate") {
     arr.sort((a, b) => ((a.dueDate || "9999-99-99") < (b.dueDate || "9999-99-99") ? -1 : 1));
+  } else if (sortBy === "code") {
+    // Natural sort (ABC-2 before ABC-10) rather than plain string order.
+    arr.sort((a, b) => (a.code || "").localeCompare(b.code || "", undefined, { numeric: true, sensitivity: "base" }));
   } else if (sortBy === "priority") {
     arr.sort((a, b) => priorityWeight(a.priority) - priorityWeight(b.priority));
   } else if (sortBy === "assignee") {

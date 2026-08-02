@@ -68,3 +68,38 @@ export function dueSoonEmailHtml(task: TaskSummary) {
 export function overdueEmailHtml(task: TaskSummary) {
   return wrap("Task overdue", task);
 }
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/** Emails everyone @mentioned in a comment — the in-app bell alone isn't enough for something time-sensitive. */
+export async function notifyMention(
+  task: { id: string; title: string },
+  mentionedUserIds: string[],
+  authorName: string,
+  commentMessage: string
+) {
+  if (mentionedUserIds.length === 0) return;
+
+  const users = await prisma.user.findMany({
+    where: { id: { in: mentionedUserIds }, active: true },
+    select: { email: true },
+  });
+  const recipients = users.map((u) => u.email);
+  if (recipients.length === 0) return;
+
+  const preview = commentMessage.length > 300 ? `${commentMessage.slice(0, 300)}…` : commentMessage;
+  await sendEmail({
+    to: recipients,
+    subject: `${authorName} mentioned you on "${task.title}"`,
+    html: `
+      <div style="font-family: -apple-system, Arial, sans-serif; max-width: 480px; margin: 0 auto;">
+        <h2 style="color:#111;">You were mentioned</h2>
+        <p style="font-size:14px; color:#444;">${escapeHtml(authorName)} mentioned you in a comment on <strong>${escapeHtml(task.title)}</strong>:</p>
+        <blockquote style="border-left:3px solid #0A5A46; padding-left:12px; color:#555; margin:16px 0; white-space:pre-wrap;">${escapeHtml(preview)}</blockquote>
+        <p style="margin-top:24px;"><a href="${APP_URL}" style="color:#2563eb;">Open IDEAL Tasks</a></p>
+      </div>
+    `,
+  });
+}

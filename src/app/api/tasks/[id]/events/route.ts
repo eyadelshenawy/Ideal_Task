@@ -5,14 +5,17 @@ import { requireTaskAccess } from "@/lib/permissions";
 import { addComment } from "@/lib/activity";
 import { notify } from "@/lib/inAppNotify";
 import { resolveMentions } from "@/lib/mentions";
+import { notifyMention } from "@/lib/notifications";
 
-function serializeEvent(e: { id: string; type: string; message: string; createdAt: Date; author: { name: string } | null }) {
+function serializeEvent(e: { id: string; type: string; message: string; createdAt: Date; editedAt: Date | null; authorId: string | null; author: { name: string } | null }) {
   return {
     id: e.id,
     type: e.type,
     message: e.message,
+    authorId: e.authorId,
     authorName: e.author?.name ?? null,
     createdAt: e.createdAt.toISOString(),
+    editedAt: e.editedAt ? e.editedAt.toISOString() : null,
   };
 }
 
@@ -65,6 +68,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const mentionIds = mentioned.map((m) => m.id).filter((id) => id !== session.user.id && !assigneeIds.has(id));
   if (mentionIds.length > 0) {
     notify(mentionIds, `${authorName} mentioned you in a comment on "${task.title}"`, task.id);
+    notifyMention({ id: task.id, title: task.title }, mentionIds, authorName, parsed.data.message)
+      .catch((err) => console.error("notifyMention failed:", err));
   }
 
   return NextResponse.json(serializeEvent(withAuthor), { status: 201 });

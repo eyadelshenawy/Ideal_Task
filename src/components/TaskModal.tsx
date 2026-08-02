@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import type { Task, Project, TeamMember, Contact, Priority, Status, RecurrenceFreq } from "@/types/models";
-import { PRIORITIES, STATUSES, descendantIds } from "@/lib/taskHelpers";
+import { PRIORITIES, STATUSES, descendantIds, splitModules } from "@/lib/taskHelpers";
 import TaskActivityPanel from "./TaskActivityPanel";
 import TaskChecklistPanel from "./TaskChecklistPanel";
 import TaskAttachmentsPanel from "./TaskAttachmentsPanel";
@@ -80,19 +80,21 @@ interface TaskModalProps {
   canFullyEdit: boolean;
   /** Project Admins must pick one of their administered projects (already pre-filtered into `projects`); Super Admins can pick any. */
   isSuperAdmin: boolean;
+  currentUserId?: string;
   onCreateContact: (name: string) => Promise<Contact | null>;
   onDuplicate?: (taskId: string, projectId?: string) => void;
   onAddSubtask?: (parent: Task) => void;
 }
 
 export default function TaskModal({
-  draft, setDraft, onClose, onSave, error, team, projects, contacts, allTasks, canFullyEdit, isSuperAdmin, onCreateContact, onDuplicate, onAddSubtask,
+  draft, setDraft, onClose, onSave, error, team, projects, contacts, allTasks, canFullyEdit, isSuperAdmin, currentUserId, onCreateContact, onDuplicate, onAddSubtask,
 }: TaskModalProps) {
   const [duplicateProjectId, setDuplicateProjectId] = useState("");
   const [addingContact, setAddingContact] = useState(false);
   const [newContactName, setNewContactName] = useState("");
   const [contactError, setContactError] = useState("");
   const [newTagText, setNewTagText] = useState("");
+  const [newModuleText, setNewModuleText] = useState("");
 
   function addTag() {
     const name = newTagText.trim();
@@ -103,6 +105,19 @@ export default function TaskModal({
 
   function removeTag(name: string) {
     setDraft({ ...draft, tags: draft.tags.filter((t) => t !== name) });
+  }
+
+  // Module is stored as a single comma-separated string ("FICO, MM"), edited
+  // here as add/remove chips the same way Tags works below.
+  const moduleList = splitModules(draft.module);
+  function addModule() {
+    const name = newModuleText.trim();
+    if (!name || moduleList.includes(name)) { setNewModuleText(""); return; }
+    setDraft({ ...draft, module: [...moduleList, name].join(", ") });
+    setNewModuleText("");
+  }
+  function removeModule(name: string) {
+    setDraft({ ...draft, module: moduleList.filter((m) => m !== name).join(", ") });
   }
 
   const activeMembers = team.filter((m) => m.active);
@@ -248,12 +263,24 @@ export default function TaskModal({
 
             <div>
               <label className="text-xs font-semibold text-brand-sub">Module</label>
-              <input
-                value={draft.module}
-                onChange={(e) => setDraft({ ...draft, module: e.target.value })}
-                placeholder="e.g. Billing, Auth (optional)"
-                className="w-full mt-1 rounded-lg border border-brand-border px-3 py-2 text-sm outline-none"
-              />
+              <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                {moduleList.map((m) => (
+                  <span key={m} className="flex items-center gap-1 rounded-full pl-2 pr-1 py-0.5 text-[11px]" style={{ background: "#E4EEF7", color: "#2A5C82" }}>
+                    {m}
+                    <button type="button" onClick={() => removeModule(m)} className="hover:opacity-70">
+                      <X size={10} />
+                    </button>
+                  </span>
+                ))}
+                <input
+                  value={newModuleText}
+                  onChange={(e) => setNewModuleText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addModule(); } }}
+                  onBlur={addModule}
+                  placeholder="e.g. Billing, Auth — press Enter (optional)"
+                  className="flex-1 min-w-[100px] rounded-lg border border-brand-border px-2 py-1 text-xs outline-none"
+                />
+              </div>
             </div>
 
             <div>
@@ -562,7 +589,7 @@ export default function TaskModal({
 
         {draft.id && <TaskChecklistPanel taskId={draft.id} />}
         {draft.id && <TaskAttachmentsPanel taskId={draft.id} />}
-        {draft.id && <TaskActivityPanel taskId={draft.id} />}
+        {draft.id && <TaskActivityPanel taskId={draft.id} currentUserId={currentUserId} isSuperAdmin={isSuperAdmin} />}
       </div>
     </div>
   );

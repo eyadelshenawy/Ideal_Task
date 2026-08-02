@@ -6,7 +6,7 @@ import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Buildi
 import useSWR from "swr";
 import type { Task, Project, TeamMember, Contact, Status, AssigneeDisplay } from "@/types/models";
 import type { ImportPreview } from "@/types/import";
-import { colorForIndex, STATUSES, PRIORITIES, todayStr, sortTasks, toTreeRows, type SortBy } from "@/lib/taskHelpers";
+import { colorForIndex, STATUSES, PRIORITIES, todayStr, sortTasks, toTreeRows, splitModules, type SortBy } from "@/lib/taskHelpers";
 import { api } from "@/lib/apiClient";
 import TaskCard from "./TaskCard";
 import TaskListRow from "./TaskListRow";
@@ -44,13 +44,14 @@ interface Filters {
   assigneeId: string;
   priority: string;
   projectId: string;
-  module: string;
+  /** Empty = all modules. A task matches if ANY of its own (comma-separated) modules is in this list. */
+  moduleIds: string[];
   overdueOnly: boolean;
   milestonesOnly: boolean;
 }
 
 const defaultFilters: Filters = {
-  search: "", assigneeId: "all", priority: "all", projectId: "all", module: "all",
+  search: "", assigneeId: "all", priority: "all", projectId: "all", moduleIds: [],
   overdueOnly: false, milestonesOnly: false,
 };
 
@@ -96,6 +97,11 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   // a project with a lot of subtasks by hiding them as separate cards
   // (their parent still shows its "N/M subtasks" progress either way).
   const [hideSubtasksInBoard, setHideSubtasksInBoard] = useState(false);
+  const [moduleFilterOpen, setModuleFilterOpen] = useState(false);
+  // Board drag-and-drop: the id of the card currently being dragged, so a
+  // column's onDrop knows which task to move without threading the native
+  // DataTransfer payload through every handler.
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
 
   const taskList = tasks ?? [];
   const teamList = team ?? [];
@@ -137,7 +143,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
     if (filters.assigneeId !== "all" && !t.assigneeIds.includes(filters.assigneeId)) return false;
     if (filters.priority !== "all" && t.priority !== filters.priority) return false;
     if (filters.projectId !== "all" && t.projectId !== filters.projectId) return false;
-    if (filters.module !== "all" && (t.module || "") !== filters.module) return false;
+    if (filters.moduleIds.length > 0 && !splitModules(t.module).some((m) => filters.moduleIds.includes(m))) return false;
     if (filters.search) {
       const q = filters.search.trim().toLowerCase();
       const projectName = projectList.find((p) => p.id === t.projectId)?.name || "";
@@ -151,7 +157,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   }), [taskList, filters, today, projectList]);
 
   const moduleList = useMemo(
-    () => Array.from(new Set(taskList.map((t) => t.module).filter((m): m is string => !!m && m.trim() !== ""))).sort(),
+    () => Array.from(new Set(taskList.flatMap((t) => splitModules(t.module)))).sort(),
     [taskList]
   );
 
@@ -327,6 +333,13 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
     const next = order[idx + dir];
     if (!next) return;
     await api.updateTask(task.id, { status: next, progress: next === "DONE" ? 100 : task.progress });
+    await mutateTasks();
+  }
+
+  async function moveTaskToStatus(taskId: string, statusId: Status) {
+    const task = taskList.find((t) => t.id === taskId);
+    if (!task || task.status === statusId) return;
+    await api.updateTask(task.id, { status: statusId, progress: statusId === "DONE" ? 100 : task.progress });
     await mutateTasks();
   }
 
@@ -702,20 +715,47 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             <option value="all">All Projects</option>
             {projectList.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
-          <select
-            value={filters.module}
-            onChange={(e) => setFilters((f) => ({ ...f, module: e.target.value }))}
-            className="rounded-lg px-2 py-1.5 text-xs bg-white border border-brand-border"
-          >
-            <option value="all">All Modules</option>
-            {moduleList.map((m) => <option key={m} value={m}>{m}</option>)}
-          </select>
+          <div className="relative">
+            <button
+              onClick={() => setModuleFilterOpen((v) => !v)}
+              className="rounded-lg px-2 py-1.5 text-xs bg-white border border-brand-border text-brand-text"
+            >
+              {filters.moduleIds.length === 0 ? "All Modules" : `${filters.moduleIds.length} module${filters.moduleIds.length === 1 ? "" : "s"}`}
+            </button>
+            {moduleFilterOpen && (
+              <div className="absolute left-0 top-[calc(100%+4px)] z-20 w-[180px] max-h-[220px] overflow-y-auto rounded-lg bg-white border border-brand-border shadow-lg p-2">
+                {moduleList.length === 0 && <div className="text-[11px] text-brand-sub px-1 py-1">No modules yet</div>}
+                {moduleList.map((m) => (
+                  <label key={m} className="flex items-center gap-2 text-xs py-0.5 text-brand-text cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={filters.moduleIds.includes(m)}
+                      onChange={() => setFilters((f) => ({
+                        ...f,
+                        moduleIds: f.moduleIds.includes(m) ? f.moduleIds.filter((x) => x !== m) : [...f.moduleIds, m],
+                      }))}
+                    />
+                    {m}
+                  </label>
+                ))}
+                {filters.moduleIds.length > 0 && (
+                  <button
+                    onClick={() => setFilters((f) => ({ ...f, moduleIds: [] }))}
+                    className="text-[11px] text-brand-dark underline mt-1"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortBy)}
             className="rounded-lg px-2 py-1.5 text-xs bg-white border border-brand-border"
           >
             <option value="dueDate">Sort: Due Date</option>
+            <option value="code">Sort: Code</option>
             <option value="priority">Sort: Priority</option>
             <option value="assignee">Sort: Assignee</option>
             <option value="created">Sort: Newest</option>
@@ -795,7 +835,16 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             {STATUSES.map((status) => {
               const colTasks = sortedBoard(status.id);
               return (
-                <div key={status.id} style={{ minWidth: 250, width: 250, flexShrink: 0 }}>
+                <div
+                  key={status.id}
+                  style={{ minWidth: 250, width: 250, flexShrink: 0 }}
+                  onDragOver={(e) => { if (draggedTaskId) e.preventDefault(); }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (draggedTaskId) moveTaskToStatus(draggedTaskId, status.id);
+                    setDraggedTaskId(null);
+                  }}
+                >
                   <div className="flex items-center gap-2 mb-2 px-1">
                     <span className="w-2 h-2 rounded-full" style={{ background: status.color }} />
                     <span className="font-bold text-[12.5px] text-brand-text">{status.label}</span>
@@ -822,6 +871,8 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
                         selectMode={selectMode}
                         selected={selectedIds.has(task.id)}
                         onToggleSelect={toggleSelect}
+                        draggable={!selectMode}
+                        onDragStart={setDraggedTaskId}
                       />
                     ))}
                   </div>
@@ -883,6 +934,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
           allTasks={taskList}
           canFullyEdit={editingCanFullyEdit}
           isSuperAdmin={isSuperAdmin}
+          currentUserId={userId}
           onCreateContact={createContact}
           onDuplicate={editingCanFullyEdit ? duplicateTask : undefined}
           onAddSubtask={addSubtask}

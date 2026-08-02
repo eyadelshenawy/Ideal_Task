@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Trash2, Check, ChevronLeft, ChevronRight, Diamond, AlertTriangle, Copy } from "lucide-react";
+import { Pencil, Trash2, Check, ChevronLeft, ChevronRight, Diamond, AlertTriangle, Copy, Paperclip, MessageSquare, ListChecks } from "lucide-react";
 import type { Task, Project, AssigneeDisplay } from "@/types/models";
-import { PRIORITIES, STATUSES, dueBadge, toneStyle, isBlocked } from "@/lib/taskHelpers";
+import { PRIORITIES, STATUSES, dueBadge, toneStyle, isBlocked, splitModules } from "@/lib/taskHelpers";
 import AvatarStack from "./ui/AvatarStack";
 import Chip from "./ui/Chip";
 import ProgressBar from "./ui/ProgressBar";
@@ -23,13 +23,17 @@ interface TaskCardProps {
   selectMode?: boolean;
   selected?: boolean;
   onToggleSelect?: (id: string) => void;
+  /** Board drag-and-drop: this card is the drag source. */
+  draggable?: boolean;
+  onDragStart?: (id: string) => void;
 }
 
 export default function TaskCard({
   task, assignees, project, allTasks, canManage, onEdit, onDelete, onMove, onDuplicate,
-  selectMode, selected, onToggleSelect,
+  selectMode, selected, onToggleSelect, draggable, onDragStart,
 }: TaskCardProps) {
-  const [confirming, setConfirming] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [confirmingDuplicate, setConfirmingDuplicate] = useState(false);
   const priority = PRIORITIES.find((p) => p.id === task.priority)!;
   const status = STATUSES.find((s) => s.id === task.status)!;
   const badge = dueBadge(task);
@@ -38,11 +42,14 @@ export default function TaskCard({
   const parent = task.parentId ? allTasks.find((t) => t.id === task.parentId) : undefined;
   const children = allTasks.filter((t) => t.parentId === task.id);
   const doneChildren = children.filter((t) => t.status === "DONE").length;
+  const modules = splitModules(task.module);
 
   return (
     <div
+      draggable={draggable}
+      onDragStart={() => onDragStart?.(task.id)}
       className="bg-white border border-brand-border rounded-[10px] px-3 py-2.5 mb-2.5"
-      style={{ borderRight: `4px solid ${priority.color}` }}
+      style={{ borderRight: `4px solid ${priority.color}`, cursor: draggable ? "grab" : undefined }}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
@@ -66,18 +73,23 @@ export default function TaskCard({
               <Pencil size={14} />
             </button>
             {canManage && (
-              <button onClick={() => onDuplicate(task.id)} title="Duplicate" className="p-1 rounded hover:bg-gray-100 text-brand-sub">
-                <Copy size={14} />
+              <button
+                onClick={() => (confirmingDuplicate ? onDuplicate(task.id) : setConfirmingDuplicate(true))}
+                title={confirmingDuplicate ? "Click to confirm" : "Duplicate"}
+                className="p-1 rounded hover:bg-gray-100"
+                style={{ color: confirmingDuplicate ? "#0A5A46" : "#5B6B64" }}
+              >
+                {confirmingDuplicate ? <Check size={14} /> : <Copy size={14} />}
               </button>
             )}
             {canManage && (
               <button
-                onClick={() => (confirming ? onDelete(task.id) : setConfirming(true))}
-                title={confirming ? "Click to confirm" : "Move to Trash"}
+                onClick={() => (confirmingDelete ? onDelete(task.id) : setConfirmingDelete(true))}
+                title={confirmingDelete ? "Click to confirm" : "Move to Trash"}
                 className="p-1 rounded hover:bg-gray-100"
-                style={{ color: confirming ? "#C4443D" : "#5B6B64" }}
+                style={{ color: confirmingDelete ? "#C4443D" : "#5B6B64" }}
               >
-                {confirming ? <Check size={14} /> : <Trash2 size={14} />}
+                {confirmingDelete ? <Check size={14} /> : <Trash2 size={14} />}
               </button>
             )}
           </div>
@@ -86,7 +98,9 @@ export default function TaskCard({
 
       <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
         {project && <Chip small style={{ background: "#EEF2F0", color: "#5B6B64" }}>{project.name}</Chip>}
-        {task.module && <Chip small style={{ background: "#E4EEF7", color: "#2A5C82" }}>{task.module}</Chip>}
+        {modules.map((m) => (
+          <Chip key={m} small style={{ background: "#E4EEF7", color: "#2A5C82" }}>{m}</Chip>
+        ))}
         {task.tags.map((tag) => (
           <Chip key={tag} small style={{ background: "#EDE7F5", color: "#5B4A8A" }}>{tag}</Chip>
         ))}
@@ -106,6 +120,20 @@ export default function TaskCard({
           </Chip>
         )}
       </div>
+
+      {(task.attachmentCount > 0 || task.commentCount > 0 || task.checklistTotal > 0) && (
+        <div className="flex items-center gap-2.5 mt-1.5 text-[11px] text-brand-sub">
+          {task.attachmentCount > 0 && (
+            <span className="flex items-center gap-0.5"><Paperclip size={11} /> {task.attachmentCount}</span>
+          )}
+          {task.commentCount > 0 && (
+            <span className="flex items-center gap-0.5"><MessageSquare size={11} /> {task.commentCount}</span>
+          )}
+          {task.checklistTotal > 0 && (
+            <span className="flex items-center gap-0.5"><ListChecks size={11} /> {task.checklistDone}/{task.checklistTotal}</span>
+          )}
+        </div>
+      )}
 
       {!task.isMilestone && <ProgressBar value={task.progress} color={status.color} />}
 
