@@ -91,6 +91,11 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
       return next;
     });
   }
+  // Board is split into status columns, so a subtask can't literally nest
+  // under its parent there the way it does in List — this just declutters
+  // a project with a lot of subtasks by hiding them as separate cards
+  // (their parent still shows its "N/M subtasks" progress either way).
+  const [hideSubtasksInBoard, setHideSubtasksInBoard] = useState(false);
 
   const taskList = tasks ?? [];
   const teamList = team ?? [];
@@ -198,6 +203,22 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   function openEdit(task: Task) {
     setDraft(draftFromTask(task));
     setEditingCanFullyEdit(canManage(task));
+    setFormError("");
+    setModalOpen(true);
+  }
+
+  // Quick shortcut from inside a task's own modal: opens a blank draft
+  // already scoped to that task's project and parented under it, with a
+  // suggested hierarchical code — same "New Task" form, just pre-filled.
+  function addSubtask(parent: Task) {
+    const d = blankDraft();
+    d.projectId = parent.projectId ?? "";
+    d.parentId = parent.id;
+    if (parent.code) {
+      d.code = `${parent.code}-${String(parent.childCodeSeq + 1).padStart(2, "0")}`;
+    }
+    setDraft(d);
+    setEditingCanFullyEdit(true);
     setFormError("");
     setModalOpen(true);
   }
@@ -425,7 +446,10 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
     }
   }
 
-  const sortedBoard = (statusId: Status) => sortTasks(filteredTasks.filter((t) => t.status === statusId), sortBy, teamList);
+  const sortedBoard = (statusId: Status) => sortTasks(
+    filteredTasks.filter((t) => t.status === statusId && !(hideSubtasksInBoard && t.parentId)),
+    sortBy, teamList
+  );
   const sortedList = sortTasks(filteredTasks, sortBy, teamList);
   const sortedGantt = sortTasks(filteredTasks, sortBy, teamList);
 
@@ -696,6 +720,20 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             <option value="assignee">Sort: Assignee</option>
             <option value="created">Sort: Newest</option>
           </select>
+          {view === "board" && (
+            <button
+              onClick={() => setHideSubtasksInBoard((v) => !v)}
+              title="Subtasks still count toward their parent's progress — this just hides their own cards"
+              className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs border"
+              style={{
+                background: hideSubtasksInBoard ? "#0A5A46" : "#fff",
+                color: hideSubtasksInBoard ? "#fff" : "#5B6B64",
+                borderColor: hideSubtasksInBoard ? "#0A5A46" : "#E1E7E4",
+              }}
+            >
+              Hide subtasks
+            </button>
+          )}
           <button
             onClick={() => setSavingFilterName("")}
             title="Save current filter combination"
@@ -847,6 +885,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
           isSuperAdmin={isSuperAdmin}
           onCreateContact={createContact}
           onDuplicate={editingCanFullyEdit ? duplicateTask : undefined}
+          onAddSubtask={addSubtask}
         />
       )}
 

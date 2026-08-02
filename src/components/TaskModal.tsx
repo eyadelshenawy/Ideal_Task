@@ -82,10 +82,11 @@ interface TaskModalProps {
   isSuperAdmin: boolean;
   onCreateContact: (name: string) => Promise<Contact | null>;
   onDuplicate?: (taskId: string, projectId?: string) => void;
+  onAddSubtask?: (parent: Task) => void;
 }
 
 export default function TaskModal({
-  draft, setDraft, onClose, onSave, error, team, projects, contacts, allTasks, canFullyEdit, isSuperAdmin, onCreateContact, onDuplicate,
+  draft, setDraft, onClose, onSave, error, team, projects, contacts, allTasks, canFullyEdit, isSuperAdmin, onCreateContact, onDuplicate, onAddSubtask,
 }: TaskModalProps) {
   const [duplicateProjectId, setDuplicateProjectId] = useState("");
   const [addingContact, setAddingContact] = useState(false);
@@ -545,6 +546,19 @@ export default function TaskModal({
             </button>
           </div>
         )}
+
+        {draft.id && canFullyEdit && onAddSubtask && (() => {
+          const thisTask = allTasks.find((t) => t.id === draft.id);
+          if (!thisTask) return null;
+          return (
+            <button
+              onClick={() => onAddSubtask(thisTask)}
+              className="w-full mt-2 rounded-lg px-3 py-1.5 text-xs font-semibold border border-brand-border text-brand-text"
+            >
+              + Add subtask under this task
+            </button>
+          );
+        })()}
 
         {draft.id && <TaskChecklistPanel taskId={draft.id} />}
         {draft.id && <TaskAttachmentsPanel taskId={draft.id} />}

@@ -7,6 +7,22 @@ export function codeMatchesParent(code: string, parentCode: string): boolean {
   return code.trim().toUpperCase().startsWith(`${parentCode.toUpperCase()}-`);
 }
 
+/**
+ * Advances the parent's own child-code counter and returns a suggested
+ * hierarchical code like "ABC-0001-01" — the same idea as taskCode.ts's
+ * nextTaskCode, one level down. Returns null if the parent has no code of
+ * its own yet (a subtask can't get a hierarchical code without one).
+ */
+export async function nextChildCode(db: Db, parentId: string): Promise<string | null> {
+  const parent = await db.task.update({
+    where: { id: parentId },
+    data: { childCodeSeq: { increment: 1 } },
+    select: { code: true, childCodeSeq: true },
+  });
+  if (!parent.code) return null;
+  return `${parent.code}-${String(parent.childCodeSeq).padStart(2, "0")}`;
+}
+
 /** All descendant task ids of `taskId`, at any depth (not including taskId itself). */
 export async function getDescendantIds(db: Db, taskId: string): Promise<string[]> {
   const result: string[] = [];

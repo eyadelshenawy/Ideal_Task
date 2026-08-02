@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity";
+import { nextTaskCode } from "@/lib/taskCode";
+import { nextChildCode } from "@/lib/taskHierarchy";
 import type { RecurrenceFreq, Task } from "@prisma/client";
 
 export function computeNextDate(date: Date, freq: RecurrenceFreq): Date {
@@ -30,12 +32,23 @@ export async function createNextOccurrence(task: RecurringTask): Promise<void> {
 
   const nextStart = task.startDate ? computeNextDate(task.startDate, task.recurrenceFreq) : null;
 
+  // Codes are unique, so the new occurrence needs a fresh one of its own —
+  // reusing the same code (the original behavior here) would just fail the
+  // create outright. A subtask gets the next hierarchical code off its
+  // parent; anything else gets the next code in its project's sequence.
+  const code = task.parentId
+    ? await nextChildCode(prisma, task.parentId)
+    : task.projectId
+      ? await nextTaskCode(prisma, task.projectId)
+      : null;
+
   const next = await prisma.task.create({
     data: {
-      code: task.code,
+      code,
       title: task.title,
       description: task.description,
       projectId: task.projectId,
+      parentId: task.parentId,
       assignees: { connect: task.assignees.map((a) => ({ id: a.id })) },
       contactAssignees: { connect: task.contactAssignees.map((c) => ({ id: c.id })) },
       priority: task.priority,
