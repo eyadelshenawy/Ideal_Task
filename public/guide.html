@@ -310,17 +310,18 @@
 
     <h3>How it works</h3>
     <p>Open the task form and pick a <strong>Parent task</strong> from the dropdown (only tasks in the same project are shown). The Code field auto-suggests a hierarchical code off the parent's own code — e.g. a parent <code>ABC-0001</code> gets subtasks <code>ABC-0001-01</code>, <code>ABC-0001-02</code>, and so on. A subtask can itself have subtasks (<code>ABC-0001-01-01</code>), with no limit on how many levels deep.</p>
+    <p>The fastest way in: open the parent task itself and click <strong>+ Add subtask under this task</strong> at the bottom of its form — it opens a fresh task already scoped to the right project, parent, and suggested code, so there's no hunting through the dropdown.</p>
     <div class="card tip">
       This is entirely optional — most tasks have no parent and no subtasks at all. Use it only where a task genuinely breaks down into a real sequence of sub-work.
     </div>
 
     <h3>The parent auto-completes — and reopens</h3>
-    <p>Once every subtask under a parent is marked <em>Done</em>, the parent is automatically marked Done too (progress jumps to 100%). Reopen any one of those subtasks afterward, and the parent automatically reverts to <em>In Progress</em>, with its progress recalculated from however many subtasks are still done. You never have to remember to close out the parent yourself.</p>
+    <p>Once every subtask under a parent is marked <em>Done</em>, the parent is automatically marked Done too (progress jumps to 100%). Reopen any one of those subtasks afterward, and the parent automatically reverts to <em>In Progress</em>, with its progress recalculated from however many subtasks are still done. You never have to remember to close out the parent yourself. A recurring subtask's next occurrence stays under the same parent, with a fresh code of its own.</p>
 
     <h3>Where it shows up</h3>
     <ul>
       <li><strong>List view</strong> — the full picture: each subtask is nested directly beneath its parent, indented, with a collapse arrow to hide/show them.</li>
-      <li><strong>Board view</strong> — since Board is split into status columns, a parent and its subtasks can land in different columns and can't literally nest there. Instead, a subtask carries a small "↳ parent code" chip, and a parent carries a "<em>N/M subtasks</em>" chip.</li>
+      <li><strong>Board view</strong> — since Board is split into status columns, a parent and its subtasks can land in different columns and can't literally nest there. Instead, a subtask carries a small "↳ parent code" chip, and a parent carries a "<em>N/M subtasks</em>" chip. If a project has a lot of subtasks cluttering the board, toggle <strong>Hide subtasks</strong> in the filter bar to show only top-level tasks as cards (a parent's subtask-progress chip still reflects them either way).</li>
       <li><strong>Timeline</strong> — subtasks are indented under their parent the same way as List, regardless of status.</li>
     </ul>
 
