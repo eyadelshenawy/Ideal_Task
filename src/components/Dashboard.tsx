@@ -67,7 +67,10 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   const { data: projects, mutate: mutateProjects } = useSWR<Project[]>("/api/projects", fetcher);
   const { data: contacts, mutate: mutateContacts } = useSWR<Contact[]>("/api/contacts", fetcher);
 
-  const [view, setView] = useState<"board" | "list" | "timeline" | "reports" | "attention">("board");
+  // List is the default landing view — it's the one with Group by, pagination,
+  // and Compact view, so it scales to a large project better than Board,
+  // which still renders every card in a column unbounded.
+  const [view, setView] = useState<"board" | "list" | "timeline" | "reports" | "attention">("list");
   const [modalOpen, setModalOpen] = useState(false);
   const [draft, setDraft] = useState<TaskDraft>(blankDraft());
   const [editingCanFullyEdit, setEditingCanFullyEdit] = useState(true);
