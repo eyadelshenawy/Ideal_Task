@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Pencil, Trash2, Check, Diamond, Copy, ChevronDown, ChevronRight, Paperclip, MessageSquare, ListChecks } from "lucide-react";
-import type { Task, Project, AssigneeDisplay } from "@/types/models";
+import type { Task, Project, AssigneeDisplay, Status } from "@/types/models";
 import { PRIORITIES, STATUSES, dueBadge, toneStyle, isBlocked, splitModules } from "@/lib/taskHelpers";
 import AvatarStack from "./ui/AvatarStack";
 import Chip from "./ui/Chip";
@@ -17,6 +17,7 @@ interface TaskListRowProps {
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
+  onChangeStatus: (task: Task, status: Status) => void;
   selectMode?: boolean;
   selected?: boolean;
   onToggleSelect?: (id: string) => void;
@@ -31,7 +32,7 @@ interface TaskListRowProps {
 }
 
 export default function TaskListRow({
-  task, assignees, project, allTasks, canManage, onEdit, onDelete, onDuplicate,
+  task, assignees, project, allTasks, canManage, onEdit, onDelete, onDuplicate, onChangeStatus,
   selectMode, selected, onToggleSelect,
   depth = 0, hasChildren = false, collapsed = false, onToggleCollapse, doneChildCount = 0, totalChildCount = 0,
   density = "comfortable",
@@ -97,7 +98,15 @@ export default function TaskListRow({
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Chip small style={{ background: status.color + "22", color: status.color }}>{status.label}</Chip>
+          <select
+            value={task.status}
+            onChange={(e) => onChangeStatus(task, e.target.value as Status)}
+            title="Change status"
+            className="rounded-full text-[11px] font-medium border-none outline-none px-2 py-0.5 cursor-pointer"
+            style={{ background: status.color + "22", color: status.color }}
+          >
+            {STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+          </select>
           {badge && <Chip small style={toneStyle(badge.tone)}>{badge.label}</Chip>}
           {!selectMode && (
             <>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import type { Task, Project, AssigneeDisplay } from "@/types/models";
+import type { Task, Project, AssigneeDisplay, Status } from "@/types/models";
 import { todayStr, diffDays, sortTasks } from "@/lib/taskHelpers";
 import TaskListRow from "./TaskListRow";
 
@@ -14,10 +14,11 @@ interface NeedsAttentionViewProps {
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
+  onChangeStatus: (task: Task, status: Status) => void;
 }
 
 export default function NeedsAttentionView({
-  tasks, projectList, allTasks, canManage, getAssigneeDisplays, onEdit, onDelete, onDuplicate,
+  tasks, projectList, allTasks, canManage, getAssigneeDisplays, onEdit, onDelete, onDuplicate, onChangeStatus,
 }: NeedsAttentionViewProps) {
   const today = todayStr();
 
@@ -45,6 +46,7 @@ export default function NeedsAttentionView({
         onEdit={onEdit}
         onDelete={onDelete}
         onDuplicate={onDuplicate}
+        onChangeStatus={onChangeStatus}
       />
     );
   }

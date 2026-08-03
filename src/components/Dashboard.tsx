@@ -517,6 +517,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
         onEdit={openEdit}
         onDelete={deleteTask}
         onDuplicate={duplicateTask}
+        onChangeStatus={(t, status) => moveTaskToStatus(t.id, status)}
         selectMode={selectMode}
         selected={selectedIds.has(task.id)}
         onToggleSelect={toggleSelect}
@@ -777,6 +778,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             onEdit={openEdit}
             onDelete={deleteTask}
             onDuplicate={duplicateTask}
+            onChangeStatus={(t, status) => moveTaskToStatus(t.id, status)}
           />
         ) : (
         <>
