@@ -27,12 +27,14 @@ interface TaskListRowProps {
   onToggleCollapse?: (id: string) => void;
   doneChildCount?: number;
   totalChildCount?: number;
+  density?: "comfortable" | "compact";
 }
 
 export default function TaskListRow({
   task, assignees, project, allTasks, canManage, onEdit, onDelete, onDuplicate,
   selectMode, selected, onToggleSelect,
   depth = 0, hasChildren = false, collapsed = false, onToggleCollapse, doneChildCount = 0, totalChildCount = 0,
+  density = "comfortable",
 }: TaskListRowProps) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingDuplicate, setConfirmingDuplicate] = useState(false);
@@ -41,10 +43,11 @@ export default function TaskListRow({
   const badge = dueBadge(task);
   const blocked = isBlocked(task, allTasks);
   const modules = splitModules(task.module);
+  const compact = density === "compact";
 
   return (
     <div
-      className="bg-white border border-brand-border rounded-[10px] px-3 py-2.5 mb-2"
+      className={compact ? "bg-white border border-brand-border rounded-lg px-2.5 py-1 mb-1" : "bg-white border border-brand-border rounded-[10px] px-3 py-2.5 mb-2"}
       style={{ borderRight: `4px solid ${priority.color}`, marginLeft: depth * 22 }}
     >
       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -125,7 +128,7 @@ export default function TaskListRow({
           )}
         </div>
       </div>
-      {!task.isMilestone && <ProgressBar value={task.progress} color={status.color} />}
+      {!task.isMilestone && !compact && <ProgressBar value={task.progress} color={status.color} />}
     </div>
   );
 }

@@ -54,6 +54,13 @@ export function formatDateDisplay(s?: string | null): string {
 
 export type DueTone = "done" | "overdue" | "soon" | "normal";
 
+/** Due within the next 7 days (inclusive of today), and not already Done. */
+export function isDueThisWeek(task: Pick<Task, "dueDate" | "status">): boolean {
+  if (!task.dueDate || task.status === "DONE") return false;
+  const diff = diffDays(todayStr(), task.dueDate);
+  return diff >= 0 && diff <= 7;
+}
+
 export function dueBadge(task: Pick<Task, "dueDate" | "status">): { label: string; tone: DueTone } | null {
   if (!task.dueDate) return null;
   const diff = diffDays(todayStr(), task.dueDate);
@@ -151,6 +158,91 @@ export function toTreeRows(tasks: Task[], collapsed: Set<string>): TaskTreeRow[]
 /** A task's `module` field holds a comma-separated list (e.g. "FICO, MM") — split it into its parts for display/filtering. */
 export function splitModules(module: string | null | undefined): string[] {
   return (module ?? "").split(",").map((m) => m.trim()).filter(Boolean);
+}
+
+export type GroupField = "project" | "module" | "assignee" | "priority";
+
+export const GROUP_FIELD_LABELS: Record<GroupField, string> = {
+  project: "Project", module: "Module", assignee: "Assignee", priority: "Priority",
+};
+
+export interface GroupNode {
+  key: string;
+  label: string;
+  /** Each unit is one root task plus its full (already tree-ordered) subtree — never split across groups. */
+  units: TaskTreeRow[][];
+  /** Present when there are more grouping levels below this one; absent at the leaf level. */
+  children?: GroupNode[];
+}
+
+interface GroupLookups {
+  projectList: { id: string; name: string }[];
+  teamList: { id: string; name: string }[];
+}
+
+function groupFieldValue(root: Task, field: GroupField, lookups: GroupLookups): { key: string; label: string } {
+  if (field === "project") {
+    const p = lookups.projectList.find((x) => x.id === root.projectId);
+    return { key: root.projectId ?? "__none__", label: p?.name ?? "No project" };
+  }
+  if (field === "module") {
+    const m = splitModules(root.module)[0];
+    return { key: m || "__none__", label: m || "No module" };
+  }
+  if (field === "assignee") {
+    const id = root.assigneeIds[0];
+    const m = lookups.teamList.find((x) => x.id === id);
+    return { key: id ?? "__none__", label: m?.name ?? "Unassigned" };
+  }
+  const p = PRIORITIES.find((x) => x.id === root.priority);
+  return { key: root.priority, label: p?.label ?? root.priority };
+}
+
+/** Splits tree-ordered rows back into units of [root, ...its full subtree]. */
+function unitsFromTreeRows(rows: TaskTreeRow[]): TaskTreeRow[][] {
+  const units: TaskTreeRow[][] = [];
+  let i = 0;
+  while (i < rows.length) {
+    const unit: TaskTreeRow[] = [rows[i]];
+    let j = i + 1;
+    while (j < rows.length && rows[j].depth > 0) { unit.push(rows[j]); j++; }
+    units.push(unit);
+    i = j;
+  }
+  return units;
+}
+
+function groupUnits(units: TaskTreeRow[][], levels: GroupField[], levelIdx: number, lookups: GroupLookups): GroupNode[] {
+  const buckets = new Map<string, { label: string; units: TaskTreeRow[][] }>();
+  const order: string[] = [];
+  for (const unit of units) {
+    const { key, label } = groupFieldValue(unit[0].task, levels[levelIdx], lookups);
+    if (!buckets.has(key)) { buckets.set(key, { label, units: [] }); order.push(key); }
+    buckets.get(key)!.units.push(unit);
+  }
+  return order.map((key) => {
+    const b = buckets.get(key)!;
+    const node: GroupNode = { key, label: b.label, units: b.units };
+    if (levelIdx + 1 < levels.length) node.children = groupUnits(b.units, levels, levelIdx + 1, lookups);
+    return node;
+  });
+}
+
+/**
+ * Buckets already tree-ordered `rows` by one or more fields, root task only —
+ * a parent and its whole subtree always land in the same group as the
+ * parent, even if a subtask's own field value would differ. Empty `levels`
+ * yields a single unlabeled group (the existing flat behavior, unchanged).
+ */
+export function groupTaskRows(rows: TaskTreeRow[], levels: GroupField[], lookups: GroupLookups): GroupNode[] {
+  const units = unitsFromTreeRows(rows);
+  if (levels.length === 0) return [{ key: "__flat__", label: "", units }];
+  return groupUnits(units, levels, 0, lookups);
+}
+
+/** Total unit (top-level task) count under a group node, including nested subgroups. */
+export function countGroupUnits(node: GroupNode): number {
+  return node.children ? node.children.reduce((sum, c) => sum + countGroupUnits(c), 0) : node.units.length;
 }
 
 export function isBlocked(task: Pick<Task, "dependsOn">, allTasks: Task[]): boolean {

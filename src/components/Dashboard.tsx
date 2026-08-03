@@ -2,11 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
-import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks, BarChart3, FileDown, Bookmark, X, AlertTriangle, ScrollText, BookOpen } from "lucide-react";
+import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks, BarChart3, FileDown, Bookmark, X, AlertTriangle, ScrollText, BookOpen, ChevronDown, ChevronRight } from "lucide-react";
 import useSWR from "swr";
 import type { Task, Project, TeamMember, Contact, Status, AssigneeDisplay } from "@/types/models";
 import type { ImportPreview } from "@/types/import";
-import { colorForIndex, STATUSES, PRIORITIES, todayStr, sortTasks, toTreeRows, splitModules, type SortBy } from "@/lib/taskHelpers";
+import {
+  colorForIndex, STATUSES, PRIORITIES, todayStr, sortTasks, toTreeRows, splitModules, isDueThisWeek,
+  groupTaskRows, countGroupUnits, GROUP_FIELD_LABELS, type SortBy, type GroupField, type GroupNode, type TaskTreeRow,
+} from "@/lib/taskHelpers";
 import { api } from "@/lib/apiClient";
 import TaskCard from "./TaskCard";
 import TaskListRow from "./TaskListRow";
@@ -48,12 +51,15 @@ interface Filters {
   moduleIds: string[];
   overdueOnly: boolean;
   milestonesOnly: boolean;
+  dueThisWeek: boolean;
 }
 
 const defaultFilters: Filters = {
   search: "", assigneeId: "all", priority: "all", projectId: "all", moduleIds: [],
-  overdueOnly: false, milestonesOnly: false,
+  overdueOnly: false, milestonesOnly: false, dueThisWeek: false,
 };
+
+const GROUP_PAGE_SIZE = 30;
 
 export default function Dashboard({ userId, userName, isSuperAdmin, administeredProjectIds }: DashboardProps) {
   const { data: tasks, mutate: mutateTasks } = useSWR<Task[]>("/api/tasks", fetcher);
@@ -98,6 +104,29 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   // (their parent still shows its "N/M subtasks" progress either way).
   const [hideSubtasksInBoard, setHideSubtasksInBoard] = useState(false);
   const [moduleFilterOpen, setModuleFilterOpen] = useState(false);
+  // Hides Done tasks everywhere (Board/List/Timeline) — separate from the
+  // per-view "Hide subtasks" toggle above.
+  const [hideDone, setHideDone] = useState(false);
+  const [quickFiltersOpen, setQuickFiltersOpen] = useState(false);
+  const [groupByOpen, setGroupByOpen] = useState(false);
+  // List-view only: which fields to nest tasks under, in order. Empty = the
+  // existing flat behavior, unchanged.
+  const [groupByLevels, setGroupByLevels] = useState<GroupField[]>([]);
+  // Group keys the user has toggled away from their default open/closed
+  // state (the very first top-level group defaults open, every other group
+  // defaults closed) — same toggle-relative-to-default idea as elsewhere.
+  const [collapsedGroupKeys, setCollapsedGroupKeys] = useState<Set<string>>(new Set());
+  function toggleGroupCollapse(key: string) {
+    setCollapsedGroupKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }
+  // How many units (top-level tasks, each with its full subtree) are shown
+  // per group before a "Show more" button is needed — keyed by group key.
+  const [groupVisibleCounts, setGroupVisibleCounts] = useState<Record<string, number>>({});
+  const [density, setDensity] = useState<"comfortable" | "compact">("comfortable");
   // Board drag-and-drop: the id of the card currently being dragged, so a
   // column's onDrop knows which task to move without threading the native
   // DataTransfer payload through every handler.
@@ -138,8 +167,10 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   }), [taskList, today]);
 
   const filteredTasks = useMemo(() => taskList.filter((t) => {
+    if (hideDone && t.status === "DONE") return false;
     if (filters.overdueOnly && !(t.dueDate && t.dueDate < today && t.status !== "DONE")) return false;
     if (filters.milestonesOnly && !t.isMilestone) return false;
+    if (filters.dueThisWeek && !isDueThisWeek(t)) return false;
     if (filters.assigneeId !== "all" && !t.assigneeIds.includes(filters.assigneeId)) return false;
     if (filters.priority !== "all" && t.priority !== filters.priority) return false;
     if (filters.projectId !== "all" && t.projectId !== filters.projectId) return false;
@@ -154,7 +185,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
       ) return false;
     }
     return true;
-  }), [taskList, filters, today, projectList]);
+  }), [taskList, filters, today, projectList, hideDone]);
 
   const moduleList = useMemo(
     () => Array.from(new Set(taskList.flatMap((t) => splitModules(t.module)))).sort(),
@@ -471,6 +502,82 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   const sortedList = sortTasks(filteredTasks, sortBy, teamList);
   const sortedGantt = sortTasks(filteredTasks, sortBy, teamList);
 
+  function renderTaskListRow({ task, depth, hasChildren, doneChildCount, totalChildCount }: TaskTreeRow) {
+    return (
+      <TaskListRow
+        key={task.id}
+        task={task}
+        assignees={getAssigneeDisplays(task)}
+        project={projectList.find((p) => p.id === task.projectId)}
+        allTasks={taskList}
+        canManage={canManage(task)}
+        onEdit={openEdit}
+        onDelete={deleteTask}
+        onDuplicate={duplicateTask}
+        selectMode={selectMode}
+        selected={selectedIds.has(task.id)}
+        onToggleSelect={toggleSelect}
+        depth={depth}
+        hasChildren={hasChildren}
+        collapsed={collapsedParentIds.has(task.id)}
+        onToggleCollapse={toggleCollapse}
+        doneChildCount={doneChildCount}
+        totalChildCount={totalChildCount}
+        density={density}
+      />
+    );
+  }
+
+  // "Show N more" pagination is per group, counted in units (a root task +
+  // its whole subtree) rather than rows, so a page break never splits a
+  // parent from its own subtasks.
+  function renderGroupUnits(units: TaskTreeRow[][], groupKey: string) {
+    const visible = groupVisibleCounts[groupKey] ?? GROUP_PAGE_SIZE;
+    const shown = units.slice(0, visible);
+    const remaining = units.length - shown.length;
+    return (
+      <>
+        {shown.flat().map((row) => renderTaskListRow(row))}
+        {remaining > 0 && (
+          <button
+            onClick={() => setGroupVisibleCounts((prev) => ({ ...prev, [groupKey]: visible + GROUP_PAGE_SIZE }))}
+            className="w-full text-center text-[11.5px] text-brand-dark py-1.5 border border-dashed border-brand-border rounded-lg mt-1 mb-2"
+          >
+            Show {Math.min(GROUP_PAGE_SIZE, remaining)} more
+          </button>
+        )}
+      </>
+    );
+  }
+
+  // The very first top-level group defaults open; every other group
+  // defaults closed. `collapsedGroupKeys` only tracks deviations from that
+  // per-group default.
+  function renderGroupNode(node: GroupNode, groupDepth: number, indexInSiblings: number) {
+    const isFlat = node.key === "__flat__";
+    const defaultCollapsed = !(groupDepth === 0 && indexInSiblings === 0);
+    const collapsed = !isFlat && (collapsedGroupKeys.has(node.key) ? !defaultCollapsed : defaultCollapsed);
+    return (
+      <div key={node.key} style={{ marginLeft: groupDepth * 16 }}>
+        {!isFlat && (
+          <div
+            onClick={() => toggleGroupCollapse(node.key)}
+            className="flex items-center gap-1.5 py-1.5 px-1 cursor-pointer font-semibold text-[12.5px] text-brand-text border-b border-brand-border"
+          >
+            {collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+            <span>{node.label}</span>
+            <span className="text-brand-sub text-[11px] font-normal">{countGroupUnits(node)}</span>
+          </div>
+        )}
+        {!collapsed && (
+          node.children
+            ? node.children.map((child, i) => renderGroupNode(child, groupDepth + 1, i))
+            : renderGroupUnits(node.units, node.key)
+        )}
+      </div>
+    );
+  }
+
   if (!tasks || !team || !projects || !contacts) {
     return (
       <div className="min-h-screen bg-brand-bg flex items-center justify-center">
@@ -765,6 +872,131 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             <option value="assignee">Sort: Assignee</option>
             <option value="created">Sort: Newest</option>
           </select>
+          <button
+            onClick={() => setHideDone((v) => !v)}
+            title="Hide Done tasks everywhere"
+            className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs border"
+            style={{
+              background: hideDone ? "#0A5A46" : "#fff",
+              color: hideDone ? "#fff" : "#5B6B64",
+              borderColor: hideDone ? "#0A5A46" : "#E1E7E4",
+            }}
+          >
+            Hide Done
+          </button>
+          <div className="relative">
+            <button
+              onClick={() => setQuickFiltersOpen((v) => !v)}
+              className="rounded-lg px-2 py-1.5 text-xs bg-white border border-brand-border text-brand-text"
+            >
+              Quick filters
+            </button>
+            {quickFiltersOpen && (
+              <div className="absolute left-0 top-[calc(100%+4px)] z-20 w-[170px] rounded-lg bg-white border border-brand-border shadow-lg p-2">
+                <label className="flex items-center gap-2 text-xs py-1 text-brand-text cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={filters.assigneeId === userId}
+                    onChange={() => setFilters((f) => ({ ...f, assigneeId: f.assigneeId === userId ? "all" : userId }))}
+                  />
+                  My tasks
+                </label>
+                <label className="flex items-center gap-2 text-xs py-1 text-brand-text cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={filters.overdueOnly}
+                    onChange={() => setFilters((f) => ({ ...f, overdueOnly: !f.overdueOnly }))}
+                  />
+                  Overdue
+                </label>
+                <label className="flex items-center gap-2 text-xs py-1 text-brand-text cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={filters.priority === "HIGH"}
+                    onChange={() => setFilters((f) => ({ ...f, priority: f.priority === "HIGH" ? "all" : "HIGH" }))}
+                  />
+                  High priority
+                </label>
+                <label className="flex items-center gap-2 text-xs py-1 text-brand-text cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={filters.dueThisWeek}
+                    onChange={() => setFilters((f) => ({ ...f, dueThisWeek: !f.dueThisWeek }))}
+                  />
+                  Due this week
+                </label>
+              </div>
+            )}
+          </div>
+          {view === "list" && (
+            <div className="relative">
+              <button
+                onClick={() => setGroupByOpen((v) => !v)}
+                className="rounded-lg px-2 py-1.5 text-xs bg-white border border-brand-border text-brand-text"
+              >
+                {groupByLevels.length === 0 ? "Group by" : `Group: ${groupByLevels.map((f) => GROUP_FIELD_LABELS[f]).join(" › ")}`}
+              </button>
+              {groupByOpen && (
+                <div className="absolute left-0 top-[calc(100%+4px)] z-20 w-[220px] rounded-lg bg-white border border-brand-border shadow-lg p-2">
+                  <div className="flex flex-col gap-1.5">
+                    {groupByLevels.map((lv, i) => {
+                      const available = (Object.keys(GROUP_FIELD_LABELS) as GroupField[]).filter((f) => f === lv || !groupByLevels.includes(f));
+                      return (
+                        <div key={i} className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-brand-sub w-3">{i + 1}</span>
+                          <select
+                            value={lv}
+                            onChange={(e) => {
+                              const next = [...groupByLevels];
+                              next[i] = e.target.value as GroupField;
+                              setGroupByLevels(next);
+                            }}
+                            className="flex-1 rounded-lg border border-brand-border px-1.5 py-1 text-xs outline-none"
+                          >
+                            {available.map((f) => <option key={f} value={f}>{GROUP_FIELD_LABELS[f]}</option>)}
+                          </select>
+                          <button
+                            onClick={() => setGroupByLevels(groupByLevels.filter((_, idx) => idx !== i))}
+                            className="p-0.5 text-brand-sub hover:text-brand-text"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {groupByLevels.length < 4 && (
+                    <button
+                      onClick={() => {
+                        const remaining = (Object.keys(GROUP_FIELD_LABELS) as GroupField[]).filter((f) => !groupByLevels.includes(f));
+                        if (remaining.length > 0) setGroupByLevels([...groupByLevels, remaining[0]]);
+                      }}
+                      className="text-[11px] text-brand-dark underline mt-1.5"
+                    >
+                      + Add level
+                    </button>
+                  )}
+                  {groupByLevels.length > 0 && (
+                    <button
+                      onClick={() => setGroupByLevels([])}
+                      className="text-[11px] text-brand-sub underline mt-1.5 ml-3"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+          {view === "list" && (
+            <button
+              onClick={() => setDensity((d) => (d === "comfortable" ? "compact" : "comfortable"))}
+              title="Toggle row density"
+              className="rounded-lg px-2 py-1.5 text-xs bg-white border border-brand-border text-brand-sub"
+            >
+              {density === "comfortable" ? "Compact view" : "Comfortable view"}
+            </button>
+          )}
           {view === "board" && (
             <button
               onClick={() => setHideSubtasksInBoard((v) => !v)}
@@ -892,28 +1124,8 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             {sortedList.length === 0 && (
               <div className="text-center text-brand-sub text-sm py-10">No tasks match your filters</div>
             )}
-            {toTreeRows(sortedList, collapsedParentIds).map(({ task, depth, hasChildren, doneChildCount, totalChildCount }) => (
-              <TaskListRow
-                key={task.id}
-                task={task}
-                assignees={getAssigneeDisplays(task)}
-                project={projectList.find((p) => p.id === task.projectId)}
-                allTasks={taskList}
-                canManage={canManage(task)}
-                onEdit={openEdit}
-                onDelete={deleteTask}
-                onDuplicate={duplicateTask}
-                selectMode={selectMode}
-                selected={selectedIds.has(task.id)}
-                onToggleSelect={toggleSelect}
-                depth={depth}
-                hasChildren={hasChildren}
-                collapsed={collapsedParentIds.has(task.id)}
-                onToggleCollapse={toggleCollapse}
-                doneChildCount={doneChildCount}
-                totalChildCount={totalChildCount}
-              />
-            ))}
+            {groupTaskRows(toTreeRows(sortedList, collapsedParentIds), groupByLevels, { projectList, teamList })
+              .map((node, i) => renderGroupNode(node, 0, i))}
           </div>
         )}
 

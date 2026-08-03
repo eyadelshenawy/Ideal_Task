@@ -269,9 +269,14 @@
     <ul>
       <li><strong>Search</strong> matches task title and code.</li>
       <li><strong>Filters</strong>: Assignee, Priority, Project, Module — combine as many as you like. Module is a multi-select: tick FICO and MM together to see tasks tagged with either one.</li>
+      <li><strong>Hide Done</strong> removes finished tasks from every view (Board, List, Timeline) until you turn it back off.</li>
+      <li><strong>Quick filters</strong> is a one-tap shortcut menu for four common combinations: My tasks, Overdue, High priority, and Due this week — each just toggles the matching filter above, nothing new to learn.</li>
       <li><strong>Sort</strong>: Due Date, Code, Priority, Assignee, or Newest first.</li>
       <li><strong>Save filter</strong> stores your current search + filter + sort combination (by name) so you can jump back to it later — it's saved per person, in your browser.</li>
     </ul>
+    <h3>Group by (List view)</h3>
+    <p>On large projects, the <strong>Group by</strong> button in List view lets you stack tasks into collapsible sections by Project, Module, Assignee, or Priority — pick just one, or add several levels to nest them (e.g. Project, then Module inside each). A task with subtasks always stays together with its whole subtree in one group, even if a subtask's own field differs from its parent's. Leave it on "Group by" (no levels chosen) for the plain flat list you're used to.</p>
+    <p>Each group only lists its first 30 tasks at a time — click <strong>Show more</strong> to reveal the rest. This, plus a <strong>Compact view</strong> toggle that shrinks row height, is what keeps a project with hundreds of tasks usable instead of one long scroll.</p>
   </section>
 
   <!-- ============ CREATING TASKS ============ -->
@@ -338,6 +343,9 @@
 
     <h3>Importing a hierarchy from Excel</h3>
     <p>The import template has a <strong>Parent Code</strong> column. It can point at a code that already exists in the system, <em>or</em> at another row in the same file (handy for bringing in a brand-new project with its full breakdown structure in one upload) — leave a row's own Code blank and it gets a hierarchical code generated automatically, exactly like creating one by hand.</p>
+
+    <h3>Using it for project phases</h3>
+    <p>For a large new-implementation project organized into phases (e.g. Explore, Realize, Deploy, Run), there's no separate "phase" or "milestone" feature — just create one top-level task per phase, then add every other task as a subtask underneath the right one. Combined with <strong>Group by</strong> in List view, this gives you a clean phase-by-phase breakdown for a project with hundreds of tasks, using the exact same hierarchy described above.</p>
   </section>
 
   <!-- ============ TASK DETAILS ============ -->
