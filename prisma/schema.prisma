@@ -131,6 +131,11 @@ model Task {
   code        String? @unique
   title       String
   description String?
+
+  // A private personal task: visible only to createdById, never through any
+  // shared view/report/export/reminder — not even to a Super Admin. Always
+  // projectId: null. See src/lib/taskVisibility.ts for the enforcement.
+  isPrivate Boolean @default(false)
   // Free-text software/work module this task belongs to (e.g. "Billing",
   // "Auth"). Not required — purely informational, filled in when relevant.
   module      String?

@@ -45,6 +45,8 @@ export interface Task {
   description: string | null;
   module: string | null;
   projectId: string | null;
+  /** A private personal task — visible only to its own creator, everywhere. */
+  isPrivate: boolean;
   assigneeIds: string[];
   contactAssigneeIds: string[];
   priority: Priority;

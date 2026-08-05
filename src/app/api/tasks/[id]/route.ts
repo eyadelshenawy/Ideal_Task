@@ -22,8 +22,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  // A private task is owner-only, full stop — not even Super Admin gets the
+  // normal project-based canFullyEdit path here. Hide its existence from
+  // anyone else, same as an invisible task would 404 elsewhere.
+  if (existing.isPrivate && existing.createdById !== session.user.id) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const access = await getUserAccess(session);
-  const canFullyEdit = access.isSuperAdmin || (existing.projectId !== null && access.administeredProjectIds.includes(existing.projectId));
+  const canFullyEdit = existing.isPrivate
+    ? true
+    : access.isSuperAdmin || (existing.projectId !== null && access.administeredProjectIds.includes(existing.projectId));
   const body = await req.json().catch(() => null);
 
   // Anyone without full-edit rights on this task's current project may only
@@ -260,12 +269,18 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   const { session, error } = await requireSession();
   if (error) return error;
 
-  const existing = await prisma.task.findUnique({ where: { id: params.id }, select: { projectId: true, parentId: true } });
+  const existing = await prisma.task.findUnique({ where: { id: params.id }, select: { projectId: true, parentId: true, isPrivate: true, createdById: true } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const access = await getUserAccess(session);
-  if (!access.isSuperAdmin && !(existing.projectId && access.administeredProjectIds.includes(existing.projectId))) {
-    return NextResponse.json({ error: "You don't have admin rights on this project" }, { status: 403 });
+  if (existing.isPrivate) {
+    if (existing.createdById !== session.user.id) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+  } else {
+    const access = await getUserAccess(session);
+    if (!access.isSuperAdmin && !(existing.projectId && access.administeredProjectIds.includes(existing.projectId))) {
+      return NextResponse.json({ error: "You don't have admin rights on this project" }, { status: 403 });
+    }
   }
 
   const descendantIds = await getDescendantIds(prisma, params.id);

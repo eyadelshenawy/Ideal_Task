@@ -109,3 +109,19 @@ export const taskStatusUpdateSchema = z
   .refine((data) => data.status !== undefined || data.progress !== undefined, {
     message: "status or progress is required",
   });
+
+// A private personal task has no project, no assignees to pick (it's always
+// just its own creator), and none of the project-oriented fields (code,
+// module, dependencies, hierarchy, recurrence) — deliberately a much smaller
+// shape than the shared task form.
+export const personalTaskCreateSchema = z.object({
+  title: z.string().trim().min(1, "Title is required"),
+  description: z.string().default(""),
+  priority: z.enum(["HIGH", "MEDIUM", "LOW"]).default("MEDIUM"),
+  status: z.enum(["TODO", "INPROGRESS", "INTERNAL_TEST", "CUSTOMER_TEST", "DONE"]).default("TODO"),
+  startDate: dateOnly.default(null),
+  dueDate: dateOnly.default(null),
+  progress: z.number().min(0).max(100).default(0),
+});
+
+export const personalTaskUpdateSchema = personalTaskCreateSchema.partial();

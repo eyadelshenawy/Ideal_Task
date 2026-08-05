@@ -31,6 +31,7 @@ export function serializeTask(t: TaskWithRelations): Task {
     description: t.description,
     module: t.module,
     projectId: t.projectId,
+    isPrivate: t.isPrivate,
     assigneeIds: t.assignees.map((a) => a.id),
     contactAssigneeIds: t.contactAssignees.map((c) => c.id),
     priority: t.priority,

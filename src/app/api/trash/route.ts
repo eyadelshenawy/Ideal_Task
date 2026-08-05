@@ -16,8 +16,8 @@ export async function GET() {
   }
 
   const taskWhere = access.isSuperAdmin
-    ? { deletedAt: { not: null } }
-    : { deletedAt: { not: null }, projectId: { in: access.administeredProjectIds } };
+    ? { deletedAt: { not: null }, isPrivate: false }
+    : { deletedAt: { not: null }, isPrivate: false, projectId: { in: access.administeredProjectIds } };
 
   const [trashedTasks, trashedProjects] = await Promise.all([
     prisma.task.findMany({

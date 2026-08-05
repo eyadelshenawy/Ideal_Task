@@ -25,4 +25,5 @@ export const api = {
   updateTaskComment: (taskId: string, eventId: string, message: string) =>
     request(`/api/tasks/${taskId}/events/${eventId}`, "PATCH", { message }),
   duplicateTask: (taskId: string, projectId?: string) => request(`/api/tasks/${taskId}/duplicate`, "POST", { projectId }),
+  createPersonalTask: (data: unknown) => request("/api/tasks/personal", "POST", data),
 };

@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
 
   const [tasks, superAdmins] = await Promise.all([
     prisma.task.findMany({
-      where: { deletedAt: null, status: { not: "DONE" }, dueDate: { not: null } },
+      where: { deletedAt: null, isPrivate: false, status: { not: "DONE" }, dueDate: { not: null } },
       include: {
         assignees: { select: { email: true } },
         project: {

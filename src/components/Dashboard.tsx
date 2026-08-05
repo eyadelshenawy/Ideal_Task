@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
-import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks, BarChart3, FileDown, Bookmark, X, AlertTriangle, ScrollText, BookOpen, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks, BarChart3, FileDown, Bookmark, X, AlertTriangle, ScrollText, BookOpen, ChevronDown, ChevronRight, Lock } from "lucide-react";
 import useSWR from "swr";
 import type { Task, Project, TeamMember, Contact, Status, AssigneeDisplay } from "@/types/models";
 import type { ImportPreview } from "@/types/import";
@@ -23,6 +23,7 @@ import ImportPreviewModal from "./ImportPreviewModal";
 import BulkActionBar from "./BulkActionBar";
 import ReportsView from "./ReportsView";
 import NeedsAttentionView from "./NeedsAttentionView";
+import PersonalTasksView from "./PersonalTasksView";
 import NotificationBell from "./NotificationBell";
 import AuditLogModal from "./AuditLogModal";
 import LogoutButton from "./LogoutButton";
@@ -70,7 +71,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   // List is the default landing view — it's the one with Group by, pagination,
   // and Compact view, so it scales to a large project better than Board,
   // which still renders every card in a column unbounded.
-  const [view, setView] = useState<"board" | "list" | "timeline" | "reports" | "attention">("list");
+  const [view, setView] = useState<"board" | "list" | "timeline" | "reports" | "attention" | "personal">("list");
   const [modalOpen, setModalOpen] = useState(false);
   const [draft, setDraft] = useState<TaskDraft>(blankDraft());
   const [editingCanFullyEdit, setEditingCanFullyEdit] = useState(true);
@@ -642,6 +643,13 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
               >
                 <AlertTriangle size={13} /> Attention
               </button>
+              <button
+                onClick={() => setView("personal")}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-semibold"
+                style={{ background: view === "personal" ? "#fff" : "transparent", color: view === "personal" ? "#0A5A46" : "#fff" }}
+              >
+                <Lock size={13} /> My Tasks
+              </button>
             </div>
             <span className="text-white text-xs">{userName}</span>
             <NotificationBell onOpenTask={openTaskById} />
@@ -780,6 +788,8 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             onDuplicate={duplicateTask}
             onChangeStatus={(t, status) => moveTaskToStatus(t.id, status)}
           />
+        ) : view === "personal" ? (
+          <PersonalTasksView currentUserId={userId} />
         ) : (
         <>
         <div className="flex gap-2 mb-3 flex-wrap">
