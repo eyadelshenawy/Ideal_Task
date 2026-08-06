@@ -1,10 +1,15 @@
 "use client";
 
 import { useMemo } from "react";
+import useSWR from "swr";
 import type { Task, Project } from "@/types/models";
-import { todayStr } from "@/lib/taskHelpers";
+import { todayStr, PRIORITIES } from "@/lib/taskHelpers";
+import { responseSlaState, resolutionSlaState } from "@/lib/sla";
 import StatCard from "./ui/StatCard";
 import ProgressBar from "./ui/ProgressBar";
+import Chip from "./ui/Chip";
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 interface ReportsViewProps {
   tasks: Task[];
@@ -18,6 +23,25 @@ function isOverdue(task: Task, today: string): boolean {
 export default function ReportsView({ tasks, projects }: ReportsViewProps) {
   const today = todayStr();
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+  const { data: firstCommentAt } = useSWR<Record<string, string>>("/api/reports/sla", fetcher);
+
+  const sla = useMemo(() => {
+    if (!firstCommentAt) return null;
+    const now = new Date();
+    const rows = tasks.map((t) => ({
+      task: t,
+      response: responseSlaState(t.priority, t.createdAt, firstCommentAt[t.id] ?? null, now),
+      resolution: resolutionSlaState(t.priority, t.createdAt, t.completedAt, now),
+    }));
+    const decided = (state: "response" | "resolution") => rows.filter((r) => r[state] !== "pending");
+    const rate = (state: "response" | "resolution") => {
+      const d = decided(state);
+      if (d.length === 0) return null;
+      return Math.round((d.filter((r) => r[state] === "met").length / d.length) * 100);
+    };
+    const breached = rows.filter((r) => r.response === "breached" || r.resolution === "breached");
+    return { responseRate: rate("response"), resolutionRate: rate("resolution"), breached };
+  }, [tasks, firstCommentAt]);
 
   const overall = useMemo(() => {
     const total = tasks.length;
@@ -94,6 +118,35 @@ export default function ReportsView({ tasks, projects }: ReportsViewProps) {
             </div>
           ))}
         </div>
+      </div>
+
+      <div>
+        <div className="text-xs font-bold text-brand-sub uppercase tracking-wide mb-2">SLA</div>
+        {!sla ? (
+          <div className="text-sm text-brand-sub py-6 text-center">Loading…</div>
+        ) : (
+          <>
+            <div className="flex gap-2 flex-wrap mb-2">
+              <StatCard label="Response SLA met" value={sla.responseRate === null ? "—" : `${sla.responseRate}%`} color="#3D6EA6" />
+              <StatCard label="Resolution SLA met" value={sla.resolutionRate === null ? "—" : `${sla.resolutionRate}%`} color="#0A5A46" />
+              <StatCard label="Currently breached" value={sla.breached.length} color="#C4443D" />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              {sla.breached.length === 0 && (
+                <div className="text-sm text-brand-sub py-4 text-center">Nothing currently breaching its SLA target</div>
+              )}
+              {sla.breached.map(({ task, response, resolution }) => (
+                <div key={task.id} className="bg-white border border-brand-border rounded-[10px] px-3 py-2 flex items-center gap-2 flex-wrap">
+                  {task.code && <span className="font-mono text-[11px] text-brand-sub">{task.code}</span>}
+                  <span className="text-[12.5px] text-brand-text flex-1 min-w-[140px]">{task.title}</span>
+                  <Chip small style={{ background: "#EEF2F0", color: "#5B6B64" }}>{PRIORITIES.find((p) => p.id === task.priority)?.label}</Chip>
+                  {response === "breached" && <Chip small style={{ background: "#FBE7E5", color: "#9A3530" }}>Response overdue</Chip>}
+                  {resolution === "breached" && <Chip small style={{ background: "#FBE7E5", color: "#9A3530" }}>Resolution overdue</Chip>}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
