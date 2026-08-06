@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import useSWR from "swr";
-import type { Task, Project } from "@/types/models";
+import type { Task, Project, TeamMember } from "@/types/models";
 import { todayStr, PRIORITIES } from "@/lib/taskHelpers";
 import { responseSlaState, resolutionSlaState } from "@/lib/sla";
 import StatCard from "./ui/StatCard";
@@ -14,13 +14,14 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json());
 interface ReportsViewProps {
   tasks: Task[];
   projects: Project[];
+  team: TeamMember[];
 }
 
 function isOverdue(task: Task, today: string): boolean {
   return !!task.dueDate && task.dueDate < today && task.status !== "DONE";
 }
 
-export default function ReportsView({ tasks, projects }: ReportsViewProps) {
+export default function ReportsView({ tasks, projects, team }: ReportsViewProps) {
   const today = todayStr();
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
   const { data: firstCommentAt } = useSWR<Record<string, string>>("/api/reports/sla", fetcher);
@@ -77,6 +78,21 @@ export default function ReportsView({ tasks, projects }: ReportsViewProps) {
     return rows.sort((a, b) => b.total - a.total);
   }, [tasks, projects, today]);
 
+  // Open (non-Done) work per person, sorted heaviest-first — a quick "who's
+  // overloaded, who has room" read. A task with multiple assignees counts
+  // toward each of them, same as it appears on each of their boards.
+  const workload = useMemo(() => {
+    const open = tasks.filter((t) => t.status !== "DONE");
+    const rows = team.filter((m) => m.active).map((m) => {
+      const mine = open.filter((t) => t.assigneeIds.includes(m.id));
+      const overdue = mine.filter((t) => isOverdue(t, today)).length;
+      const highPriority = mine.filter((t) => t.priority === "HIGH").length;
+      return { id: m.id, name: m.name, total: mine.length, overdue, highPriority };
+    });
+    const maxTotal = Math.max(1, ...rows.map((r) => r.total));
+    return rows.sort((a, b) => b.total - a.total).map((r) => ({ ...r, barPct: Math.round((r.total / maxTotal) * 100) }));
+  }, [tasks, team, today]);
+
   return (
     <div className="flex flex-col gap-4">
       <div>
@@ -115,6 +131,28 @@ export default function ReportsView({ tasks, projects }: ReportsViewProps) {
                 </div>
               </div>
               <ProgressBar value={row.completionRate} color="#0A5A46" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <div className="text-xs font-bold text-brand-sub uppercase tracking-wide mb-2">Team Workload</div>
+        <div className="flex flex-col gap-2">
+          {workload.length === 0 && (
+            <div className="text-sm text-brand-sub py-6 text-center">No active team members yet</div>
+          )}
+          {workload.map((row) => (
+            <div key={row.id} className="bg-white border border-brand-border rounded-[10px] px-3 py-2.5">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="font-semibold text-[13.5px] text-brand-text">{row.name}</span>
+                <div className="flex items-center gap-2 text-[11.5px] text-brand-sub flex-shrink-0">
+                  {row.highPriority > 0 && <span className="text-[#C4443D]">{row.highPriority} high priority</span>}
+                  {row.overdue > 0 && <span className="text-[#C4443D] font-semibold">{row.overdue} overdue</span>}
+                  <span className="font-semibold text-brand-text">{row.total} open</span>
+                </div>
+              </div>
+              <ProgressBar value={row.barPct} color="#3D6EA6" />
             </div>
           ))}
         </div>

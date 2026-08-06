@@ -94,6 +94,12 @@ model Project {
   // Task.projectId's onDelete: SetNull) if the project is purged for good.
   deletedAt DateTime?
 
+  // A long random token that, if set, makes /share/[shareToken] a public,
+  // read-only status page for this project — no login required. Null means
+  // sharing is off. Regenerating (or clearing) it invalidates any existing
+  // link immediately, since the old token no longer matches anything.
+  shareToken String? @unique
+
   tasks  Task[]
   admins ProjectAdmin[]
 }

@@ -18,6 +18,8 @@ export interface Project {
   name: string;
   code: string;
   taskCodeSeq: number;
+  /** Non-null means a public read-only status link is live at /share/[shareToken]. */
+  shareToken: string | null;
 }
 
 export interface TrashedProject extends Project {

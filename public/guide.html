@@ -364,6 +364,8 @@
     <p>A manual time log, not a timer — enter the hours you spent, the date, and an optional note. Anyone assigned to the task can log their own time; the task shows a running total across everyone who's logged any. You can only remove your own entries (a Super Admin can remove anyone's).</p>
     <h3>Tags</h3>
     <p>Free-form labels — type a word and press Enter. Use them however makes sense to your team (e.g. <code>onboarding</code>, <code>urgent</code>, <code>client-facing</code>).</p>
+    <h3>Time logged</h3>
+    <p>A manual log, not a timer — enter how many hours you spent, on what date, with an optional note. Anyone who can see the task can log time on it; totals from everyone add up into one running total shown at the top of the section. You can remove your own entries any time; a Super Admin can remove anyone's.</p>
     <h3>Comments & Activity</h3>
     <p>A running log for the task — your own comments alongside automatic entries for every change (status moves, reassignment, date changes). Nothing is ever deleted from this log. The comment box is a full-size textarea with room for long text (specs, pasted logs, test notes) — press <strong>Ctrl/Cmd + Enter</strong> to post, or use the Post button.</p>
     <p>Type <strong>@</strong> followed by a team member's full name to mention them — they get both an in-app notification and an email with a preview of your comment. Made a typo? Click the pencil icon next to your own comment to edit it in place; a small <strong>(edited)</strong> label appears afterward so nothing changes silently. Super Admins can edit anyone's comment, for moderation.</p>
@@ -393,6 +395,8 @@
     <h3>SLA</h3>
     <p>Two response-time targets tracked automatically, by priority — how quickly someone first commented on a task, and how quickly it was actually closed. Defaults: High priority expects a first comment within 4 hours and a close within 2 days; Medium within 1 day / 5 days; Low within 2 days / 10 days.</p>
     <p>The percentages only count tasks that have a definite outcome yet (met or breached) — a task still comfortably inside its window doesn't count against either side until it's actually late. The list below it names every task currently breaching either target, so you know exactly what needs attention.</p>
+    <h3>Team Workload</h3>
+    <p>Every active team member's open (non-Done) task count, sorted heaviest-first, with overdue and High-priority counts called out — a quick read on who's stretched thin and who has room for more. A task with more than one assignee counts toward each of them.</p>
   </section>
 
   <section class="doc-section" id="attention" data-group="Staying on top of things" data-icon="alert-triangle" data-label="Needs Attention">
@@ -456,6 +460,10 @@
       <figcaption>Every project needs a short unique code — it's what task codes are built from.</figcaption>
     </figure>
     <p>Deleting a project moves it to Trash rather than removing it outright — its tasks are kept as-is and everything can be restored together.</p>
+    <h3>Public status link</h3>
+    <p>Click <strong>Create public status link</strong> under any project to get a link you can hand to a client or outside stakeholder — no login required. It shows only overall completion and a read-only task list (title, status, due date, progress); no descriptions, comments, attachments, or team member names. <strong>Revoke</strong> kills the old link immediately; creating a new one afterward issues a fresh link, not the same one back.</p>
+    <h3>Use as template</h3>
+    <p>Click <strong>Use as template</strong> under any project to clone its entire task structure — including subtasks — into a brand-new project. Give the copy a name, a code, and a new start date; every task's dates shift by the same offset from that date, keeping their relative timing. Assignees, comments, attachments, and time logs are deliberately left behind — a clone is a fresh structural skeleton (handy for a repeatable phase breakdown like Explore/Realize/Deploy/Run), not a snapshot of one engagement's history.</p>
   </section>
 
   <section class="doc-section" id="contacts-mgmt" data-group="Administration" data-icon="user-plus" data-label="Managing contacts">
