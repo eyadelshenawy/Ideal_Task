@@ -7,6 +7,7 @@ import { PRIORITIES, STATUSES, descendantIds, splitModules } from "@/lib/taskHel
 import TaskActivityPanel from "./TaskActivityPanel";
 import TaskChecklistPanel from "./TaskChecklistPanel";
 import TaskAttachmentsPanel from "./TaskAttachmentsPanel";
+import TaskTimePanel from "./TaskTimePanel";
 
 export type AssigneeEntry = { type: "user" | "contact"; id: string };
 
@@ -598,6 +599,7 @@ export default function TaskModal({
         })()}
 
         {draft.id && <TaskChecklistPanel taskId={draft.id} />}
+        {draft.id && <TaskTimePanel taskId={draft.id} currentUserId={currentUserId} isSuperAdmin={isSuperAdmin} />}
         {draft.id && <TaskAttachmentsPanel taskId={draft.id} />}
         {draft.id && <TaskActivityPanel taskId={draft.id} currentUserId={currentUserId} isSuperAdmin={isSuperAdmin} />}
         </div>

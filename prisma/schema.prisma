@@ -71,6 +71,7 @@ model User {
   notifications Notification[]
   auditLogs     AuditLog[]
   attachmentsUploaded Attachment[]
+  timeEntries         TimeEntry[]
 
   // Per-project admin grants — presence of a row means this user can create/
   // edit/delete tasks in that project, independent of their global Role.
@@ -202,6 +203,7 @@ model Task {
   events TaskEvent[]
   checklistItems ChecklistItem[]
   attachments Attachment[]
+  timeEntries TimeEntry[]
 
   @@index([projectId])
   @@index([status])
@@ -247,6 +249,27 @@ model ChecklistItem {
   text      String
   done      Boolean  @default(false)
   order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([taskId])
+}
+
+// A manually-logged block of time someone spent on a task — no timer, just
+// "I spent N hours on this, on this date." Multiple people can log time on
+// the same task; the task's total is the sum of all entries.
+model TimeEntry {
+  id     String @id @default(cuid())
+  taskId String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  // Nullable so deleting a user doesn't delete their logged hours.
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  hours Float
+  date  DateTime
+  note  String?
+
   createdAt DateTime @default(now())
 
   @@index([taskId])
