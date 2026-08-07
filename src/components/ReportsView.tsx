@@ -5,6 +5,7 @@ import useSWR from "swr";
 import type { Task, Project, TeamMember } from "@/types/models";
 import { todayStr, PRIORITIES } from "@/lib/taskHelpers";
 import { responseSlaState, resolutionSlaState, type SlaTargets } from "@/lib/sla";
+import type { SlaConfigDto } from "@/lib/slaConfig";
 import StatCard from "./ui/StatCard";
 import ProgressBar from "./ui/ProgressBar";
 import Chip from "./ui/Chip";
@@ -28,19 +29,28 @@ export default function ReportsView({ tasks, projects, team, isSuperAdmin }: Rep
   const today = todayStr();
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
   const { data: firstCommentAt } = useSWR<Record<string, string>>("/api/reports/sla", fetcher);
-  const { data: slaConfig } = useSWR<{ targets: SlaTargets; cutoffDate: string | null }>("/api/settings/sla", fetcher);
+  const { data: slaAll } = useSWR<{ default: SlaConfigDto; overrides: Record<string, SlaConfigDto> }>("/api/settings/sla/all", fetcher);
 
   const sla = useMemo(() => {
-    if (!firstCommentAt || !slaConfig) return null;
+    if (!firstCommentAt || !slaAll) return null;
     const now = new Date();
-    const inScope = slaConfig.cutoffDate
-      ? tasks.filter((t) => t.createdAt.slice(0, 10) >= slaConfig.cutoffDate!)
-      : tasks;
-    const rows = inScope.map((t) => ({
-      task: t,
-      response: responseSlaState(t.priority, t.createdAt, firstCommentAt[t.id] ?? null, now, slaConfig.targets),
-      resolution: resolutionSlaState(t.priority, t.createdAt, t.completedAt, now, slaConfig.targets),
-    }));
+    const trackedProjectIds = new Set(projects.filter((p) => p.slaTrackingEnabled).map((p) => p.id));
+    const tracked = tasks.filter((t) => t.projectId && trackedProjectIds.has(t.projectId));
+
+    const configFor = (projectId: string): SlaConfigDto => slaAll.overrides[projectId] ?? slaAll.default;
+    const inScope = tracked.filter((t) => {
+      const cutoff = configFor(t.projectId!).cutoffDate;
+      return !cutoff || t.createdAt.slice(0, 10) >= cutoff;
+    });
+
+    const rows = inScope.map((t) => {
+      const targets: SlaTargets = configFor(t.projectId!).targets;
+      return {
+        task: t,
+        response: responseSlaState(t.priority, t.createdAt, firstCommentAt[t.id] ?? null, now, targets),
+        resolution: resolutionSlaState(t.priority, t.createdAt, t.completedAt, now, targets),
+      };
+    });
     const decided = (state: "response" | "resolution") => rows.filter((r) => r[state] !== "pending");
     const rate = (state: "response" | "resolution") => {
       const d = decided(state);
@@ -48,8 +58,8 @@ export default function ReportsView({ tasks, projects, team, isSuperAdmin }: Rep
       return Math.round((d.filter((r) => r[state] === "met").length / d.length) * 100);
     };
     const breached = rows.filter((r) => r.response === "breached" || r.resolution === "breached");
-    return { responseRate: rate("response"), resolutionRate: rate("resolution"), breached, excludedCount: tasks.length - inScope.length };
-  }, [tasks, firstCommentAt, slaConfig]);
+    return { responseRate: rate("response"), resolutionRate: rate("resolution"), breached, excludedCount: tracked.length - inScope.length, trackedCount: tracked.length };
+  }, [tasks, projects, firstCommentAt, slaAll]);
 
   const overall = useMemo(() => {
     const total = tasks.length;
@@ -170,13 +180,17 @@ export default function ReportsView({ tasks, projects, team, isSuperAdmin }: Rep
           <div className="text-xs font-bold text-brand-sub uppercase tracking-wide">SLA</div>
           {isSuperAdmin && (
             <button onClick={() => setSlaSettingsOpen(true)} className="text-[11px] text-brand-dark underline">
-              Edit targets
+              Edit default targets
             </button>
           )}
         </div>
         {slaSettingsOpen && <SlaSettingsModal onClose={() => setSlaSettingsOpen(false)} />}
         {!sla ? (
           <div className="text-sm text-brand-sub py-6 text-center">Loading…</div>
+        ) : sla.trackedCount === 0 ? (
+          <div className="text-sm text-brand-sub py-6 text-center">
+            No projects have SLA tracking on yet — turn it on for a support/ticket project from Manage Projects.
+          </div>
         ) : (
           <>
             <div className="flex gap-2 flex-wrap mb-2">

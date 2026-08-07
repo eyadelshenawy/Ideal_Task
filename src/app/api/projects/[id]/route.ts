@@ -19,6 +19,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       data: {
         ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
         ...(parsed.data.code !== undefined ? { code: parsed.data.code } : {}),
+        ...(parsed.data.slaTrackingEnabled !== undefined ? { slaTrackingEnabled: parsed.data.slaTrackingEnabled } : {}),
       },
     });
     logAudit(session.user.id, `Updated project "${project.name}" (${project.code})`);

@@ -1,10 +1,128 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import useSWR from "swr";
-import { Plus, X, Trash2, Check, Link2, Copy, FolderPlus, SlidersHorizontal } from "lucide-react";
-import type { Project } from "@/types/models";
+import { Plus, X, Trash2, Check, Link2, Copy, FolderPlus, SlidersHorizontal, Timer } from "lucide-react";
+import type { Project, Priority } from "@/types/models";
+import type { SlaTargets } from "@/lib/sla";
+import type { SlaConfigDto } from "@/lib/slaConfig";
 import { todayStr } from "@/lib/taskHelpers";
+
+const SLA_ROWS: { key: Priority; label: string }[] = [
+  { key: "HIGH", label: "High" },
+  { key: "MEDIUM", label: "Medium" },
+  { key: "LOW", label: "Low" },
+];
+
+function ProjectSlaEditor({ projectId }: { projectId: string }) {
+  const { data, mutate } = useSWR<SlaConfigDto | null>(`/api/projects/${projectId}/sla`, fieldsFetcher);
+  const [targets, setTargets] = useState<SlaTargets | null>(null);
+  const [cutoffDate, setCutoffDate] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const hasOverride = data !== null && data !== undefined;
+
+  useEffect(() => {
+    if (data) {
+      setTargets(data.targets);
+      setCutoffDate(data.cutoffDate ?? "");
+    }
+  }, [data]);
+
+  function startCustom() {
+    setTargets({ HIGH: { responseHours: 4, resolutionDays: 2 }, MEDIUM: { responseHours: 24, resolutionDays: 5 }, LOW: { responseHours: 48, resolutionDays: 10 } });
+  }
+
+  function setField(priority: Priority, field: "responseHours" | "resolutionDays", value: number) {
+    if (!targets) return;
+    setTargets({ ...targets, [priority]: { ...targets[priority], [field]: value } });
+  }
+
+  async function save() {
+    if (!targets) return;
+    setSaving(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/projects/${projectId}/sla`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targets, cutoffDate: cutoffDate || null }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "Couldn't save");
+      await mutate(body);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't save");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function resetToDefault() {
+    setSaving(true);
+    await fetch(`/api/projects/${projectId}/sla`, { method: "DELETE" });
+    setTargets(null);
+    setCutoffDate("");
+    await mutate(null);
+    setSaving(false);
+  }
+
+  return (
+    <div className="mt-2 p-2 rounded-lg bg-brand-bg flex flex-col gap-1.5">
+      <div className="text-[10.5px] text-brand-sub">
+        Response/resolution targets for this project only. Leave as default to use the shared numbers (Reports → SLA → Edit default targets).
+      </div>
+      {!hasOverride ? (
+        <button onClick={startCustom} className="rounded-lg px-3 py-1 text-[11px] font-semibold border border-brand-border text-brand-text self-start">
+          Set custom targets for this project
+        </button>
+      ) : (
+        <>
+          <div className="grid grid-cols-[60px_1fr_1fr] gap-1.5 text-[9.5px] font-bold text-brand-sub uppercase tracking-wide">
+            <span>Priority</span>
+            <span>Response (h)</span>
+            <span>Resolution (d)</span>
+          </div>
+          {targets && SLA_ROWS.map((r) => (
+            <div key={r.key} className="grid grid-cols-[60px_1fr_1fr] gap-1.5 items-center">
+              <span className="text-[12px] text-brand-text font-semibold">{r.label}</span>
+              <input
+                type="number" min={1}
+                value={targets[r.key].responseHours}
+                onChange={(e) => setField(r.key, "responseHours", Number(e.target.value))}
+                className="rounded-lg border border-brand-border px-1.5 py-1 text-xs outline-none"
+              />
+              <input
+                type="number" min={1}
+                value={targets[r.key].resolutionDays}
+                onChange={(e) => setField(r.key, "resolutionDays", Number(e.target.value))}
+                className="rounded-lg border border-brand-border px-1.5 py-1 text-xs outline-none"
+              />
+            </div>
+          ))}
+          <div>
+            <label className="text-[10.5px] font-semibold text-brand-sub">Only apply to tasks created on/after</label>
+            <input
+              type="date"
+              value={cutoffDate}
+              onChange={(e) => setCutoffDate(e.target.value)}
+              className="w-full mt-1 rounded-lg border border-brand-border px-2 py-1 text-xs outline-none"
+            />
+          </div>
+          {error && <div className="text-[11px] text-red-600">{error}</div>}
+          <div className="flex gap-1.5 justify-end">
+            <button onClick={resetToDefault} disabled={saving} className="text-[11px] text-brand-sub underline disabled:opacity-50">
+              Use default instead
+            </button>
+            <button onClick={save} disabled={saving} className="rounded-lg px-3 py-1 text-[11px] font-semibold bg-brand-dark text-white disabled:opacity-50">
+              {saving ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 type CustomFieldType = "TEXT" | "NUMBER" | "SELECT";
 interface CustomFieldDef {
@@ -121,6 +239,7 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
   const [cloneStartDate, setCloneStartDate] = useState(todayStr());
   const [cloning, setCloning] = useState(false);
   const [fieldsOpenId, setFieldsOpenId] = useState<string | null>(null);
+  const [slaOpenId, setSlaOpenId] = useState<string | null>(null);
 
   async function addProject() {
     if (!newName.trim() || !newCode.trim()) return;
@@ -169,6 +288,15 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
   async function deleteProject(id: string) {
     await fetch(`/api/projects/${id}`, { method: "DELETE" });
     setConfirmingId(null);
+    onChanged();
+  }
+
+  async function toggleSlaTracking(id: string, enabled: boolean) {
+    await fetch(`/api/projects/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slaTrackingEnabled: enabled }),
+    });
     onChanged();
   }
 
@@ -294,8 +422,27 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
                     <SlidersHorizontal size={11} /> Custom fields
                   </button>
                 </div>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <label className="flex items-center gap-1 text-[11px] text-brand-sub">
+                    <input
+                      type="checkbox"
+                      checked={p.slaTrackingEnabled}
+                      onChange={(e) => toggleSlaTracking(p.id, e.target.checked)}
+                    />
+                    Track SLA (support/ticket projects only)
+                  </label>
+                  {p.slaTrackingEnabled && (
+                    <button
+                      onClick={() => setSlaOpenId(slaOpenId === p.id ? null : p.id)}
+                      className="flex items-center gap-1 text-[11px] text-brand-sub underline"
+                    >
+                      <Timer size={11} /> SLA targets
+                    </button>
+                  )}
+                </div>
 
                 {fieldsOpenId === p.id && <CustomFieldsEditor projectId={p.id} />}
+                {slaOpenId === p.id && p.slaTrackingEnabled && <ProjectSlaEditor projectId={p.id} />}
 
                 {cloningId === p.id && (
                   <div className="mt-2 p-2 rounded-lg bg-brand-bg flex flex-col gap-1.5">

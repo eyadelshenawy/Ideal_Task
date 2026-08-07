@@ -63,9 +63,10 @@ export default function SlaSettingsModal({ onClose }: { onClose: () => void }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(20,30,26,0.45)" }}>
       <div className="bg-white rounded-2xl w-full max-w-[420px] max-h-[85vh] overflow-y-auto p-5">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-bold text-[16px] text-brand-text">SLA Targets</h2>
+          <h2 className="font-bold text-[16px] text-brand-text">Default SLA Targets</h2>
           <button onClick={onClose} className="text-brand-sub"><X size={18} /></button>
         </div>
+        <div className="text-[11px] text-brand-sub -mt-2 mb-3">Used by any project that hasn&apos;t set its own targets (Manage Projects → SLA targets).</div>
 
         {!targets ? (
           <div className="text-sm text-brand-sub py-6 text-center">Loading…</div>
