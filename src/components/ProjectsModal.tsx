@@ -231,6 +231,7 @@ interface ProjectsModalProps {
 export default function ProjectsModal({ projects, onClose, onChanged }: ProjectsModalProps) {
   const [newName, setNewName] = useState("");
   const [newCode, setNewCode] = useState("");
+  const [newIsSupport, setNewIsSupport] = useState(false);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [cloningId, setCloningId] = useState<string | null>(null);
@@ -248,12 +249,13 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
       const res = await fetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName.trim(), code: newCode.trim() }),
+        body: JSON.stringify({ name: newName.trim(), code: newCode.trim(), slaTrackingEnabled: newIsSupport }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || "Couldn't add project");
       setNewName("");
       setNewCode("");
+      setNewIsSupport(false);
       onChanged();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't add project");
@@ -504,6 +506,10 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
             <Plus size={16} />
           </button>
         </div>
+        <label className="flex items-center gap-1.5 text-[11px] text-brand-sub mt-1.5">
+          <input type="checkbox" checked={newIsSupport} onChange={(e) => setNewIsSupport(e.target.checked)} />
+          This is a support/ticket project (turns on SLA tracking)
+        </label>
       </div>
     </div>
   );

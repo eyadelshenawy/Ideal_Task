@@ -22,7 +22,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const project = await prisma.project.create({ data: { name: parsed.data.name, code: parsed.data.code } });
+    const project = await prisma.project.create({
+      data: { name: parsed.data.name, code: parsed.data.code, slaTrackingEnabled: parsed.data.slaTrackingEnabled ?? false },
+    });
     logAudit(session.user.id, `Created project "${project.name}" (${project.code})`);
     return NextResponse.json(project, { status: 201 });
   } catch {
