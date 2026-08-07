@@ -27,6 +27,8 @@ import PersonalTasksView from "./PersonalTasksView";
 import NotificationBell from "./NotificationBell";
 import AuditLogModal from "./AuditLogModal";
 import LogoutButton from "./LogoutButton";
+import GlobalSearchModal from "./GlobalSearchModal";
+import PushToggle from "./PushToggle";
 import StatCard from "./ui/StatCard";
 
 const fetcher = (url: string) =>
@@ -86,6 +88,18 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   const [contactsModalOpen, setContactsModalOpen] = useState(false);
   const [trashModalOpen, setTrashModalOpen] = useState(false);
   const [auditLogOpen, setAuditLogOpen] = useState(false);
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setGlobalSearchOpen(true);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [importError, setImportError] = useState("");
   const [importSubmitting, setImportSubmitting] = useState(false);
@@ -652,6 +666,15 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
               </button>
             </div>
             <span className="text-white text-xs">{userName}</span>
+            <button
+              onClick={() => setGlobalSearchOpen(true)}
+              title="Search (Ctrl+K)"
+              className="p-2 rounded-lg text-white"
+              style={{ background: "rgba(255,255,255,0.12)" }}
+            >
+              <Search size={15} />
+            </button>
+            <PushToggle />
             <NotificationBell onOpenTask={openTaskById} />
             <a
               href="/guide.html"
@@ -775,7 +798,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
 
       <div className="px-4 py-3">
         {view === "reports" ? (
-          <ReportsView tasks={taskList} projects={projectList} team={teamList} />
+          <ReportsView tasks={taskList} projects={projectList} team={teamList} isSuperAdmin={isSuperAdmin} />
         ) : view === "attention" ? (
           <NeedsAttentionView
             tasks={taskList}
@@ -1200,6 +1223,10 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
       )}
 
       {auditLogOpen && <AuditLogModal onClose={() => setAuditLogOpen(false)} />}
+
+      {globalSearchOpen && (
+        <GlobalSearchModal onClose={() => setGlobalSearchOpen(false)} onOpenTask={openTaskById} />
+      )}
 
       {trashModalOpen && (
         <TrashModal

@@ -76,6 +76,44 @@ model User {
   // Per-project admin grants — presence of a row means this user can create/
   // edit/delete tasks in that project, independent of their global Role.
   projectAdminOf ProjectAdmin[]
+
+  pushSubscriptions PushSubscription[]
+}
+
+// One row per browser/device a user has opted into Web Push on. A user can
+// have several (phone, laptop, ...); each gets its own delivery attempt.
+model PushSubscription {
+  id       String @id @default(cuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint String @unique
+  p256dh   String
+  auth     String
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// Global SLA targets, editable by a Super Admin instead of hardcoded — see
+// src/lib/sla.ts. A singleton row (id is always "default"); reading falls
+// back to sensible defaults if the row doesn't exist yet.
+model SlaConfig {
+  id String @id @default("default")
+
+  highResponseHours    Int @default(4)
+  highResolutionDays   Int @default(2)
+  mediumResponseHours  Int @default(24)
+  mediumResolutionDays Int @default(5)
+  lowResponseHours     Int @default(48)
+  lowResolutionDays    Int @default(10)
+
+  // Tasks created before this date are excluded from SLA calculations
+  // entirely — without this, importing/pre-existing backlog tasks that
+  // predate the feature would permanently read as "breached."
+  cutoffDate DateTime?
+
+  updatedAt DateTime @updatedAt
 }
 
 model Project {
@@ -100,8 +138,49 @@ model Project {
   // link immediately, since the old token no longer matches anything.
   shareToken String? @unique
 
-  tasks  Task[]
-  admins ProjectAdmin[]
+  tasks        Task[]
+  admins       ProjectAdmin[]
+  customFields CustomField[]
+}
+
+enum CustomFieldType {
+  TEXT
+  NUMBER
+  SELECT
+}
+
+// A field a Super Admin has defined for a specific project (e.g. a SAP
+// project wanting a "Transaction Code" field) — scoped to that project only,
+// shown on every task within it.
+model CustomField {
+  id        String          @id @default(cuid())
+  projectId String
+  project   Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  type      CustomFieldType
+  // Only meaningful when type is SELECT — the list of choices.
+  options   String[]
+  order     Int             @default(0)
+  createdAt DateTime        @default(now())
+
+  values TaskCustomFieldValue[]
+
+  @@index([projectId])
+}
+
+// One task's value for one of its project's custom fields. Stored as text
+// regardless of field type — NUMBER/SELECT values are just parsed/validated
+// on the way in and out.
+model TaskCustomFieldValue {
+  id      String      @id @default(cuid())
+  taskId  String
+  task    Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  fieldId String
+  field   CustomField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  value   String
+
+  @@unique([taskId, fieldId])
+  @@index([taskId])
 }
 
 model ProjectAdmin {
@@ -210,6 +289,7 @@ model Task {
   checklistItems ChecklistItem[]
   attachments Attachment[]
   timeEntries TimeEntry[]
+  customFieldValues TaskCustomFieldValue[]
 
   @@index([projectId])
   @@index([status])

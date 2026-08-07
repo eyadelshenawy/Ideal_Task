@@ -1,13 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import useSWR from "swr";
 import type { Task, Project, TeamMember } from "@/types/models";
 import { todayStr, PRIORITIES } from "@/lib/taskHelpers";
-import { responseSlaState, resolutionSlaState } from "@/lib/sla";
+import { responseSlaState, resolutionSlaState, type SlaTargets } from "@/lib/sla";
 import StatCard from "./ui/StatCard";
 import ProgressBar from "./ui/ProgressBar";
 import Chip from "./ui/Chip";
+import SlaSettingsModal from "./SlaSettingsModal";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -15,24 +16,30 @@ interface ReportsViewProps {
   tasks: Task[];
   projects: Project[];
   team: TeamMember[];
+  isSuperAdmin: boolean;
 }
 
 function isOverdue(task: Task, today: string): boolean {
   return !!task.dueDate && task.dueDate < today && task.status !== "DONE";
 }
 
-export default function ReportsView({ tasks, projects, team }: ReportsViewProps) {
+export default function ReportsView({ tasks, projects, team, isSuperAdmin }: ReportsViewProps) {
+  const [slaSettingsOpen, setSlaSettingsOpen] = useState(false);
   const today = todayStr();
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
   const { data: firstCommentAt } = useSWR<Record<string, string>>("/api/reports/sla", fetcher);
+  const { data: slaConfig } = useSWR<{ targets: SlaTargets; cutoffDate: string | null }>("/api/settings/sla", fetcher);
 
   const sla = useMemo(() => {
-    if (!firstCommentAt) return null;
+    if (!firstCommentAt || !slaConfig) return null;
     const now = new Date();
-    const rows = tasks.map((t) => ({
+    const inScope = slaConfig.cutoffDate
+      ? tasks.filter((t) => t.createdAt.slice(0, 10) >= slaConfig.cutoffDate!)
+      : tasks;
+    const rows = inScope.map((t) => ({
       task: t,
-      response: responseSlaState(t.priority, t.createdAt, firstCommentAt[t.id] ?? null, now),
-      resolution: resolutionSlaState(t.priority, t.createdAt, t.completedAt, now),
+      response: responseSlaState(t.priority, t.createdAt, firstCommentAt[t.id] ?? null, now, slaConfig.targets),
+      resolution: resolutionSlaState(t.priority, t.createdAt, t.completedAt, now, slaConfig.targets),
     }));
     const decided = (state: "response" | "resolution") => rows.filter((r) => r[state] !== "pending");
     const rate = (state: "response" | "resolution") => {
@@ -41,8 +48,8 @@ export default function ReportsView({ tasks, projects, team }: ReportsViewProps)
       return Math.round((d.filter((r) => r[state] === "met").length / d.length) * 100);
     };
     const breached = rows.filter((r) => r.response === "breached" || r.resolution === "breached");
-    return { responseRate: rate("response"), resolutionRate: rate("resolution"), breached };
-  }, [tasks, firstCommentAt]);
+    return { responseRate: rate("response"), resolutionRate: rate("resolution"), breached, excludedCount: tasks.length - inScope.length };
+  }, [tasks, firstCommentAt, slaConfig]);
 
   const overall = useMemo(() => {
     const total = tasks.length;
@@ -159,7 +166,15 @@ export default function ReportsView({ tasks, projects, team }: ReportsViewProps)
       </div>
 
       <div>
-        <div className="text-xs font-bold text-brand-sub uppercase tracking-wide mb-2">SLA</div>
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-xs font-bold text-brand-sub uppercase tracking-wide">SLA</div>
+          {isSuperAdmin && (
+            <button onClick={() => setSlaSettingsOpen(true)} className="text-[11px] text-brand-dark underline">
+              Edit targets
+            </button>
+          )}
+        </div>
+        {slaSettingsOpen && <SlaSettingsModal onClose={() => setSlaSettingsOpen(false)} />}
         {!sla ? (
           <div className="text-sm text-brand-sub py-6 text-center">Loading…</div>
         ) : (
@@ -169,6 +184,11 @@ export default function ReportsView({ tasks, projects, team }: ReportsViewProps)
               <StatCard label="Resolution SLA met" value={sla.resolutionRate === null ? "—" : `${sla.resolutionRate}%`} color="#0A5A46" />
               <StatCard label="Currently breached" value={sla.breached.length} color="#C4443D" />
             </div>
+            {sla.excludedCount > 0 && (
+              <div className="text-[11px] text-brand-sub mb-2">
+                {sla.excludedCount} task{sla.excludedCount === 1 ? "" : "s"} created before the SLA cutoff date are excluded from these numbers.
+              </div>
+            )}
             <div className="flex flex-col gap-1.5">
               {sla.breached.length === 0 && (
                 <div className="text-sm text-brand-sub py-4 text-center">Nothing currently breaching its SLA target</div>

@@ -8,6 +8,7 @@ import TaskActivityPanel from "./TaskActivityPanel";
 import TaskChecklistPanel from "./TaskChecklistPanel";
 import TaskAttachmentsPanel from "./TaskAttachmentsPanel";
 import TaskTimePanel from "./TaskTimePanel";
+import TaskCustomFieldsPanel from "./TaskCustomFieldsPanel";
 
 export type AssigneeEntry = { type: "user" | "contact"; id: string };
 
@@ -598,6 +599,7 @@ export default function TaskModal({
           );
         })()}
 
+        {draft.id && draft.projectId && <TaskCustomFieldsPanel taskId={draft.id} />}
         {draft.id && <TaskChecklistPanel taskId={draft.id} />}
         {draft.id && <TaskTimePanel taskId={draft.id} currentUserId={currentUserId} isSuperAdmin={isSuperAdmin} />}
         {draft.id && <TaskAttachmentsPanel taskId={draft.id} />}

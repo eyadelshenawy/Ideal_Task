@@ -1,9 +1,108 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, X, Trash2, Check, Link2, Copy, FolderPlus } from "lucide-react";
+import useSWR from "swr";
+import { Plus, X, Trash2, Check, Link2, Copy, FolderPlus, SlidersHorizontal } from "lucide-react";
 import type { Project } from "@/types/models";
 import { todayStr } from "@/lib/taskHelpers";
+
+type CustomFieldType = "TEXT" | "NUMBER" | "SELECT";
+interface CustomFieldDef {
+  id: string;
+  name: string;
+  type: CustomFieldType;
+  options: string[];
+}
+
+const fieldsFetcher = (url: string) => fetch(url).then((r) => r.json());
+
+function CustomFieldsEditor({ projectId }: { projectId: string }) {
+  const { data: fields, mutate } = useSWR<CustomFieldDef[]>(`/api/projects/${projectId}/custom-fields`, fieldsFetcher);
+  const [name, setName] = useState("");
+  const [type, setType] = useState<CustomFieldType>("TEXT");
+  const [optionsText, setOptionsText] = useState("");
+  const [error, setError] = useState("");
+  const [adding, setAdding] = useState(false);
+
+  async function addField() {
+    if (!name.trim()) return;
+    setAdding(true);
+    setError("");
+    try {
+      const options = optionsText.split(",").map((o) => o.trim()).filter(Boolean);
+      const res = await fetch(`/api/projects/${projectId}/custom-fields`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), type, options }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "Couldn't add field");
+      setName("");
+      setOptionsText("");
+      setType("TEXT");
+      await mutate();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't add field");
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  async function removeField(id: string) {
+    await fetch(`/api/custom-fields/${id}`, { method: "DELETE" });
+    await mutate();
+  }
+
+  return (
+    <div className="mt-2 p-2 rounded-lg bg-brand-bg flex flex-col gap-1.5">
+      <div className="text-[10.5px] text-brand-sub">
+        Extra fields shown on every task in this project only — e.g. a SAP transaction code. Text, number, or a dropdown of choices.
+      </div>
+      {(fields ?? []).map((f) => (
+        <div key={f.id} className="flex items-center gap-1.5 text-xs text-brand-text bg-white rounded-lg px-2 py-1 border border-brand-border">
+          <span className="flex-1">{f.name}</span>
+          <span className="text-[10px] text-brand-sub uppercase">{f.type}{f.type === "SELECT" ? ` (${f.options.length})` : ""}</span>
+          <button onClick={() => removeField(f.id)} className="text-brand-sub hover:text-red-600"><Trash2 size={12} /></button>
+        </div>
+      ))}
+      {(fields ?? []).length === 0 && <div className="text-[11px] text-brand-sub">No custom fields yet</div>}
+
+      <div className="flex gap-1.5 mt-1">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Field name"
+          className="flex-1 rounded-lg border border-brand-border px-2 py-1.5 text-xs outline-none"
+        />
+        <select
+          value={type}
+          onChange={(e) => setType(e.target.value as CustomFieldType)}
+          className="rounded-lg border border-brand-border px-1.5 py-1.5 text-xs outline-none"
+        >
+          <option value="TEXT">Text</option>
+          <option value="NUMBER">Number</option>
+          <option value="SELECT">Dropdown</option>
+        </select>
+      </div>
+      {type === "SELECT" && (
+        <input
+          value={optionsText}
+          onChange={(e) => setOptionsText(e.target.value)}
+          placeholder="Options, comma-separated"
+          className="rounded-lg border border-brand-border px-2 py-1.5 text-xs outline-none"
+        />
+      )}
+      {error && <div className="text-[11px] text-red-600">{error}</div>}
+      <button
+        onClick={addField}
+        disabled={adding || !name.trim()}
+        className="rounded-lg px-3 py-1 text-[11px] font-semibold bg-brand-dark text-white disabled:opacity-50 self-end"
+      >
+        {adding ? "Adding…" : "+ Add field"}
+      </button>
+    </div>
+  );
+}
 
 interface ProjectsModalProps {
   projects: Project[];
@@ -21,6 +120,7 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
   const [cloneCode, setCloneCode] = useState("");
   const [cloneStartDate, setCloneStartDate] = useState(todayStr());
   const [cloning, setCloning] = useState(false);
+  const [fieldsOpenId, setFieldsOpenId] = useState<string | null>(null);
 
   async function addProject() {
     if (!newName.trim() || !newCode.trim()) return;
@@ -187,7 +287,15 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
                   <button onClick={() => startCloning(p)} className="flex items-center gap-1 text-[11px] text-brand-sub underline">
                     <FolderPlus size={11} /> Use as template
                   </button>
+                  <button
+                    onClick={() => setFieldsOpenId(fieldsOpenId === p.id ? null : p.id)}
+                    className="flex items-center gap-1 text-[11px] text-brand-sub underline"
+                  >
+                    <SlidersHorizontal size={11} /> Custom fields
+                  </button>
                 </div>
+
+                {fieldsOpenId === p.id && <CustomFieldsEditor projectId={p.id} />}
 
                 {cloningId === p.id && (
                   <div className="mt-2 p-2 rounded-lg bg-brand-bg flex flex-col gap-1.5">
