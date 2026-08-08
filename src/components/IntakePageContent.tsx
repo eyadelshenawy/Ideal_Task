@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { Loader2, CheckCircle2 } from "lucide-react";
+import { Loader2, CheckCircle2, Paperclip, Copy } from "lucide-react";
 
 interface IntakeMeta {
   projectName: string;
@@ -13,6 +13,8 @@ const fetcher = (url: string) => fetch(url).then(async (r) => {
   return r.json();
 });
 
+const MAX_FILE_MB = 10;
+
 export default function IntakePageContent({ token }: { token: string }) {
   const { data, error, isLoading } = useSWR<IntakeMeta>(`/api/public/intake/${token}`, fetcher);
   const [title, setTitle] = useState("");
@@ -20,29 +22,58 @@ export default function IntakePageContent({ token }: { token: string }) {
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [website, setWebsite] = useState(""); // honeypot
+  const [file, setFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [trackingToken, setTrackingToken] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  function onFileChange(f: File | null) {
+    setFileError("");
+    if (f && f.size > MAX_FILE_MB * 1024 * 1024) {
+      setFileError(`File is too large (max ${MAX_FILE_MB}MB)`);
+      setFile(null);
+      return;
+    }
+    setFile(f);
+  }
 
   async function submit() {
     if (!title.trim() || !contactName.trim() || !contactEmail.trim()) return;
     setSubmitting(true);
     setSubmitError("");
     try {
-      const res = await fetch(`/api/public/intake/${token}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: title.trim(), description: description.trim(), contactName: contactName.trim(), contactEmail: contactEmail.trim(), website }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || "Couldn't submit — please try again");
-      }
-      setSubmitted(true);
+      const form = new FormData();
+      form.set("title", title.trim());
+      form.set("description", description.trim());
+      form.set("contactName", contactName.trim());
+      form.set("contactEmail", contactEmail.trim());
+      form.set("website", website);
+      if (file) form.set("file", file);
+
+      const res = await fetch(`/api/public/intake/${token}`, { method: "POST", body: form });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Couldn't submit — please try again");
+      setTrackingToken(body.trackingToken ?? null);
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "Couldn't submit — please try again");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  function trackUrl() {
+    return `${window.location.origin}/track/${trackingToken}`;
+  }
+
+  async function copyTrackLink() {
+    try {
+      await navigator.clipboard.writeText(trackUrl());
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // clipboard access can fail silently in some browser contexts — no harm done
     }
   }
 
@@ -62,13 +93,22 @@ export default function IntakePageContent({ token }: { token: string }) {
     );
   }
 
-  if (submitted) {
+  if (trackingToken) {
     return (
       <div className="min-h-screen bg-brand-bg flex items-center justify-center px-4">
         <div className="text-center max-w-[360px]">
           <CheckCircle2 className="text-brand-dark mx-auto mb-3" size={36} />
           <div className="font-bold text-[16px] text-brand-text mb-1">Thanks — we&apos;ve got it</div>
-          <div className="text-sm text-brand-sub">Your request was received and our team will follow up soon.</div>
+          <div className="text-sm text-brand-sub mb-4">Your request was received and our team will follow up soon.</div>
+          <div className="bg-white border border-brand-border rounded-[10px] px-3 py-3">
+            <div className="text-xs font-semibold text-brand-sub mb-1.5">Keep this link to check its status later</div>
+            <div className="flex items-center gap-1.5">
+              <input readOnly value={trackUrl()} className="flex-1 min-w-0 rounded-lg border border-brand-border px-2 py-1.5 text-[11px] outline-none bg-brand-bg" />
+              <button onClick={copyTrackLink} className="flex-shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-brand-dark text-white flex items-center gap-1">
+                <Copy size={12} /> {copied ? "Copied" : "Copy"}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -119,6 +159,20 @@ export default function IntakePageContent({ token }: { token: string }) {
             onChange={(e) => setContactEmail(e.target.value)}
             className="w-full mt-1 rounded-lg border border-brand-border px-3 py-2 text-sm outline-none bg-white"
           />
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-brand-sub">Attach a screenshot or file (optional)</label>
+          <label className="mt-1 flex items-center gap-2 rounded-lg border border-dashed border-brand-border px-3 py-2 text-sm bg-white cursor-pointer text-brand-sub">
+            <Paperclip size={14} />
+            {file ? file.name : `Choose a file — image, PDF, or Word (max ${MAX_FILE_MB}MB)`}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,.doc,.docx"
+              onChange={(e) => onFileChange(e.target.files?.[0] ?? null)}
+              className="hidden"
+            />
+          </label>
+          {fileError && <div className="text-[11px] text-red-600 mt-1">{fileError}</div>}
         </div>
         {/* Honeypot — positioned off-screen (not just visually hidden), since
             opacity:0 fields are still sometimes auto-filled by browsers or

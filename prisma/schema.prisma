@@ -280,6 +280,13 @@ model Task {
 
   isMilestone Boolean @default(false)
 
+  // Set only for tasks created through the public ticket-intake form — lets
+  // the submitter check status later at /track/[trackingToken] without an
+  // account. A dedicated random token (not the task's own id), matching the
+  // shareToken/intakeToken convention elsewhere: never reuse a database id
+  // as a public-facing credential.
+  trackingToken String? @unique
+
   // Predecessor tasks that must be Done before this one is unblocked.
   dependsOn Task[] @relation("TaskDependencies")
   blocks    Task[] @relation("TaskDependencies")

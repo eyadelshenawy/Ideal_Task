@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { nextTaskCode } from "@/lib/taskCode";
 import { logActivity } from "@/lib/activity";
 import { notify } from "@/lib/inAppNotify";
+import { uploadToR2, r2Configured } from "@/lib/r2";
 
 // Public, unauthenticated — the token is the only gate. Only ever returns
 // the project's name, never anything else about it.
@@ -45,19 +47,48 @@ const submitSchema = z.object({
   website: z.string().optional(),
 });
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB — tighter than the logged-in 25MB cap, since this endpoint is unauthenticated.
+const ALLOWED_MIME_TYPES = new Set([
+  "image/png", "image/jpeg", "image/gif", "image/webp",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+]);
+
 export async function POST(req: NextRequest, { params }: { params: { token: string } }) {
-  const parsed = submitSchema.safeParse(await req.json().catch(() => null));
+  const form = await req.formData().catch(() => null);
+  if (!form) {
+    return NextResponse.json({ error: "Please fill in the required fields" }, { status: 400 });
+  }
+
+  const parsed = submitSchema.safeParse({
+    title: form.get("title"),
+    description: form.get("description") || undefined,
+    contactName: form.get("contactName"),
+    contactEmail: form.get("contactEmail"),
+    website: form.get("website") || undefined,
+  });
   if (!parsed.success) {
     return NextResponse.json({ error: "Please fill in the required fields" }, { status: 400 });
   }
   // Honeypot tripped — pretend success so a bot doesn't learn to adapt.
   if (parsed.data.website) {
-    return NextResponse.json({ ok: true }, { status: 201 });
+    return NextResponse.json({ ok: true, trackingToken: crypto.randomBytes(24).toString("base64url") }, { status: 201 });
   }
 
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
   if (isRateLimited(ip)) {
     return NextResponse.json({ error: "Too many submissions — please try again later" }, { status: 429 });
+  }
+
+  const file = form.get("file");
+  if (file instanceof File && file.size > 0) {
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: "File is too large (max 10MB)" }, { status: 400 });
+    }
+    if (!ALLOWED_MIME_TYPES.has(file.type)) {
+      return NextResponse.json({ error: "That file type isn't supported — please attach an image, PDF, or Word document" }, { status: 400 });
+    }
   }
 
   const project = await prisma.project.findUnique({
@@ -76,6 +107,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
 
   const code = await nextTaskCode(prisma, project.id);
   const fullDescription = [description, `Submitted by ${contactName} (${contactEmail})`].filter(Boolean).join("\n\n");
+  const trackingToken = crypto.randomBytes(24).toString("base64url");
 
   const task = await prisma.task.create({
     data: {
@@ -86,8 +118,22 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
       status: "TODO",
       priority: "MEDIUM",
       contactAssignees: { connect: [{ id: contact.id }] },
+      trackingToken,
     },
   });
+
+  if (file instanceof File && file.size > 0 && r2Configured()) {
+    try {
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const key = `tasks/${task.id}/${Date.now()}-${file.name}`;
+      await uploadToR2(key, buffer, file.type || "application/octet-stream");
+      await prisma.attachment.create({
+        data: { taskId: task.id, fileName: file.name, fileKey: key, fileSize: file.size, mimeType: file.type || "application/octet-stream" },
+      });
+    } catch (err) {
+      console.error("intake attachment upload failed:", err);
+    }
+  }
 
   logActivity(task.id, null, "Submitted via public ticket form").catch((err) => console.error("logActivity failed:", err));
 
@@ -96,5 +142,5 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     console.error("intake notify failed:", err)
   );
 
-  return NextResponse.json({ ok: true }, { status: 201 });
+  return NextResponse.json({ ok: true, trackingToken }, { status: 201 });
 }
