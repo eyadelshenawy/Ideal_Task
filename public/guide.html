@@ -362,6 +362,7 @@
     <p>Only shown when the task's project has custom fields defined (see <strong>Managing projects</strong>) — extra text, number, or dropdown fields specific to that project, e.g. a SAP transaction code. Saves as you fill them in.</p>
     <h3>Checklist</h3>
     <p>Lightweight subtasks — check them off as you go. They don't have their own assignee or due date; they're just steps within the task.</p>
+    <p>If a template exists (see <strong>Checklist Templates</strong> below), a small dropdown appears next to the Checklist heading — pick one to add its whole list of steps at once instead of typing them.</p>
     <h3>Time logged</h3>
     <p>A manual log, not a timer — enter how many hours you spent, on what date, with an optional note. Anyone who can see the task can log time on it; totals from everyone add up into one running total shown at the top of the section. You can remove your own entries any time; a Super Admin can remove anyone's.</p>
     <h3>Attachments</h3>
@@ -401,6 +402,8 @@
     <p>The percentages only count tasks that have a definite outcome yet (met or breached) — a task still comfortably inside its window doesn't count against either side until it's actually late. The list below it names every task currently breaching either target, so you know exactly what needs attention.</p>
     <h3>Team Workload</h3>
     <p>Every active team member's open (non-Done) task count, sorted heaviest-first, with overdue and High-priority counts called out — a quick read on who's stretched thin and who has room for more. A task with more than one assignee counts toward each of them.</p>
+    <h3>Time Logged</h3>
+    <p>Total hours each person logged (see <strong>Time logged</strong> on a task) within any date range you pick — defaults to the last 7 days, but the two date fields are fully open, so a week, a month, or any custom range works. Useful for billing a support contract by the hour.</p>
   </section>
 
   <section class="doc-section" id="attention" data-group="Staying on top of things" data-icon="alert-triangle" data-label="Needs Attention">
@@ -457,6 +460,12 @@
     </ul>
   </section>
 
+  <section class="doc-section" id="checklist-templates" data-group="Administration" data-icon="clipboard-list" data-label="Checklist Templates">
+    <h2>{{ICON:clipboard-list}} Checklist Templates</h2>
+    <p class="lede">Super Admin only. Click the clipboard icon in the top bar.</p>
+    <p>A named, reusable set of steps — e.g. &quot;SAP PO ticket diagnosis&quot; with five standard steps — that anyone can apply to any task's checklist in one click from that task's Checklist section, instead of typing the same steps out every time. Useful for recurring ticket types or a standard set of steps at the start of a project phase. Deleting a template doesn't remove steps already applied to a task's checklist — it only stops it from being offered for new ones.</p>
+  </section>
+
   <section class="doc-section" id="project-mgmt" data-group="Administration" data-icon="folder" data-label="Managing projects">
     <h2>{{ICON:folder}} Managing projects</h2>
     <p class="lede">Super Admin only. Click the folder/briefcase icon in the top bar.</p>
@@ -467,6 +476,8 @@
     <p>Deleting a project moves it to Trash rather than removing it outright — its tasks are kept as-is and everything can be restored together.</p>
     <h3>Public status link</h3>
     <p>Click <strong>Create public status link</strong> under any project to get a link you can hand to a client or outside stakeholder — no login required. It shows only overall completion and a read-only task list (title, status, due date, progress); no descriptions, comments, attachments, or team member names. <strong>Revoke</strong> kills the old link immediately; creating a new one afterward issues a fresh link, not the same one back.</p>
+    <h3>Ticket submission link</h3>
+    <p>Click <strong>Create ticket submission link</strong> under any project to get a separate public link where anyone — no login required — can submit a new request. It becomes a task in that project (To Do, Medium priority) with the submitter added as an external contact, and every Super Admin gets notified. This is a second, independent link from the status link above — revoking one doesn't affect the other.</p>
     <h3>Use as template</h3>
     <p>Click <strong>Use as template</strong> under any project to clone its entire task structure — including subtasks — into a brand-new project. Give the copy a name, a code, and a new start date; every task's dates shift by the same offset from that date, keeping their relative timing. Assignees, comments, attachments, and time logs are deliberately left behind — a clone is a fresh structural skeleton (handy for a repeatable phase breakdown like Explore/Realize/Deploy/Run), not a snapshot of one engagement's history.</p>
     <h3>Custom fields</h3>
@@ -617,6 +628,7 @@ const ICONS = {
   smartphone: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>',
   "help-circle": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
   "git-branch": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>',
+  "clipboard-list": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>',
 };
 
 // Replace {{ICON:name}} placeholders with inline SVG

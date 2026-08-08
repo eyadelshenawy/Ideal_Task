@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import useSWR from "swr";
 import type { Task, Project, TeamMember } from "@/types/models";
-import { todayStr, PRIORITIES } from "@/lib/taskHelpers";
+import { todayStr, addDays, PRIORITIES } from "@/lib/taskHelpers";
 import { responseSlaState, resolutionSlaState, type SlaTargets } from "@/lib/sla";
 import type { SlaConfigDto } from "@/lib/slaConfig";
 import StatCard from "./ui/StatCard";
@@ -26,6 +26,12 @@ function isOverdue(task: Task, today: string): boolean {
 
 export default function ReportsView({ tasks, projects, team, isSuperAdmin }: ReportsViewProps) {
   const [slaSettingsOpen, setSlaSettingsOpen] = useState(false);
+  const [timeFrom, setTimeFrom] = useState(addDays(todayStr(), -6));
+  const [timeTo, setTimeTo] = useState(todayStr());
+  const { data: timeTotals } = useSWR<Record<string, number>>(
+    `/api/reports/time-summary?from=${timeFrom}&to=${timeTo}`,
+    fetcher
+  );
   const today = todayStr();
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
   const { data: firstCommentAt } = useSWR<Record<string, string>>("/api/reports/sla", fetcher);
@@ -110,6 +116,16 @@ export default function ReportsView({ tasks, projects, team, isSuperAdmin }: Rep
     return rows.sort((a, b) => b.total - a.total).map((r) => ({ ...r, barPct: Math.round((r.total / maxTotal) * 100) }));
   }, [tasks, team, today]);
 
+  const timeSummary = useMemo(() => {
+    if (!timeTotals) return null;
+    const rows = team.filter((m) => m.active).map((m) => ({ id: m.id, name: m.name, hours: timeTotals[m.id] ?? 0 }));
+    const maxHours = Math.max(1, ...rows.map((r) => r.hours));
+    return rows
+      .filter((r) => r.hours > 0)
+      .sort((a, b) => b.hours - a.hours)
+      .map((r) => ({ ...r, barPct: Math.round((r.hours / maxHours) * 100) }));
+  }, [team, timeTotals]);
+
   return (
     <div className="flex flex-col gap-4">
       <div>
@@ -172,6 +188,42 @@ export default function ReportsView({ tasks, projects, team, isSuperAdmin }: Rep
               <ProgressBar value={row.barPct} color="#3D6EA6" />
             </div>
           ))}
+        </div>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+          <div className="text-xs font-bold text-brand-sub uppercase tracking-wide">Time Logged</div>
+          <div className="flex items-center gap-1.5 text-[11px] text-brand-sub">
+            <input
+              type="date" value={timeFrom} max={timeTo}
+              onChange={(e) => setTimeFrom(e.target.value)}
+              className="rounded-lg border border-brand-border px-1.5 py-1 outline-none"
+            />
+            <span>to</span>
+            <input
+              type="date" value={timeTo} min={timeFrom}
+              onChange={(e) => setTimeTo(e.target.value)}
+              className="rounded-lg border border-brand-border px-1.5 py-1 outline-none"
+            />
+          </div>
+        </div>
+        <div className="flex flex-col gap-2">
+          {!timeSummary ? (
+            <div className="text-sm text-brand-sub py-4 text-center">Loading…</div>
+          ) : timeSummary.length === 0 ? (
+            <div className="text-sm text-brand-sub py-4 text-center">No time logged in this range</div>
+          ) : (
+            timeSummary.map((row) => (
+              <div key={row.id} className="bg-white border border-brand-border rounded-[10px] px-3 py-2.5">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="font-semibold text-[13.5px] text-brand-text">{row.name}</span>
+                  <span className="font-semibold text-[11.5px] text-brand-text">{row.hours}h</span>
+                </div>
+                <ProgressBar value={row.barPct} color="#82B478" />
+              </div>
+            ))
+          )}
         </div>
       </div>
 

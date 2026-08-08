@@ -20,6 +20,8 @@ export interface Project {
   taskCodeSeq: number;
   /** Non-null means a public read-only status link is live at /share/[shareToken]. */
   shareToken: string | null;
+  /** Non-null means a public ticket-submission form is live at /intake/[intakeToken]. */
+  intakeToken: string | null;
   /** Off by default — only support/ticket-style projects should count toward SLA percentages. */
   slaTrackingEnabled: boolean;
 }

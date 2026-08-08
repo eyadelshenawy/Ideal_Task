@@ -144,6 +144,12 @@ model Project {
   // link immediately, since the old token no longer matches anything.
   shareToken String? @unique
 
+  // A long random token that, if set, makes /intake/[intakeToken] a public,
+  // unauthenticated form — anyone with the link can submit a new ticket,
+  // which lands as a Task in this project. Separate from shareToken so the
+  // two links can be handed out and revoked independently.
+  intakeToken String? @unique
+
   // Off by default — SLA (response/resolution time targets) only makes sense
   // for support/ticket-style work measured from creation; an implementation
   // project's tasks are scheduled with their own Start/Due dates instead, so
@@ -351,6 +357,28 @@ model ChecklistItem {
   createdAt DateTime @default(now())
 
   @@index([taskId])
+}
+
+// A named, reusable set of checklist steps (e.g. "SAP PO ticket diagnosis")
+// a Super Admin defines once and anyone can apply to any task's own
+// checklist — not tied to a project, since the same recurring steps often
+// apply across support projects.
+model ChecklistTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  items ChecklistTemplateItem[]
+}
+
+model ChecklistTemplateItem {
+  id         String            @id @default(cuid())
+  templateId String
+  template   ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  text       String
+  order      Int               @default(0)
+
+  @@index([templateId])
 }
 
 // A manually-logged block of time someone spent on a task — no timer, just

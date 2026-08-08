@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import useSWR from "swr";
-import { Plus, X, Trash2, Check, Link2, Copy, FolderPlus, SlidersHorizontal, Timer } from "lucide-react";
+import { Plus, X, Trash2, Check, Link2, Copy, FolderPlus, SlidersHorizontal, Timer, Inbox } from "lucide-react";
 import type { Project, Priority } from "@/types/models";
 import type { SlaTargets } from "@/lib/sla";
 import type { SlaConfigDto } from "@/lib/slaConfig";
@@ -312,6 +312,28 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
     if (res.ok) onChanged();
   }
 
+  async function generateIntakeLink(id: string) {
+    const res = await fetch(`/api/projects/${id}/intake`, { method: "POST" });
+    if (res.ok) onChanged();
+  }
+
+  async function revokeIntakeLink(id: string) {
+    const res = await fetch(`/api/projects/${id}/intake`, { method: "DELETE" });
+    if (res.ok) onChanged();
+  }
+
+  function intakeUrl(token: string) {
+    return `${window.location.origin}/intake/${token}`;
+  }
+
+  async function copyIntakeLink(token: string) {
+    try {
+      await navigator.clipboard.writeText(intakeUrl(token));
+    } catch {
+      // clipboard access can fail silently in some browser contexts — no harm done
+    }
+  }
+
   function shareUrl(token: string) {
     return `${window.location.origin}/share/${token}`;
   }
@@ -412,6 +434,23 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
                   ) : (
                     <button onClick={() => generateShareLink(p.id)} className="flex items-center gap-1 text-[11px] text-brand-sub underline">
                       <Link2 size={11} /> Create public status link
+                    </button>
+                  )}
+                  {p.intakeToken ? (
+                    <>
+                      <span className="flex items-center gap-1 text-[11px] text-brand-dark">
+                        <Inbox size={11} /> Accepting tickets
+                      </span>
+                      <button onClick={() => copyIntakeLink(p.intakeToken!)} title="Copy link" className="p-0.5 text-brand-sub hover:text-brand-text">
+                        <Copy size={12} />
+                      </button>
+                      <button onClick={() => revokeIntakeLink(p.id)} className="text-[11px] text-red-600 underline">
+                        Revoke
+                      </button>
+                    </>
+                  ) : (
+                    <button onClick={() => generateIntakeLink(p.id)} className="flex items-center gap-1 text-[11px] text-brand-sub underline">
+                      <Inbox size={11} /> Create ticket submission link
                     </button>
                   )}
                   <button onClick={() => startCloning(p)} className="flex items-center gap-1 text-[11px] text-brand-sub underline">

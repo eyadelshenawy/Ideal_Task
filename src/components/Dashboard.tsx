@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
-import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks, BarChart3, FileDown, Bookmark, X, AlertTriangle, ScrollText, BookOpen, ChevronDown, ChevronRight, Lock } from "lucide-react";
+import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks, BarChart3, FileDown, Bookmark, X, AlertTriangle, ScrollText, BookOpen, ChevronDown, ChevronRight, Lock, ClipboardList } from "lucide-react";
 import useSWR from "swr";
 import type { Task, Project, TeamMember, Contact, Status, AssigneeDisplay } from "@/types/models";
 import type { ImportPreview } from "@/types/import";
@@ -26,6 +26,7 @@ import NeedsAttentionView from "./NeedsAttentionView";
 import PersonalTasksView from "./PersonalTasksView";
 import NotificationBell from "./NotificationBell";
 import AuditLogModal from "./AuditLogModal";
+import ChecklistTemplatesModal from "./ChecklistTemplatesModal";
 import LogoutButton from "./LogoutButton";
 import GlobalSearchModal from "./GlobalSearchModal";
 import PushToggle from "./PushToggle";
@@ -88,6 +89,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   const [contactsModalOpen, setContactsModalOpen] = useState(false);
   const [trashModalOpen, setTrashModalOpen] = useState(false);
   const [auditLogOpen, setAuditLogOpen] = useState(false);
+  const [checklistTemplatesOpen, setChecklistTemplatesOpen] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
 
   useEffect(() => {
@@ -746,6 +748,16 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             )}
             {isSuperAdmin && (
               <button
+                onClick={() => setChecklistTemplatesOpen(true)}
+                title="Checklist Templates"
+                className="p-2 rounded-lg text-white"
+                style={{ background: "rgba(255,255,255,0.12)" }}
+              >
+                <ClipboardList size={15} />
+              </button>
+            )}
+            {isSuperAdmin && (
+              <button
                 onClick={exportToExcel}
                 title="Export tasks to Excel"
                 className="p-2 rounded-lg text-white"
@@ -1223,6 +1235,8 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
       )}
 
       {auditLogOpen && <AuditLogModal onClose={() => setAuditLogOpen(false)} />}
+
+      {checklistTemplatesOpen && <ChecklistTemplatesModal onClose={() => setChecklistTemplatesOpen(false)} />}
 
       {globalSearchOpen && (
         <GlobalSearchModal onClose={() => setGlobalSearchOpen(false)} onOpenTask={openTaskById} />
