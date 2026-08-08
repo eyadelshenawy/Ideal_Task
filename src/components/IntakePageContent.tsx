@@ -120,14 +120,19 @@ export default function IntakePageContent({ token }: { token: string }) {
             className="w-full mt-1 rounded-lg border border-brand-border px-3 py-2 text-sm outline-none bg-white"
           />
         </div>
-        <input
-          value={website}
-          onChange={(e) => setWebsite(e.target.value)}
-          tabIndex={-1}
-          autoComplete="off"
-          className="absolute opacity-0 pointer-events-none h-0 w-0"
-          aria-hidden="true"
-        />
+        {/* Honeypot — positioned off-screen (not just visually hidden), since
+            opacity:0 fields are still sometimes auto-filled by browsers or
+            password managers, which would silently reject a real visitor. */}
+        <div style={{ position: "absolute", left: "-9999px", top: "-9999px" }} aria-hidden="true">
+          <input
+            type="text"
+            name="hp_company_website"
+            value={website}
+            onChange={(e) => setWebsite(e.target.value)}
+            tabIndex={-1}
+            autoComplete="off"
+          />
+        </div>
         {submitError && <div className="text-xs text-red-600">{submitError}</div>}
         <button
           onClick={submit}
