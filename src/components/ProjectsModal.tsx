@@ -20,7 +20,6 @@ function ProjectSlaEditor({ projectId }: { projectId: string }) {
   const [cutoffDate, setCutoffDate] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const hasOverride = data !== null && data !== undefined;
 
   useEffect(() => {
     if (data) {
@@ -72,7 +71,7 @@ function ProjectSlaEditor({ projectId }: { projectId: string }) {
       <div className="text-[10.5px] text-brand-sub">
         Response/resolution targets for this project only. Leave as default to use the shared numbers (Reports → SLA → Edit default targets).
       </div>
-      {!hasOverride ? (
+      {!targets ? (
         <button onClick={startCustom} className="rounded-lg px-3 py-1 text-[11px] font-semibold border border-brand-border text-brand-text self-start">
           Set custom targets for this project
         </button>

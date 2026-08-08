@@ -29,7 +29,7 @@ import AuditLogModal from "./AuditLogModal";
 import ChecklistTemplatesModal from "./ChecklistTemplatesModal";
 import LogoutButton from "./LogoutButton";
 import GlobalSearchModal from "./GlobalSearchModal";
-import PushToggle from "./PushToggle";
+import PushAutoSubscribe from "./PushAutoSubscribe";
 import StatCard from "./ui/StatCard";
 
 const fetcher = (url: string) =>
@@ -126,7 +126,10 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   const [moduleFilterOpen, setModuleFilterOpen] = useState(false);
   // Hides Done tasks everywhere (Board/List/Timeline) — separate from the
   // per-view "Hide subtasks" toggle above.
-  const [hideDone, setHideDone] = useState(false);
+  // Defaults to on; once a user picks their own preference, it's remembered
+  // per-person (not a global default flip) via localStorage.
+  const [hideDone, setHideDoneState] = useState(true);
+  const hideDoneKey = `idealtasks:hideDone:${userId}`;
   const [quickFiltersOpen, setQuickFiltersOpen] = useState(false);
   const [groupByOpen, setGroupByOpen] = useState(false);
   // List-view only: which fields to nest tasks under, in order. Empty = the
@@ -219,8 +222,23 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
     } catch {
       // ignore malformed/unavailable localStorage
     }
+    try {
+      const raw = window.localStorage.getItem(hideDoneKey);
+      if (raw !== null) setHideDoneState(raw === "true");
+    } catch {
+      // ignore malformed/unavailable localStorage — default (on) stands
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function setHideDone(next: boolean) {
+    setHideDoneState(next);
+    try {
+      window.localStorage.setItem(hideDoneKey, String(next));
+    } catch {
+      // ignore — worst case the preference just doesn't persist
+    }
+  }
 
   function persistSavedFilters(next: { id: string; name: string; filters: Filters }[]) {
     setSavedFilters(next);
@@ -288,6 +306,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
     }
     if (!draft.id) {
       if (!draft.code.trim()) return setFormError("Code is required");
+      if (!draft.description.trim()) return setFormError("Description is required");
       if (!draft.projectId) return setFormError("Project is required");
       if (draft.assignees.length === 0) return setFormError("At least one assignee is required");
       if (!draft.dueDate) return setFormError(draft.isMilestone ? "Date is required" : "Due date is required");
@@ -676,7 +695,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             >
               <Search size={15} />
             </button>
-            <PushToggle />
+            <PushAutoSubscribe />
             <NotificationBell onOpenTask={openTaskById} />
             <a
               href="/guide.html"
@@ -923,7 +942,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             <option value="created">Sort: Newest</option>
           </select>
           <button
-            onClick={() => setHideDone((v) => !v)}
+            onClick={() => setHideDone(!hideDone)}
             title="Hide Done tasks everywhere"
             className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs border"
             style={{

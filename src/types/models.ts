@@ -1,6 +1,6 @@
 export type Role = "SUPER_ADMIN" | "MEMBER";
 export type Priority = "HIGH" | "MEDIUM" | "LOW";
-export type Status = "TODO" | "INPROGRESS" | "INTERNAL_TEST" | "CUSTOMER_TEST" | "DONE";
+export type Status = "TODO" | "READY" | "INPROGRESS" | "INTERNAL_TEST" | "CUSTOMER_TEST" | "DONE";
 export type RecurrenceFreq = "DAILY" | "WEEKLY" | "MONTHLY";
 
 export interface TeamMember {

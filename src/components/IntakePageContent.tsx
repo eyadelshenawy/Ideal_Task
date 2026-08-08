@@ -40,7 +40,7 @@ export default function IntakePageContent({ token }: { token: string }) {
   }
 
   async function submit() {
-    if (!title.trim() || !contactName.trim() || !contactEmail.trim()) return;
+    if (!title.trim() || !description.trim() || !contactName.trim() || !contactEmail.trim()) return;
     setSubmitting(true);
     setSubmitError("");
     try {
@@ -134,7 +134,7 @@ export default function IntakePageContent({ token }: { token: string }) {
           />
         </div>
         <div>
-          <label className="text-xs font-semibold text-brand-sub">Details</label>
+          <label className="text-xs font-semibold text-brand-sub">Details *</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -144,7 +144,7 @@ export default function IntakePageContent({ token }: { token: string }) {
           />
         </div>
         <div>
-          <label className="text-xs font-semibold text-brand-sub">Your name *</label>
+          <label className="text-xs font-semibold text-brand-sub">Raised by *</label>
           <input
             value={contactName}
             onChange={(e) => setContactName(e.target.value)}
@@ -190,7 +190,7 @@ export default function IntakePageContent({ token }: { token: string }) {
         {submitError && <div className="text-xs text-red-600">{submitError}</div>}
         <button
           onClick={submit}
-          disabled={submitting || !title.trim() || !contactName.trim() || !contactEmail.trim()}
+          disabled={submitting || !title.trim() || !description.trim() || !contactName.trim() || !contactEmail.trim()}
           className="rounded-lg bg-brand-dark text-white py-2.5 text-sm font-semibold disabled:opacity-50"
         >
           {submitting ? "Sending…" : "Submit request"}

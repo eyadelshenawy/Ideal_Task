@@ -10,7 +10,8 @@ export const PRIORITIES: { id: Priority; label: string; color: string }[] = [
 ];
 
 export const STATUSES: { id: Status; label: string; color: string }[] = [
-  { id: "TODO", label: "To Do", color: "#8A8F8C" },
+  { id: "TODO", label: "New", color: "#8A8F8C" },
+  { id: "READY", label: "Ready", color: "#6B8FB5" },
   { id: "INPROGRESS", label: "In Progress", color: "#82B478" },
   { id: "INTERNAL_TEST", label: "Internal Test", color: "#D98B3A" },
   { id: "CUSTOMER_TEST", label: "Customer Test", color: "#4A7FB5" },

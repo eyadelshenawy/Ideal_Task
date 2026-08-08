@@ -37,7 +37,7 @@ function isRateLimited(ip: string): boolean {
 
 const submitSchema = z.object({
   title: z.string().trim().min(1).max(200),
-  description: z.string().trim().max(2000).optional(),
+  description: z.string().trim().min(1).max(2000),
   contactName: z.string().trim().min(1).max(120),
   contactEmail: z.string().trim().email().max(200),
   // Honeypot — a real visitor never sees or fills this field. Deliberately

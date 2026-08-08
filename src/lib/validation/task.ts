@@ -25,7 +25,7 @@ const taskFields = z.object({
   projectId: z.string().nullable().default(null),
   assignees: assigneesSchema.default([]),
   priority: z.enum(["HIGH", "MEDIUM", "LOW"]).default("MEDIUM"),
-  status: z.enum(["TODO", "INPROGRESS", "INTERNAL_TEST", "CUSTOMER_TEST", "DONE"]).default("TODO"),
+  status: z.enum(["TODO", "READY", "INPROGRESS", "INTERNAL_TEST", "CUSTOMER_TEST", "DONE"]).default("TODO"),
   startDate: dateOnly.default(null),
   dueDate: dateOnly.default(null),
   completedAt: dateOnly.default(null),
@@ -46,6 +46,8 @@ export const taskCreateSchema = taskFields
     code: z.string().trim().min(1, "Code is required"),
     projectId: z.string().min(1, "Project is required"),
     assignees: assigneesSchema.min(1, "At least one assignee is required"),
+    description: z.string().trim().min(1, "Description is required"),
+    priority: z.enum(["HIGH", "MEDIUM", "LOW"], { required_error: "Priority is required" }),
   })
   .superRefine((data, ctx) => {
     if (!data.dueDate) {
@@ -90,7 +92,7 @@ export function assigneesToSet(assignees: AssigneeEntry[]) {
 // just the one thing they're changing (e.g. status only).
 export const taskBulkUpdateSchema = z.object({
   taskIds: z.array(z.string().min(1)).min(1),
-  status: z.enum(["TODO", "INPROGRESS", "INTERNAL_TEST", "CUSTOMER_TEST", "DONE"]).optional(),
+  status: z.enum(["TODO", "READY", "INPROGRESS", "INTERNAL_TEST", "CUSTOMER_TEST", "DONE"]).optional(),
   assignees: assigneesSchema.optional(),
   projectId: z.string().nullable().optional(),
 });
@@ -103,7 +105,7 @@ export const taskBulkDeleteSchema = z.object({
 // its status and adjust its progress.
 export const taskStatusUpdateSchema = z
   .object({
-    status: z.enum(["TODO", "INPROGRESS", "INTERNAL_TEST", "CUSTOMER_TEST", "DONE"]).optional(),
+    status: z.enum(["TODO", "READY", "INPROGRESS", "INTERNAL_TEST", "CUSTOMER_TEST", "DONE"]).optional(),
     progress: z.number().min(0).max(100).optional(),
   })
   .refine((data) => data.status !== undefined || data.progress !== undefined, {
@@ -118,7 +120,7 @@ export const personalTaskCreateSchema = z.object({
   title: z.string().trim().min(1, "Title is required"),
   description: z.string().default(""),
   priority: z.enum(["HIGH", "MEDIUM", "LOW"]).default("MEDIUM"),
-  status: z.enum(["TODO", "INPROGRESS", "INTERNAL_TEST", "CUSTOMER_TEST", "DONE"]).default("TODO"),
+  status: z.enum(["TODO", "READY", "INPROGRESS", "INTERNAL_TEST", "CUSTOMER_TEST", "DONE"]).default("TODO"),
   startDate: dateOnly.default(null),
   dueDate: dateOnly.default(null),
   progress: z.number().min(0).max(100).default(0),

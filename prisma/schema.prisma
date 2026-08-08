@@ -25,6 +25,7 @@ enum Priority {
 
 enum Status {
   TODO
+  READY
   INPROGRESS
   INTERNAL_TEST
   CUSTOMER_TEST

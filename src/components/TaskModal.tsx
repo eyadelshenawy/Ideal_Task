@@ -259,7 +259,7 @@ export default function TaskModal({
             {error && <div className="text-xs -mt-2 text-red-600">{error}</div>}
 
             <div>
-              <label className="text-xs font-semibold text-brand-sub">Description</label>
+              <label className="text-xs font-semibold text-brand-sub">Description *</label>
               <textarea
                 value={draft.description}
                 onChange={(e) => setDraft({ ...draft, description: e.target.value })}
@@ -321,7 +321,7 @@ export default function TaskModal({
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-brand-sub">Priority</label>
+              <label className="text-xs font-semibold text-brand-sub">Priority *</label>
               <select
                 value={draft.priority}
                 onChange={(e) => setDraft({ ...draft, priority: e.target.value as Priority })}

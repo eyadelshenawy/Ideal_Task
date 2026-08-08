@@ -16,7 +16,7 @@ export const previewTaskSchema = z.object({
   newProjectName: z.string().nullable(),
   assigneeId: z.string().nullable(),
   priority: z.enum(["HIGH", "MEDIUM", "LOW"]),
-  status: z.enum(["TODO", "INPROGRESS", "INTERNAL_TEST", "CUSTOMER_TEST", "DONE"]),
+  status: z.enum(["TODO", "READY", "INPROGRESS", "INTERNAL_TEST", "CUSTOMER_TEST", "DONE"]),
   startDate: z.string().nullable(),
   dueDate: z.string().nullable(),
   progress: z.number().min(0).max(100),
