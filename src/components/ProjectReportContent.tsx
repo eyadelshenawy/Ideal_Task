@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import useSWR from "swr";
 import { Loader2, Printer } from "lucide-react";
-import { formatDateDisplay } from "@/lib/taskHelpers";
+import { formatDateDisplay, todayStr, addDays } from "@/lib/taskHelpers";
 import StatCard from "./ui/StatCard";
 import ProgressBar from "./ui/ProgressBar";
 
@@ -19,6 +20,7 @@ interface ReportData {
   completionRate: number;
   counts: { total: number; open: number; done: number; overdue: number };
   sla: { response: SlaTally; resolution: SlaTally } | null;
+  period: { from: string; to: string; created: number; completed: number } | null;
 }
 
 const fetcher = (url: string) => fetch(url).then(async (r) => {
@@ -46,7 +48,12 @@ function SlaRow({ label, tally }: { label: string; tally: SlaTally }) {
 }
 
 export default function ProjectReportContent({ projectId }: { projectId: string }) {
-  const { data, error, isLoading } = useSWR<ReportData>(`/api/projects/${projectId}/report`, fetcher);
+  const [from, setFrom] = useState(addDays(todayStr(), -6));
+  const [to, setTo] = useState(todayStr());
+  const { data, error, isLoading } = useSWR<ReportData>(
+    `/api/projects/${projectId}/report?from=${from}&to=${to}`,
+    fetcher
+  );
 
   if (isLoading) {
     return (
@@ -69,7 +76,21 @@ export default function ProjectReportContent({ projectId }: { projectId: string 
       <style>{`@media print { .no-print { display: none !important; } body { background: #fff !important; } }`}</style>
 
       <div className="max-w-[640px] mx-auto px-6 py-8">
-        <div className="no-print flex justify-end mb-4">
+        <div className="no-print flex items-center justify-between gap-2 mb-4 flex-wrap">
+          <div className="flex items-center gap-1.5 text-[11px] text-brand-sub">
+            <span>Period:</span>
+            <input
+              type="date" value={from} max={to}
+              onChange={(e) => setFrom(e.target.value)}
+              className="rounded-lg border border-brand-border px-1.5 py-1 outline-none"
+            />
+            <span>to</span>
+            <input
+              type="date" value={to} min={from} max={todayStr()}
+              onChange={(e) => setTo(e.target.value)}
+              className="rounded-lg border border-brand-border px-1.5 py-1 outline-none"
+            />
+          </div>
           <button
             onClick={() => window.print()}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-brand-dark text-white"
@@ -105,6 +126,18 @@ export default function ProjectReportContent({ projectId }: { projectId: string 
           <StatCard label="Done" value={data.counts.done} color="#82B478" />
           <StatCard label="Overdue" value={data.counts.overdue} color="#C0524A" />
         </div>
+
+        {data.period && (
+          <div className="bg-white border border-brand-border rounded-[10px] px-4 py-3 mb-6">
+            <div className="text-xs font-semibold text-brand-sub mb-2">
+              This period ({formatDateDisplay(data.period.from)} – {formatDateDisplay(data.period.to)})
+            </div>
+            <div className="flex gap-2">
+              <StatCard label="New tasks" value={data.period.created} color="#3D6EA6" />
+              <StatCard label="Completed" value={data.period.completed} color="#0A5A46" />
+            </div>
+          </div>
+        )}
 
         {data.sla && (
           <div className="bg-white border border-brand-border rounded-[10px] px-4 py-3 mb-6">

@@ -843,7 +843,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
 
       <div className="px-4 py-3">
         {view === "reports" ? (
-          <ReportsView tasks={taskList} projects={projectList} team={teamList} isSuperAdmin={isSuperAdmin} />
+          <ReportsView tasks={taskList} projects={projectList} team={teamList} isSuperAdmin={isSuperAdmin} onOpenTask={openTaskById} />
         ) : view === "attention" ? (
           <NeedsAttentionView
             tasks={taskList}

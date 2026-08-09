@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireProjectAccess } from "@/lib/permissions";
 import { responseSlaState, resolutionSlaState } from "@/lib/sla";
 import { loadSlaConfig, loadDefaultSlaConfig } from "@/lib/slaConfig";
+import { dateStrToUTC } from "@/lib/serverDates";
 
 // A one-page, print-ready snapshot of a project for sending to a client —
 // counts + completion rate, and (for SLA-tracked projects) a response/
@@ -10,7 +11,13 @@ import { loadSlaConfig, loadDefaultSlaConfig } from "@/lib/slaConfig";
 // just reachable only from inside the app (an admin generates it, then
 // saves/emails the resulting PDF themselves — this isn't a standing public
 // link like /share/[token]).
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+//
+// The snapshot counts (total/open/done/overdue/completion) are always
+// "right now" — there's no historical snapshot of past task state to report
+// against. An optional ?from=&to= adds a period section on top of that
+// (created/completed within the range), the same idea as the Reports tab's
+// "Last 7 Days" but with a range the caller picks.
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const { error } = await requireProjectAccess(params.id);
   if (error) return error;
 
@@ -24,13 +31,27 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 
   const tasks = await prisma.task.findMany({
     where: { projectId: project.id, deletedAt: null },
-    select: { id: true, priority: true, status: true, dueDate: true, createdAt: true, completedAt: true },
+    select: { id: true, priority: true, status: true, dueDate: true, createdAt: true, completedAt: true, updatedAt: true },
   });
 
   const today = new Date().toISOString().slice(0, 10);
   const total = tasks.length;
   const done = tasks.filter((t) => t.status === "DONE").length;
   const overdue = tasks.filter((t) => t.status !== "DONE" && t.dueDate && t.dueDate.toISOString().slice(0, 10) < today).length;
+
+  const fromStr = req.nextUrl.searchParams.get("from");
+  const toStr = req.nextUrl.searchParams.get("to");
+  let period: { from: string; to: string; created: number; completed: number } | null = null;
+  if (fromStr && toStr) {
+    const from = dateStrToUTC(fromStr)!;
+    const to = new Date(dateStrToUTC(toStr)!.getTime() + 86400000); // inclusive of the whole "to" day
+    period = {
+      from: fromStr,
+      to: toStr,
+      created: tasks.filter((t) => t.createdAt >= from && t.createdAt < to).length,
+      completed: tasks.filter((t) => t.status === "DONE" && t.updatedAt >= from && t.updatedAt < to).length,
+    };
+  }
 
   let sla: {
     response: { met: number; breached: number; pending: number };
@@ -72,5 +93,6 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     completionRate: total > 0 ? Math.round((done / total) * 100) : 0,
     counts: { total, done, open: total - done, overdue },
     sla,
+    period,
   });
 }

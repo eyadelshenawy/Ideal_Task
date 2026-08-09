@@ -18,13 +18,14 @@ interface ReportsViewProps {
   projects: Project[];
   team: TeamMember[];
   isSuperAdmin: boolean;
+  onOpenTask: (taskId: string) => void;
 }
 
 function isOverdue(task: Task, today: string): boolean {
   return !!task.dueDate && task.dueDate < today && task.status !== "DONE";
 }
 
-export default function ReportsView({ tasks, projects, team, isSuperAdmin }: ReportsViewProps) {
+export default function ReportsView({ tasks, projects, team, isSuperAdmin, onOpenTask }: ReportsViewProps) {
   const [slaSettingsOpen, setSlaSettingsOpen] = useState(false);
   const [timeFrom, setTimeFrom] = useState(addDays(todayStr(), -6));
   const [timeTo, setTimeTo] = useState(todayStr());
@@ -260,13 +261,17 @@ export default function ReportsView({ tasks, projects, team, isSuperAdmin }: Rep
                 <div className="text-sm text-brand-sub py-4 text-center">Nothing currently breaching its SLA target</div>
               )}
               {sla.breached.map(({ task, response, resolution }) => (
-                <div key={task.id} className="bg-white border border-brand-border rounded-[10px] px-3 py-2 flex items-center gap-2 flex-wrap">
+                <button
+                  key={task.id}
+                  onClick={() => onOpenTask(task.id)}
+                  className="text-left bg-white border border-brand-border rounded-[10px] px-3 py-2 flex items-center gap-2 flex-wrap hover:bg-brand-bg"
+                >
                   {task.code && <span className="font-mono text-[11px] text-brand-sub">{task.code}</span>}
                   <span className="text-[12.5px] text-brand-text flex-1 min-w-[140px]">{task.title}</span>
                   <Chip small style={{ background: "#EEF2F0", color: "#5B6B64" }}>{PRIORITIES.find((p) => p.id === task.priority)?.label}</Chip>
                   {response === "breached" && <Chip small style={{ background: "#FBE7E5", color: "#9A3530" }}>Response overdue</Chip>}
                   {resolution === "breached" && <Chip small style={{ background: "#FBE7E5", color: "#9A3530" }}>Resolution overdue</Chip>}
-                </div>
+                </button>
               ))}
             </div>
           </>
