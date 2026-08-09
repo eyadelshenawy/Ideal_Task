@@ -715,26 +715,6 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             </button>
             <PushAutoSubscribe />
             <NotificationBell onOpenTask={openTaskById} />
-            <a
-              href="/guide.html"
-              target="_blank"
-              rel="noopener noreferrer"
-              title="User Guide"
-              className="p-2 rounded-lg text-white"
-              style={{ background: "rgba(255,255,255,0.12)" }}
-            >
-              <BookOpen size={15} />
-            </a>
-            {isSuperAdmin && (
-              <button
-                onClick={() => setProjectsModalOpen(true)}
-                title="Manage Projects"
-                className="p-2 rounded-lg text-white"
-                style={{ background: "rgba(255,255,255,0.12)" }}
-              >
-                <Building2 size={15} />
-              </button>
-            )}
             <button
               onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
               title={selectMode ? "Exit select mode" : "Select multiple tasks"}
@@ -743,27 +723,44 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             >
               <ListChecks size={15} />
             </button>
-            {(isSuperAdmin || canCreateAnywhere) && (
-              <div className="relative">
-                <button
-                  onClick={() => setAdminMenuOpen((v) => !v)}
-                  title="Admin"
-                  className="flex items-center gap-1 p-2 rounded-lg text-white"
-                  style={{ background: adminMenuOpen ? "#fff" : "rgba(255,255,255,0.12)", color: adminMenuOpen ? "#0A5A46" : "#fff" }}
-                >
-                  <MoreHorizontal size={15} />
-                </button>
-                {adminMenuOpen && (
-                  <div className="absolute right-0 top-[calc(100%+4px)] z-20 w-[190px] rounded-lg bg-white border border-brand-border shadow-lg p-1">
-                    {isSuperAdmin && (
+            <div className="relative">
+              <button
+                onClick={() => setAdminMenuOpen((v) => !v)}
+                title="More"
+                className="flex items-center gap-1 p-2 rounded-lg text-white"
+                style={{ background: adminMenuOpen ? "#fff" : "rgba(255,255,255,0.12)", color: adminMenuOpen ? "#0A5A46" : "#fff" }}
+              >
+                <MoreHorizontal size={15} />
+              </button>
+              {adminMenuOpen && (
+                <div className="absolute right-0 top-[calc(100%+4px)] z-20 w-[190px] rounded-lg bg-white border border-brand-border shadow-lg p-1">
+                  <a
+                    href="/guide.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setAdminMenuOpen(false)}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
+                  >
+                    <BookOpen size={14} /> User Guide
+                  </a>
+                  {isSuperAdmin && (
+                    <>
+                      <div className="my-1 border-t border-brand-border" />
                       <button
                         onClick={() => { setTeamModalOpen(true); setAdminMenuOpen(false); }}
                         className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
                       >
                         <Users size={14} /> Manage Team
                       </button>
-                    )}
-                    {canCreateAnywhere && (
+                      <button
+                        onClick={() => { setProjectsModalOpen(true); setAdminMenuOpen(false); }}
+                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
+                      >
+                        <Building2 size={14} /> Manage Projects
+                      </button>
+                    </>
+                  )}
+                  {canCreateAnywhere && (
                       <button
                         onClick={() => { setContactsModalOpen(true); setAdminMenuOpen(false); }}
                         className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
@@ -822,7 +819,6 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
                   </div>
                 )}
               </div>
-            )}
             {isSuperAdmin && (
               <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} className="hidden" />
             )}
