@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
-import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks, BarChart3, FileDown, Bookmark, X, AlertTriangle, ScrollText, BookOpen, ChevronDown, ChevronRight, Lock, ClipboardList } from "lucide-react";
+import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks, BarChart3, FileDown, Bookmark, X, AlertTriangle, ScrollText, BookOpen, ChevronDown, ChevronRight, Lock, ClipboardList, MoreHorizontal } from "lucide-react";
 import useSWR from "swr";
 import type { Task, Project, TeamMember, Contact, Status, AssigneeDisplay } from "@/types/models";
 import type { ImportPreview } from "@/types/import";
@@ -92,6 +92,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   const [checklistTemplatesOpen, setChecklistTemplatesOpen] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
+  const [adminMenuOpen, setAdminMenuOpen] = useState(false);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -726,32 +727,12 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             </a>
             {isSuperAdmin && (
               <button
-                onClick={() => setTeamModalOpen(true)}
-                title="Manage Team"
-                className="p-2 rounded-lg text-white"
-                style={{ background: "rgba(255,255,255,0.12)" }}
-              >
-                <Users size={15} />
-              </button>
-            )}
-            {isSuperAdmin && (
-              <button
                 onClick={() => setProjectsModalOpen(true)}
                 title="Manage Projects"
                 className="p-2 rounded-lg text-white"
                 style={{ background: "rgba(255,255,255,0.12)" }}
               >
                 <Building2 size={15} />
-              </button>
-            )}
-            {canCreateAnywhere && (
-              <button
-                onClick={() => setContactsModalOpen(true)}
-                title="Manage Contacts"
-                className="p-2 rounded-lg text-white"
-                style={{ background: "rgba(255,255,255,0.12)" }}
-              >
-                <ContactIcon size={15} />
               </button>
             )}
             <button
@@ -762,66 +743,85 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             >
               <ListChecks size={15} />
             </button>
-            {canCreateAnywhere && (
-              <button
-                onClick={() => setTrashModalOpen(true)}
-                title="Trash"
-                className="p-2 rounded-lg text-white"
-                style={{ background: "rgba(255,255,255,0.12)" }}
-              >
-                <Trash2 size={15} />
-              </button>
-            )}
-            {isSuperAdmin && (
-              <button
-                onClick={() => setAuditLogOpen(true)}
-                title="Audit Log"
-                className="p-2 rounded-lg text-white"
-                style={{ background: "rgba(255,255,255,0.12)" }}
-              >
-                <ScrollText size={15} />
-              </button>
-            )}
-            {isSuperAdmin && (
-              <button
-                onClick={() => setChecklistTemplatesOpen(true)}
-                title="Checklist Templates"
-                className="p-2 rounded-lg text-white"
-                style={{ background: "rgba(255,255,255,0.12)" }}
-              >
-                <ClipboardList size={15} />
-              </button>
-            )}
-            {isSuperAdmin && (
-              <button
-                onClick={exportToExcel}
-                disabled={exportBusy}
-                title="Export tasks to Excel"
-                className="p-2 rounded-lg text-white disabled:opacity-60"
-                style={{ background: "rgba(255,255,255,0.12)" }}
-              >
-                {exportBusy ? <Loader2 size={15} className="animate-spin" /> : <FileDown size={15} />}
-              </button>
-            )}
-            {isSuperAdmin && (
-              <button
-                onClick={downloadTemplate}
-                title="Download Excel template"
-                className="p-2 rounded-lg text-white"
-                style={{ background: "rgba(255,255,255,0.12)" }}
-              >
-                <Download size={15} />
-              </button>
-            )}
-            {isSuperAdmin && (
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                title="Import from Excel"
-                className="p-2 rounded-lg text-white"
-                style={{ background: "rgba(255,255,255,0.12)" }}
-              >
-                <Upload size={15} />
-              </button>
+            {(isSuperAdmin || canCreateAnywhere) && (
+              <div className="relative">
+                <button
+                  onClick={() => setAdminMenuOpen((v) => !v)}
+                  title="Admin"
+                  className="flex items-center gap-1 p-2 rounded-lg text-white"
+                  style={{ background: adminMenuOpen ? "#fff" : "rgba(255,255,255,0.12)", color: adminMenuOpen ? "#0A5A46" : "#fff" }}
+                >
+                  <MoreHorizontal size={15} />
+                </button>
+                {adminMenuOpen && (
+                  <div className="absolute right-0 top-[calc(100%+4px)] z-20 w-[190px] rounded-lg bg-white border border-brand-border shadow-lg p-1">
+                    {isSuperAdmin && (
+                      <button
+                        onClick={() => { setTeamModalOpen(true); setAdminMenuOpen(false); }}
+                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
+                      >
+                        <Users size={14} /> Manage Team
+                      </button>
+                    )}
+                    {canCreateAnywhere && (
+                      <button
+                        onClick={() => { setContactsModalOpen(true); setAdminMenuOpen(false); }}
+                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
+                      >
+                        <ContactIcon size={14} /> Manage Contacts
+                      </button>
+                    )}
+                    {canCreateAnywhere && (
+                      <button
+                        onClick={() => { setTrashModalOpen(true); setAdminMenuOpen(false); }}
+                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
+                      >
+                        <Trash2 size={14} /> Trash
+                      </button>
+                    )}
+                    {isSuperAdmin && (
+                      <button
+                        onClick={() => { setAuditLogOpen(true); setAdminMenuOpen(false); }}
+                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
+                      >
+                        <ScrollText size={14} /> Audit Log
+                      </button>
+                    )}
+                    {isSuperAdmin && (
+                      <button
+                        onClick={() => { setChecklistTemplatesOpen(true); setAdminMenuOpen(false); }}
+                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
+                      >
+                        <ClipboardList size={14} /> Checklist Templates
+                      </button>
+                    )}
+                    {isSuperAdmin && (
+                      <>
+                        <div className="my-1 border-t border-brand-border" />
+                        <button
+                          onClick={() => { setAdminMenuOpen(false); exportToExcel(); }}
+                          disabled={exportBusy}
+                          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left disabled:opacity-60"
+                        >
+                          {exportBusy ? <Loader2 size={14} className="animate-spin" /> : <FileDown size={14} />} Export to Excel
+                        </button>
+                        <button
+                          onClick={() => { downloadTemplate(); setAdminMenuOpen(false); }}
+                          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
+                        >
+                          <Download size={14} /> Download Excel Template
+                        </button>
+                        <button
+                          onClick={() => { fileInputRef.current?.click(); setAdminMenuOpen(false); }}
+                          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
+                        >
+                          <Upload size={14} /> Import from Excel
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
             {isSuperAdmin && (
               <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} className="hidden" />
