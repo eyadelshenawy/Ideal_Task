@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import useSWR from "swr";
-import { Plus, X, Trash2, Check, Link2, Copy, FolderPlus, SlidersHorizontal, Timer, Inbox } from "lucide-react";
+import { Plus, X, Trash2, Check, Link2, Copy, FolderPlus, SlidersHorizontal, Timer, Inbox, FileText } from "lucide-react";
 import type { Project, Priority } from "@/types/models";
 import type { SlaTargets } from "@/lib/sla";
 import type { SlaConfigDto } from "@/lib/slaConfig";
@@ -455,6 +455,14 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
                   <button onClick={() => startCloning(p)} className="flex items-center gap-1 text-[11px] text-brand-sub underline">
                     <FolderPlus size={11} /> Use as template
                   </button>
+                  <a
+                    href={`/projects/${p.id}/report`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-[11px] text-brand-sub underline"
+                  >
+                    <FileText size={11} /> Client report
+                  </a>
                   <button
                     onClick={() => setFieldsOpenId(fieldsOpenId === p.id ? null : p.id)}
                     className="flex items-center gap-1 text-[11px] text-brand-sub underline"

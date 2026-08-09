@@ -273,6 +273,14 @@ model Task {
   // they resend daily for as long as the task stays overdue.
   dueSoonNotifiedAt DateTime?
 
+  // One-time gates for the proactive SLA-risk warning (sent once a task's
+  // response or resolution deadline is close but not yet breached, for
+  // tasks in an SLA-tracked project). Never cleared automatically — unlike
+  // dueSoonNotifiedAt, response/resolution deadlines are pinned to the
+  // immutable createdAt, so there's no equivalent "date changed" reset case.
+  responseRiskNotifiedAt   DateTime?
+  resolutionRiskNotifiedAt DateTime?
+
   // Recurrence: when set, completing this task auto-creates the next
   // occurrence (same project/assignees/priority), due one interval later.
   // Null recurrenceFreq means "not a recurring task".

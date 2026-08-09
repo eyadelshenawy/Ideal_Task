@@ -69,6 +69,23 @@ export function overdueEmailHtml(task: TaskSummary) {
   return wrap("Task overdue", task);
 }
 
+/** Sent once, proactively, while a task's SLA deadline is still ahead but close — not yet breached. */
+export function slaRiskEmailHtml(task: TaskSummary, kind: "response" | "resolution", timeLeft: string) {
+  const heading = kind === "response" ? "SLA response deadline approaching" : "SLA resolution deadline approaching";
+  return `
+    <div style="font-family: -apple-system, Arial, sans-serif; max-width: 480px; margin: 0 auto;">
+      <h2 style="color:#111;">${heading}</h2>
+      <p style="font-size:16px;"><strong>${task.title}</strong></p>
+      <p style="color:#9A3530; font-size:14px;">${timeLeft} left before this ${kind === "response" ? "response" : "resolution"} SLA target is missed.</p>
+      <ul style="color:#444; padding-left:18px;">
+        ${task.projectName ? `<li>Project: ${task.projectName}</li>` : ""}
+        <li>Priority: ${task.priority}</li>
+      </ul>
+      <p style="margin-top:24px;"><a href="${APP_URL}" style="color:#2563eb;">Open IDEAL Tasks</a></p>
+    </div>
+  `;
+}
+
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
