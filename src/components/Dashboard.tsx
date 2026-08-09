@@ -91,6 +91,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   const [auditLogOpen, setAuditLogOpen] = useState(false);
   const [checklistTemplatesOpen, setChecklistTemplatesOpen] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+  const [exportBusy, setExportBusy] = useState(false);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -455,28 +456,44 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
     URL.revokeObjectURL(url);
   }
 
-  function exportToExcel() {
-    const rows = filteredTasks.map((t) => ({
-      Code: t.code ?? "",
-      Title: t.title,
-      Description: t.description ?? "",
-      Module: t.module ?? "",
-      Tags: t.tags.join(", "),
-      Project: projectList.find((p) => p.id === t.projectId)?.name ?? "",
-      Assignees: getAssigneeDisplays(t).map((a) => a.name).join(", "),
-      Priority: PRIORITIES.find((p) => p.id === t.priority)?.label ?? t.priority,
-      Status: STATUSES.find((s) => s.id === t.status)?.label ?? t.status,
-      "Start Date": t.startDate ?? "",
-      "Due Date": t.dueDate ?? "",
-      Progress: t.progress,
-      Milestone: t.isMilestone ? "Yes" : "No",
-      "Depends On": t.dependsOn
-        .map((id) => taskList.find((dt) => dt.id === id))
-        .filter((dt): dt is Task => !!dt)
-        .map((dt) => dt.code || dt.title)
-        .join(", "),
-      "Parent Code": (t.parentId && taskList.find((pt) => pt.id === t.parentId)?.code) || "",
-    }));
+  async function exportToExcel() {
+    setExportBusy(true);
+    try {
+      const detail: Record<string, { comments: string; attachments: string; checklist: string }> = await api
+        .fetchExportDetail(filteredTasks.map((t) => t.id))
+        .catch(() => ({}));
+
+      const rows = filteredTasks.map((t) => ({
+        Code: t.code ?? "",
+        Title: t.title,
+        Description: t.description ?? "",
+        Module: t.module ?? "",
+        Tags: t.tags.join(", "),
+        Project: projectList.find((p) => p.id === t.projectId)?.name ?? "",
+        Assignees: getAssigneeDisplays(t).map((a) => a.name).join(", "),
+        Priority: PRIORITIES.find((p) => p.id === t.priority)?.label ?? t.priority,
+        Status: STATUSES.find((s) => s.id === t.status)?.label ?? t.status,
+        "Start Date": t.startDate ?? "",
+        "Due Date": t.dueDate ?? "",
+        Progress: t.progress,
+        Milestone: t.isMilestone ? "Yes" : "No",
+        "Depends On": t.dependsOn
+          .map((id) => taskList.find((dt) => dt.id === id))
+          .filter((dt): dt is Task => !!dt)
+          .map((dt) => dt.code || dt.title)
+          .join(", "),
+        "Parent Code": (t.parentId && taskList.find((pt) => pt.id === t.parentId)?.code) || "",
+        Comments: detail[t.id]?.comments ?? "",
+        Attachments: detail[t.id]?.attachments ?? "",
+        Checklist: detail[t.id]?.checklist ?? "",
+      }));
+      downloadExcelRows(rows);
+    } finally {
+      setExportBusy(false);
+    }
+  }
+
+  function downloadExcelRows(rows: Record<string, string | number>[]) {
     const ws = XLSX.utils.json_to_sheet(rows);
     const wbOut = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wbOut, ws, "Tasks");
@@ -778,11 +795,12 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             {isSuperAdmin && (
               <button
                 onClick={exportToExcel}
+                disabled={exportBusy}
                 title="Export tasks to Excel"
-                className="p-2 rounded-lg text-white"
+                className="p-2 rounded-lg text-white disabled:opacity-60"
                 style={{ background: "rgba(255,255,255,0.12)" }}
               >
-                <FileDown size={15} />
+                {exportBusy ? <Loader2 size={15} className="animate-spin" /> : <FileDown size={15} />}
               </button>
             )}
             {isSuperAdmin && (

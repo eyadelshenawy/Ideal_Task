@@ -26,4 +26,5 @@ export const api = {
     request(`/api/tasks/${taskId}/events/${eventId}`, "PATCH", { message }),
   duplicateTask: (taskId: string, projectId?: string) => request(`/api/tasks/${taskId}/duplicate`, "POST", { projectId }),
   createPersonalTask: (data: unknown) => request("/api/tasks/personal", "POST", data),
+  fetchExportDetail: (taskIds: string[]) => request("/api/tasks/export-detail", "POST", { taskIds }),
 };
