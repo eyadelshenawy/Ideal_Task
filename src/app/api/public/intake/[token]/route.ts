@@ -77,7 +77,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
   }
   // Honeypot tripped — pretend success so a bot doesn't learn to adapt.
   if (parsed.data.website) {
-    return NextResponse.json({ ok: true, trackingToken: crypto.randomBytes(24).toString("base64url") }, { status: 201 });
+    return NextResponse.json({ ok: true, trackingToken: crypto.randomBytes(9).toString("base64url") }, { status: 201 });
   }
 
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
@@ -111,7 +111,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
 
   const code = await nextTaskCode(prisma, project.id);
   const fullDescription = [description, `Submitted by ${contactName} (${contactEmail})`].filter(Boolean).join("\n\n");
-  const trackingToken = crypto.randomBytes(24).toString("base64url");
+  const trackingToken = crypto.randomBytes(9).toString("base64url");
 
   const task = await prisma.task.create({
     data: {

@@ -11,7 +11,11 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
   const { session, error } = await requireSuperAdmin();
   if (error) return error;
 
-  const intakeToken = crypto.randomBytes(24).toString("base64url");
+  // Shorter than the other public tokens on purpose — this one gets typed/
+  // shared with clients by hand, not just copy-pasted. 9 bytes (12 base64url
+  // chars) is still ~72 bits of entropy, plenty against the rate limit and
+  // honeypot already guarding the submit endpoint.
+  const intakeToken = crypto.randomBytes(9).toString("base64url");
   const project = await prisma.project.update({
     where: { id: params.id },
     data: { intakeToken },

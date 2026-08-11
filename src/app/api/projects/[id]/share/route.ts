@@ -10,7 +10,10 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
   const { session, error } = await requireSuperAdmin();
   if (error) return error;
 
-  const shareToken = crypto.randomBytes(24).toString("base64url");
+  // Shorter than before, to match the ticket-submission link — this one is
+  // handed to clients and admins by hand, not just copy-pasted. Still ~72
+  // bits of entropy.
+  const shareToken = crypto.randomBytes(9).toString("base64url");
   const project = await prisma.project.update({
     where: { id: params.id },
     data: { shareToken },
