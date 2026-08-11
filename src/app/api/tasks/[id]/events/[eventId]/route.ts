@@ -44,3 +44,21 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   return NextResponse.json(serializeEvent(updated));
 }
+
+export async function DELETE(_req: NextRequest, { params }: { params: { id: string; eventId: string } }) {
+  const { session, error } = await requireTaskAccess(params.id);
+  if (error) return error;
+
+  const event = await prisma.taskEvent.findUnique({ where: { id: params.eventId } });
+  if (!event || event.taskId !== params.id || event.type !== "COMMENT") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const access = await getUserAccess(session);
+  if (event.authorId !== session.user.id && !access.isSuperAdmin) {
+    return NextResponse.json({ error: "You can only delete your own comments" }, { status: 403 });
+  }
+
+  await prisma.taskEvent.delete({ where: { id: params.eventId } });
+  return NextResponse.json({ ok: true });
+}

@@ -488,18 +488,38 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
         Attachments: detail[t.id]?.attachments ?? "",
         Checklist: detail[t.id]?.checklist ?? "",
       }));
-      downloadExcelRows(rows);
+      await downloadExcelRows(rows);
     } finally {
       setExportBusy(false);
     }
   }
 
-  function downloadExcelRows(rows: Record<string, string | number>[]) {
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wbOut = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wbOut, ws, "Tasks");
-    const wbout = XLSX.write(wbOut, { bookType: "xlsx", type: "array" });
-    const blob = new Blob([wbout], { type: "application/octet-stream" });
+  // Uses exceljs (not the xlsx package used elsewhere in this file) because
+  // multi-line cells — comments and checklist items, one per line within a
+  // single cell — need "wrap text" formatting to actually display as
+  // multiple lines. The xlsx package here can't write cell styles at all
+  // (verified: styles are silently dropped on write), so this export is the
+  // one place that needs a styling-capable writer.
+  async function downloadExcelRows(rows: Record<string, string | number>[]) {
+    const ExcelJS = (await import("exceljs")).default;
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Tasks");
+    if (rows.length === 0) return;
+
+    const headers = Object.keys(rows[0]);
+    sheet.columns = headers.map((h) => ({ header: h, key: h, width: h === "Description" || h === "Comments" || h === "Checklist" ? 40 : 16 }));
+    sheet.addRows(rows);
+
+    const wrapColumns = ["Description", "Comments", "Checklist"];
+    for (const col of wrapColumns) {
+      if (headers.includes(col)) {
+        sheet.getColumn(col).alignment = { wrapText: true, vertical: "top" };
+      }
+    }
+    sheet.getRow(1).font = { bold: true };
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/octet-stream" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;

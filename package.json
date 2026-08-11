@@ -21,6 +21,7 @@
     "@aws-sdk/s3-request-presigner": "^3.1098.0",
     "@prisma/client": "^5.18.0",
     "bcryptjs": "^2.4.3",
+    "exceljs": "^4.4.0",
     "lucide-react": "^0.417.0",
     "next": "^14.2.5",
     "next-auth": "^4.24.7",

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { MessageSquare, Pencil } from "lucide-react";
+import { MessageSquare, Pencil, Trash2 } from "lucide-react";
 import { api } from "@/lib/apiClient";
 
 interface TaskEvent {
@@ -35,6 +35,8 @@ export default function TaskActivityPanel({ taskId, currentUserId, isSuperAdmin 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function submit() {
     if (!draft.trim()) return;
@@ -71,6 +73,17 @@ export default function TaskActivityPanel({ taskId, currentUserId, isSuperAdmin 
     }
   }
 
+  async function deleteComment(eventId: string) {
+    setDeletingId(eventId);
+    try {
+      await api.deleteTaskComment(taskId, eventId);
+      setConfirmDeleteId(null);
+      await mutate();
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   return (
     <div className="border-t border-brand-border mt-4 pt-3">
       <div className="flex items-center gap-1.5 text-xs font-semibold text-brand-sub mb-2">
@@ -99,9 +112,25 @@ export default function TaskActivityPanel({ taskId, currentUserId, isSuperAdmin 
                 <span className="text-[10px] text-brand-sub">{formatWhen(e.createdAt)}</span>
                 {e.editedAt && <span className="text-[10px] text-brand-sub italic">(edited)</span>}
                 {canEdit && !isEditing && (
-                  <button onClick={() => startEdit(e)} title="Edit comment" className="ml-auto p-0.5 text-brand-sub hover:text-brand-text">
-                    <Pencil size={11} />
-                  </button>
+                  <div className="ml-auto flex items-center gap-1.5">
+                    <button onClick={() => startEdit(e)} title="Edit comment" className="p-0.5 text-brand-sub hover:text-brand-text">
+                      <Pencil size={11} />
+                    </button>
+                    {confirmDeleteId === e.id ? (
+                      <button
+                        onClick={() => deleteComment(e.id)}
+                        disabled={deletingId === e.id}
+                        title="Click to confirm delete"
+                        className="text-[10px] font-semibold text-red-600 disabled:opacity-50"
+                      >
+                        Confirm?
+                      </button>
+                    ) : (
+                      <button onClick={() => setConfirmDeleteId(e.id)} title="Delete comment" className="p-0.5 text-brand-sub hover:text-red-600">
+                        <Trash2 size={11} />
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
               {isEditing ? (
