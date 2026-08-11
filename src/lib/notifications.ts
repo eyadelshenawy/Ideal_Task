@@ -90,6 +90,23 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+/** Sent to every Super Admin when a client submits a ticket through a project's public intake link. */
+export function newTicketEmailHtml(task: { title: string; description: string; priority: string; projectName: string | null; contactName: string }) {
+  return `
+    <div style="font-family: -apple-system, Arial, sans-serif; max-width: 480px; margin: 0 auto;">
+      <h2 style="color:#111;">New ticket submitted</h2>
+      <p style="font-size:16px;"><strong>${escapeHtml(task.title)}</strong></p>
+      <ul style="color:#444; padding-left:18px;">
+        ${task.projectName ? `<li>Project: ${escapeHtml(task.projectName)}</li>` : ""}
+        <li>Priority: ${task.priority}</li>
+        <li>Raised by: ${escapeHtml(task.contactName)}</li>
+      </ul>
+      <blockquote style="border-left:3px solid #0A5A46; padding-left:12px; color:#555; margin:16px 0; white-space:pre-wrap;">${escapeHtml(task.description)}</blockquote>
+      <p style="margin-top:24px;"><a href="${APP_URL}" style="color:#2563eb;">Open IDEAL Tasks</a></p>
+    </div>
+  `;
+}
+
 /** Emails everyone @mentioned in a comment — the in-app bell alone isn't enough for something time-sensitive. */
 export async function notifyMention(
   task: { id: string; title: string },

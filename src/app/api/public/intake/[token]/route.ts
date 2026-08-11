@@ -6,6 +6,8 @@ import { nextTaskCode } from "@/lib/taskCode";
 import { logActivity } from "@/lib/activity";
 import { notify } from "@/lib/inAppNotify";
 import { uploadToR2, r2Configured } from "@/lib/r2";
+import { sendEmail } from "@/lib/email";
+import { newTicketEmailHtml } from "@/lib/notifications";
 
 // Public, unauthenticated — the token is the only gate. Only ever returns
 // the project's name, never anything else about it.
@@ -95,7 +97,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
 
   const project = await prisma.project.findUnique({
     where: { intakeToken: params.token },
-    select: { id: true, deletedAt: true },
+    select: { id: true, name: true, deletedAt: true },
   });
   if (!project || project.deletedAt) {
     return NextResponse.json({ error: "This link is no longer valid" }, { status: 404 });
@@ -139,10 +141,19 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
 
   logActivity(task.id, null, "Submitted via public ticket form").catch((err) => console.error("logActivity failed:", err));
 
-  const admins = await prisma.user.findMany({ where: { role: "SUPER_ADMIN", active: true }, select: { id: true } });
+  const admins = await prisma.user.findMany({ where: { role: "SUPER_ADMIN", active: true }, select: { id: true, email: true } });
   notify(admins.map((a) => a.id), `New ticket from ${contactName}: "${title}"`, task.id).catch((err) =>
     console.error("intake notify failed:", err)
   );
+
+  const adminEmails = admins.map((a) => a.email).filter(Boolean);
+  if (adminEmails.length > 0) {
+    sendEmail({
+      to: adminEmails,
+      subject: `New ticket: "${title}"`,
+      html: newTicketEmailHtml({ title, description, priority, projectName: project.name, contactName }),
+    }).catch((err) => console.error("intake email failed:", err));
+  }
 
   return NextResponse.json({ ok: true, trackingToken }, { status: 201 });
 }
