@@ -21,6 +21,7 @@ export default function IntakePageContent({ token }: { token: string }) {
   const [description, setDescription] = useState("");
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
+  const [priority, setPriority] = useState("MEDIUM");
   const [website, setWebsite] = useState(""); // honeypot
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState("");
@@ -49,6 +50,7 @@ export default function IntakePageContent({ token }: { token: string }) {
       form.set("description", description.trim());
       form.set("contactName", contactName.trim());
       form.set("contactEmail", contactEmail.trim());
+      form.set("priority", priority);
       form.set("website", website);
       if (file) form.set("file", file);
 
@@ -142,6 +144,18 @@ export default function IntakePageContent({ token }: { token: string }) {
             placeholder="Anything that helps us understand the request"
             className="w-full mt-1 rounded-lg border border-brand-border px-3 py-2 text-sm outline-none bg-white resize-none"
           />
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-brand-sub">Priority</label>
+          <select
+            value={priority}
+            onChange={(e) => setPriority(e.target.value)}
+            className="w-full mt-1 rounded-lg border border-brand-border px-3 py-2 text-sm outline-none bg-white"
+          >
+            <option value="HIGH">High</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="LOW">Low</option>
+          </select>
         </div>
         <div>
           <label className="text-xs font-semibold text-brand-sub">Raised by *</label>

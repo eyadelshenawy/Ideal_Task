@@ -40,6 +40,7 @@ const submitSchema = z.object({
   description: z.string().trim().min(1).max(2000),
   contactName: z.string().trim().min(1).max(120),
   contactEmail: z.string().trim().email().max(200),
+  priority: z.enum(["HIGH", "MEDIUM", "LOW"]).default("MEDIUM"),
   // Honeypot — a real visitor never sees or fills this field. Deliberately
   // unconstrained (no max(0)) so a bot that fills it still passes schema
   // validation and reaches the check below, which fakes a success response
@@ -66,6 +67,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     description: form.get("description") || undefined,
     contactName: form.get("contactName"),
     contactEmail: form.get("contactEmail"),
+    priority: form.get("priority") || undefined,
     website: form.get("website") || undefined,
   });
   if (!parsed.success) {
@@ -99,7 +101,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     return NextResponse.json({ error: "This link is no longer valid" }, { status: 404 });
   }
 
-  const { title, description, contactName, contactEmail } = parsed.data;
+  const { title, description, contactName, contactEmail, priority } = parsed.data;
 
   const contact =
     (await prisma.contact.findFirst({ where: { name: contactName } })) ??
@@ -116,7 +118,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
       description: fullDescription,
       projectId: project.id,
       status: "TODO",
-      priority: "MEDIUM",
+      priority,
       contactAssignees: { connect: [{ id: contact.id }] },
       trackingToken,
     },
