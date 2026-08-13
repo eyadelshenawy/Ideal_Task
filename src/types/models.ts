@@ -34,6 +34,7 @@ export interface TrashedProject extends Project {
 export interface Contact {
   id: string;
   name: string;
+  projectId: string | null;
 }
 
 /** Resolved display info for a task's assignee, whichever kind it is. */

@@ -420,12 +420,12 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
     await mutateTasks();
   }
 
-  async function createContact(name: string): Promise<Contact | null> {
+  async function createContact(name: string, projectId?: string | null): Promise<Contact | null> {
     try {
       const res = await fetch("/api/contacts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, projectId: projectId ?? null }),
       });
       if (!res.ok) return null;
       const contact: Contact = await res.json();
@@ -1282,6 +1282,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
       {contactsModalOpen && (
         <ContactsModal
           contacts={contactList}
+          projects={projectList}
           onClose={() => setContactsModalOpen(false)}
           onChanged={() => mutateContacts()}
         />

@@ -105,9 +105,12 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
 
   const { title, description, contactName, contactEmail, priority } = parsed.data;
 
+  // Scoped to this project — the same name submitting a ticket to a
+  // different project becomes a separate Contact, matching the rule that a
+  // contact belongs to one project's people, not a global directory.
   const contact =
-    (await prisma.contact.findFirst({ where: { name: contactName } })) ??
-    (await prisma.contact.create({ data: { name: contactName } }));
+    (await prisma.contact.findFirst({ where: { name: contactName, projectId: project.id } })) ??
+    (await prisma.contact.create({ data: { name: contactName, projectId: project.id } }));
 
   const code = await nextTaskCode(prisma, project.id);
   const fullDescription = [description, `Submitted by ${contactName} (${contactEmail})`].filter(Boolean).join("\n\n");

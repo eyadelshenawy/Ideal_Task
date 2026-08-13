@@ -85,7 +85,7 @@ interface TaskModalProps {
   /** Project Admins must pick one of their administered projects (already pre-filtered into `projects`); Super Admins can pick any. */
   isSuperAdmin: boolean;
   currentUserId?: string;
-  onCreateContact: (name: string) => Promise<Contact | null>;
+  onCreateContact: (name: string, projectId: string | null) => Promise<Contact | null>;
   onDuplicate?: (taskId: string, projectId?: string) => void;
   onAddSubtask?: (parent: Task) => void;
 }
@@ -138,6 +138,12 @@ export default function TaskModal({
     return draft.assignees.some((a) => a.type === type && a.id === id);
   }
 
+  // Only this task's own project's contacts are offered — a contact tied to
+  // a different client shouldn't be assignable here. Already-assigned
+  // contacts stay visible even if their project no longer matches (project
+  // changed after the fact, or a legacy contact with no project at all).
+  const projectContacts = contacts.filter((c) => c.projectId === draft.projectId || isAssigned("contact", c.id));
+
   function toggleAssignee(type: AssigneeEntry["type"], id: string) {
     setDraft({
       ...draft,
@@ -150,7 +156,7 @@ export default function TaskModal({
   async function submitNewContact() {
     if (!newContactName.trim()) return;
     setContactError("");
-    const contact = await onCreateContact(newContactName.trim());
+    const contact = await onCreateContact(newContactName.trim(), draft.projectId || null);
     if (!contact) {
       setContactError("Couldn't add contact");
       return;
@@ -356,7 +362,7 @@ export default function TaskModal({
             <div>
               <label className="text-xs font-semibold text-brand-sub">Assignees *</label>
               <div className="border border-brand-border rounded-[10px] max-h-[160px] overflow-y-auto p-2 mt-1">
-                {activeMembers.length === 0 && inactiveMembers.length === 0 && contacts.length === 0 && (
+                {activeMembers.length === 0 && inactiveMembers.length === 0 && projectContacts.length === 0 && (
                   <div className="text-xs text-brand-sub">No team members or contacts yet</div>
                 )}
                 {activeMembers.length > 0 && (
@@ -377,10 +383,10 @@ export default function TaskModal({
                     {m.name}
                   </label>
                 ))}
-                {contacts.length > 0 && (
+                {projectContacts.length > 0 && (
                   <div className="text-[10px] font-bold text-brand-sub uppercase tracking-wide mt-1.5 mb-0.5">External contacts</div>
                 )}
-                {contacts.map((c) => (
+                {projectContacts.map((c) => (
                   <label key={c.id} className="flex items-center gap-2 text-xs py-0.5 text-brand-text">
                     <input type="checkbox" checked={isAssigned("contact", c.id)} onChange={() => toggleAssignee("contact", c.id)} />
                     {c.name}

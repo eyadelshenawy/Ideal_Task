@@ -161,6 +161,7 @@ model Project {
   tasks        Task[]
   admins       ProjectAdmin[]
   customFields CustomField[]
+  contacts     Contact[]
 }
 
 enum CustomFieldType {
@@ -229,7 +230,18 @@ model Contact {
   name      String
   createdAt DateTime @default(now())
 
+  // Nullable so contacts created before this field existed keep working
+  // unchanged — they just won't appear in any project's assignee picker
+  // until someone gives them a project from Manage Contacts. Every new
+  // contact (manual or auto-created from a ticket intake submission) gets
+  // one, since a contact is an external person tied to one client/project,
+  // not shared across unrelated projects.
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
   tasksAssigned Task[] @relation("TaskContactAssignees")
+
+  @@index([projectId])
 }
 
 model Task {

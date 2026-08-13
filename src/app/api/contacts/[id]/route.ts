@@ -23,7 +23,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 
   try {
-    const contact = await prisma.contact.update({ where: { id: params.id }, data: { name: parsed.data.name } });
+    const contact = await prisma.contact.update({
+      where: { id: params.id },
+      data: {
+        ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
+        ...(parsed.data.projectId !== undefined ? { projectId: parsed.data.projectId } : {}),
+      },
+    });
     return NextResponse.json(contact);
   } catch {
     return NextResponse.json({ error: "Couldn't update contact" }, { status: 400 });
