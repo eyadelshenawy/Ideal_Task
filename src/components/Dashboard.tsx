@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
-import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks, BarChart3, FileDown, Bookmark, X, AlertTriangle, ScrollText, BookOpen, ChevronDown, ChevronRight, Lock, ClipboardList, MoreHorizontal } from "lucide-react";
+import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks, BarChart3, FileDown, Bookmark, X, AlertTriangle, ScrollText, BookOpen, ChevronDown, ChevronRight, Lock, ClipboardList, MoreHorizontal, Sparkles } from "lucide-react";
 import useSWR from "swr";
 import type { Task, Project, TeamMember, Contact, Status, AssigneeDisplay } from "@/types/models";
 import type { ImportPreview } from "@/types/import";
@@ -18,6 +18,7 @@ import TaskModal, { blankDraft, draftFromTask, type TaskDraft } from "./TaskModa
 import TeamModal from "./TeamModal";
 import ProjectsModal from "./ProjectsModal";
 import ContactsModal from "./ContactsModal";
+import WhatsNewModal from "./WhatsNewModal";
 import TrashModal from "./TrashModal";
 import ImportPreviewModal from "./ImportPreviewModal";
 import BulkActionBar from "./BulkActionBar";
@@ -87,6 +88,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   const [teamModalOpen, setTeamModalOpen] = useState(false);
   const [projectsModalOpen, setProjectsModalOpen] = useState(false);
   const [contactsModalOpen, setContactsModalOpen] = useState(false);
+  const [whatsNewOpen, setWhatsNewOpen] = useState(false);
   const [trashModalOpen, setTrashModalOpen] = useState(false);
   const [auditLogOpen, setAuditLogOpen] = useState(false);
   const [checklistTemplatesOpen, setChecklistTemplatesOpen] = useState(false);
@@ -763,6 +765,12 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
                   >
                     <BookOpen size={14} /> User Guide
                   </a>
+                  <button
+                    onClick={() => { setWhatsNewOpen(true); setAdminMenuOpen(false); }}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
+                  >
+                    <Sparkles size={14} /> What&apos;s New
+                  </button>
                   {isSuperAdmin && (
                     <>
                       <div className="my-1 border-t border-brand-border" />
@@ -1289,6 +1297,8 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
       )}
 
       {auditLogOpen && <AuditLogModal onClose={() => setAuditLogOpen(false)} />}
+
+      {whatsNewOpen && <WhatsNewModal onClose={() => setWhatsNewOpen(false)} />}
 
       {checklistTemplatesOpen && <ChecklistTemplatesModal onClose={() => setChecklistTemplatesOpen(false)} />}
 
