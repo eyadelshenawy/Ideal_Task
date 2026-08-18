@@ -42,6 +42,7 @@ export default function TaskActivityPanel({ taskId, currentUserId, isSuperAdmin 
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showEmailBox, setShowEmailBox] = useState(false);
   const [emailDraft, setEmailDraft] = useState("");
+  const [emailRecipients, setEmailRecipients] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailError, setEmailError] = useState("");
 
@@ -50,8 +51,10 @@ export default function TaskActivityPanel({ taskId, currentUserId, isSuperAdmin 
     setSendingEmail(true);
     setEmailError("");
     try {
-      await api.emailCustomer(taskId, emailDraft.trim());
+      const recipients = emailRecipients.split(",").map((r) => r.trim()).filter(Boolean);
+      await api.emailCustomer(taskId, emailDraft.trim(), recipients);
       setEmailDraft("");
+      setEmailRecipients("");
       setShowEmailBox(false);
       await mutate();
     } catch (e) {
@@ -123,6 +126,12 @@ export default function TaskActivityPanel({ taskId, currentUserId, isSuperAdmin 
 
       {showEmailBox && (
         <div className="mb-2 rounded-lg border border-brand-border bg-brand-bg px-2.5 py-2 flex flex-col gap-1.5">
+          <input
+            value={emailRecipients}
+            onChange={(ev) => setEmailRecipients(ev.target.value)}
+            placeholder="Also send to (optional) — email addresses separated by commas"
+            className="w-full rounded-lg border border-brand-border px-2 py-1.5 text-xs outline-none bg-white"
+          />
           <textarea
             value={emailDraft}
             onChange={(ev) => setEmailDraft(ev.target.value)}
@@ -133,7 +142,7 @@ export default function TaskActivityPanel({ taskId, currentUserId, isSuperAdmin 
           />
           {emailError && <div className="text-[11px] text-red-600">{emailError}</div>}
           <div className="flex gap-1.5 justify-end">
-            <button onClick={() => { setShowEmailBox(false); setEmailError(""); }} className="rounded-lg px-2.5 py-1 text-[11px] font-semibold text-brand-sub hover:bg-gray-100">
+            <button onClick={() => { setShowEmailBox(false); setEmailError(""); setEmailRecipients(""); }} className="rounded-lg px-2.5 py-1 text-[11px] font-semibold text-brand-sub hover:bg-gray-100">
               Cancel
             </button>
             <button

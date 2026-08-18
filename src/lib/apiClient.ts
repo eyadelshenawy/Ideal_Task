@@ -25,7 +25,8 @@ export const api = {
   updateTaskComment: (taskId: string, eventId: string, message: string) =>
     request(`/api/tasks/${taskId}/events/${eventId}`, "PATCH", { message }),
   deleteTaskComment: (taskId: string, eventId: string) => request(`/api/tasks/${taskId}/events/${eventId}`, "DELETE"),
-  emailCustomer: (taskId: string, message: string) => request(`/api/tasks/${taskId}/email-customer`, "POST", { message }),
+  emailCustomer: (taskId: string, message: string, recipients: string[] = []) =>
+    request(`/api/tasks/${taskId}/email-customer`, "POST", { message, recipients }),
   duplicateTask: (taskId: string, projectId?: string) => request(`/api/tasks/${taskId}/duplicate`, "POST", { projectId }),
   createPersonalTask: (data: unknown) => request("/api/tasks/personal", "POST", data),
   fetchExportDetail: (taskIds: string[]) => request("/api/tasks/export-detail", "POST", { taskIds }),
