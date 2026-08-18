@@ -107,6 +107,29 @@ export function newTicketEmailHtml(task: { title: string; description: string; p
   `;
 }
 
+/** Sent to a task's contact when a team member uses "Email customer". Always includes the tracking link so they can reply there. */
+export function customerMessageEmailHtml(task: { code: string | null; title: string; trackingUrl: string }, message: string) {
+  return `
+    <div style="font-family: -apple-system, Arial, sans-serif; max-width: 480px; margin: 0 auto;">
+      <h2 style="color:#111;">${task.code ? `${escapeHtml(task.code)} — ` : ""}${escapeHtml(task.title)}</h2>
+      <blockquote style="border-left:3px solid #0A5A46; padding-left:12px; color:#333; margin:16px 0; white-space:pre-wrap;">${escapeHtml(message)}</blockquote>
+      <p style="margin-top:24px;"><a href="${task.trackingUrl}" style="color:#2563eb;">View status &amp; reply</a></p>
+    </div>
+  `;
+}
+
+/** Sent to the task's assignees + Super Admins when the customer replies via the public tracking page. */
+export function customerReplyEmailHtml(task: TaskSummary, contactName: string, message: string) {
+  return `
+    <div style="font-family: -apple-system, Arial, sans-serif; max-width: 480px; margin: 0 auto;">
+      <h2 style="color:#111;">${escapeHtml(contactName)} replied</h2>
+      <p style="font-size:16px;"><strong>${escapeHtml(task.title)}</strong></p>
+      <blockquote style="border-left:3px solid #0A5A46; padding-left:12px; color:#333; margin:16px 0; white-space:pre-wrap;">${escapeHtml(message)}</blockquote>
+      <p style="margin-top:24px;"><a href="${APP_URL}" style="color:#2563eb;">Open IDEAL Tasks</a></p>
+    </div>
+  `;
+}
+
 /** Emails everyone @mentioned in a comment — the in-app bell alone isn't enough for something time-sensitive. */
 export async function notifyMention(
   task: { id: string; title: string },

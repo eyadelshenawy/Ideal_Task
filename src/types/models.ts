@@ -34,6 +34,7 @@ export interface TrashedProject extends Project {
 export interface Contact {
   id: string;
   name: string;
+  email: string | null;
   projectId: string | null;
 }
 

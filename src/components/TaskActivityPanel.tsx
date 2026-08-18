@@ -2,8 +2,11 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { MessageSquare, Pencil, Trash2 } from "lucide-react";
+import { MessageSquare, Pencil, Trash2, Mail } from "lucide-react";
 import { api } from "@/lib/apiClient";
+
+const TO_CUSTOMER_PREFIX = "[To customer] ";
+const FROM_CUSTOMER_PREFIX = "[Customer] ";
 
 interface TaskEvent {
   id: string;
@@ -37,6 +40,26 @@ export default function TaskActivityPanel({ taskId, currentUserId, isSuperAdmin 
   const [savingEdit, setSavingEdit] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showEmailBox, setShowEmailBox] = useState(false);
+  const [emailDraft, setEmailDraft] = useState("");
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailError, setEmailError] = useState("");
+
+  async function sendCustomerEmail() {
+    if (!emailDraft.trim()) return;
+    setSendingEmail(true);
+    setEmailError("");
+    try {
+      await api.emailCustomer(taskId, emailDraft.trim());
+      setEmailDraft("");
+      setShowEmailBox(false);
+      await mutate();
+    } catch (e) {
+      setEmailError(e instanceof Error ? e.message : "Couldn't send email");
+    } finally {
+      setSendingEmail(false);
+    }
+  }
 
   async function submit() {
     if (!draft.trim()) return;
@@ -86,9 +109,43 @@ export default function TaskActivityPanel({ taskId, currentUserId, isSuperAdmin 
 
   return (
     <div className="border-t border-brand-border mt-4 pt-3">
-      <div className="flex items-center gap-1.5 text-xs font-semibold text-brand-sub mb-2">
-        <MessageSquare size={13} /> Comments & Activity
+      <div className="flex items-center justify-between gap-1.5 mb-2">
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-brand-sub">
+          <MessageSquare size={13} /> Comments & Activity
+        </div>
+        <button
+          onClick={() => setShowEmailBox((v) => !v)}
+          className="flex items-center gap-1 text-[11px] font-semibold text-brand-dark hover:underline"
+        >
+          <Mail size={12} /> Email customer
+        </button>
       </div>
+
+      {showEmailBox && (
+        <div className="mb-2 rounded-lg border border-brand-border bg-brand-bg px-2.5 py-2 flex flex-col gap-1.5">
+          <textarea
+            value={emailDraft}
+            onChange={(ev) => setEmailDraft(ev.target.value)}
+            placeholder="Message to the customer — sent by email, with a link to view status and reply"
+            rows={3}
+            maxLength={5000}
+            className="w-full rounded-lg border border-brand-border px-2 py-1.5 text-xs outline-none resize-y bg-white"
+          />
+          {emailError && <div className="text-[11px] text-red-600">{emailError}</div>}
+          <div className="flex gap-1.5 justify-end">
+            <button onClick={() => { setShowEmailBox(false); setEmailError(""); }} className="rounded-lg px-2.5 py-1 text-[11px] font-semibold text-brand-sub hover:bg-gray-100">
+              Cancel
+            </button>
+            <button
+              onClick={sendCustomerEmail}
+              disabled={sendingEmail || !emailDraft.trim()}
+              className="rounded-lg px-2.5 py-1 text-[11px] font-semibold bg-brand-dark text-white disabled:opacity-50"
+            >
+              {sendingEmail ? "Sending…" : "Send"}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="max-h-[180px] overflow-y-auto flex flex-col gap-1.5 mb-2">
         {(!events || events.length === 0) && (
@@ -105,10 +162,27 @@ export default function TaskActivityPanel({ taskId, currentUserId, isSuperAdmin 
           }
           const canEdit = !!currentUserId && (e.authorId === currentUserId || !!isSuperAdmin);
           const isEditing = editingId === e.id;
+          const isToCustomer = e.message.startsWith(TO_CUSTOMER_PREFIX);
+          const isFromCustomer = e.message.startsWith(FROM_CUSTOMER_PREFIX);
+          const displayMessage = isToCustomer
+            ? e.message.slice(TO_CUSTOMER_PREFIX.length)
+            : isFromCustomer
+              ? e.message.slice(FROM_CUSTOMER_PREFIX.length)
+              : e.message;
           return (
             <div key={e.id} className="bg-brand-bg rounded-lg px-2.5 py-1.5">
               <div className="flex items-baseline gap-1.5">
-                <span className="text-[11.5px] font-semibold text-brand-text">{e.authorName ?? "Former member"}</span>
+                <span className="text-[11.5px] font-semibold text-brand-text">
+                  {isFromCustomer ? "Customer" : e.authorName ?? "Former member"}
+                </span>
+                {isToCustomer && (
+                  <span className="flex items-center gap-0.5 text-[10px] font-semibold text-brand-dark bg-brand-dark/10 rounded px-1 py-0.5">
+                    <Mail size={9} /> to customer
+                  </span>
+                )}
+                {isFromCustomer && (
+                  <span className="text-[10px] font-semibold text-brand-dark bg-brand-dark/10 rounded px-1 py-0.5">via tracking link</span>
+                )}
                 <span className="text-[10px] text-brand-sub">{formatWhen(e.createdAt)}</span>
                 {e.editedAt && <span className="text-[10px] text-brand-sub italic">(edited)</span>}
                 {canEdit && !isEditing && (
@@ -156,7 +230,7 @@ export default function TaskActivityPanel({ taskId, currentUserId, isSuperAdmin 
                   </div>
                 </div>
               ) : (
-                <div className="text-[12px] text-brand-text whitespace-pre-wrap">{e.message}</div>
+                <div className="text-[12px] text-brand-text whitespace-pre-wrap">{displayMessage}</div>
               )}
             </div>
           );

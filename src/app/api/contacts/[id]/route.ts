@@ -28,6 +28,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       data: {
         ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
         ...(parsed.data.projectId !== undefined ? { projectId: parsed.data.projectId } : {}),
+        ...(parsed.data.email !== undefined ? { email: parsed.data.email || null } : {}),
       },
     });
     return NextResponse.json(contact);

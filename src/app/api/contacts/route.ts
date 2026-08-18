@@ -28,6 +28,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid contact" }, { status: 400 });
   }
 
-  const contact = await prisma.contact.create({ data: { name: parsed.data.name, projectId: parsed.data.projectId ?? null } });
+  const contact = await prisma.contact.create({
+    data: { name: parsed.data.name, projectId: parsed.data.projectId ?? null, email: parsed.data.email || null },
+  });
   return NextResponse.json(contact, { status: 201 });
 }

@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import useSWR from "swr";
-import { Loader2 } from "lucide-react";
+import { Loader2, Send, Check } from "lucide-react";
 import { STATUSES, formatDateDisplay } from "@/lib/taskHelpers";
 import Chip from "./ui/Chip";
 import ProgressBar from "./ui/ProgressBar";
@@ -22,6 +23,31 @@ const fetcher = (url: string) => fetch(url).then(async (r) => {
 
 export default function TrackPageContent({ token }: { token: string }) {
   const { data, error, isLoading } = useSWR<TrackData>(`/api/public/track/${token}`, fetcher, { refreshInterval: 30000 });
+  const [reply, setReply] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState("");
+  const [sent, setSent] = useState(false);
+
+  async function sendReply() {
+    if (!reply.trim()) return;
+    setSending(true);
+    setSendError("");
+    try {
+      const res = await fetch(`/api/public/track/${token}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: reply.trim() }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Couldn't send your reply");
+      setReply("");
+      setSent(true);
+    } catch (e) {
+      setSendError(e instanceof Error ? e.message : "Couldn't send your reply");
+    } finally {
+      setSending(false);
+    }
+  }
 
   if (isLoading) {
     return (
@@ -61,6 +87,34 @@ export default function TrackPageContent({ token }: { token: string }) {
           </div>
           {data.dueDate && <div className="text-[11.5px] text-brand-sub mb-1.5">Expected: {formatDateDisplay(data.dueDate)}</div>}
           <ProgressBar value={data.progress} color={status.color} />
+        </div>
+
+        <div className="bg-white border border-brand-border rounded-[10px] px-4 py-3 mt-3">
+          <div className="text-[12.5px] font-semibold text-brand-text mb-1.5">Have a question or update?</div>
+          {sent ? (
+            <div className="flex items-center gap-1.5 text-[12px] text-brand-dark py-1">
+              <Check size={14} /> Sent — our team will follow up.
+            </div>
+          ) : (
+            <>
+              <textarea
+                value={reply}
+                onChange={(e) => setReply(e.target.value)}
+                placeholder="Type your reply here…"
+                rows={3}
+                maxLength={5000}
+                className="w-full rounded-lg border border-brand-border px-2.5 py-1.5 text-[12.5px] outline-none resize-y"
+              />
+              {sendError && <div className="text-[11px] text-red-600 mt-1">{sendError}</div>}
+              <button
+                onClick={sendReply}
+                disabled={sending || !reply.trim()}
+                className="mt-1.5 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-semibold bg-brand-dark text-white disabled:opacity-50"
+              >
+                <Send size={12} /> {sending ? "Sending…" : "Send reply"}
+              </button>
+            </>
+          )}
         </div>
       </div>
 

@@ -13,6 +13,7 @@ interface ContactsModalProps {
 
 export default function ContactsModal({ contacts, projects, onClose, onChanged }: ContactsModalProps) {
   const [newName, setNewName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
   const [newProjectId, setNewProjectId] = useState("");
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -24,11 +25,12 @@ export default function ContactsModal({ contacts, projects, onClose, onChanged }
       const res = await fetch("/api/contacts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName.trim(), projectId: newProjectId || null }),
+        body: JSON.stringify({ name: newName.trim(), projectId: newProjectId || null, email: newEmail.trim() || null }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || "Couldn't add contact");
       setNewName("");
+      setNewEmail("");
       onChanged();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't add contact");
@@ -41,6 +43,15 @@ export default function ContactsModal({ contacts, projects, onClose, onChanged }
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: name.trim() }),
+    });
+    onChanged();
+  }
+
+  async function updateContactEmail(id: string, email: string) {
+    await fetch(`/api/contacts/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim() || null }),
     });
     onChanged();
   }
@@ -88,6 +99,16 @@ export default function ContactsModal({ contacts, projects, onClose, onChanged }
                   }}
                   className="flex-1 min-w-[100px] text-[13px] bg-transparent outline-none text-brand-text"
                 />
+                <input
+                  type="email"
+                  defaultValue={c.email ?? ""}
+                  placeholder="email"
+                  onBlur={(e) => {
+                    const v = e.target.value.trim();
+                    if (v !== (c.email ?? "")) updateContactEmail(c.id, v);
+                  }}
+                  className="w-[150px] text-[11.5px] bg-transparent outline-none text-brand-sub border-b border-transparent focus:border-brand-border"
+                />
                 <select
                   value={c.projectId ?? ""}
                   onChange={(e) => reassignContact(c.id, e.target.value)}
@@ -113,6 +134,13 @@ export default function ContactsModal({ contacts, projects, onClose, onChanged }
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder="New contact name"
+            className="flex-1 min-w-[140px] rounded-lg border border-brand-border px-3 py-2 text-sm outline-none"
+          />
+          <input
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            type="email"
+            placeholder="Email (optional)"
             className="flex-1 min-w-[140px] rounded-lg border border-brand-border px-3 py-2 text-sm outline-none"
           />
           <select

@@ -228,6 +228,10 @@ model Tag {
 model Contact {
   id        String   @id @default(cuid())
   name      String
+  // Captured automatically from the ticket intake form; optional since a
+  // manually-added contact (or one predating this field) might not have
+  // one yet — needed to actually send them anything from a task.
+  email     String?
   createdAt DateTime @default(now())
 
   // Nullable so contacts created before this field existed keep working
