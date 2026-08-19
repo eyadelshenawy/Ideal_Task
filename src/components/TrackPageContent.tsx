@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { Loader2, Send, Paperclip } from "lucide-react";
+import { Loader2, Send, Paperclip, X } from "lucide-react";
 import { STATUSES, formatDateDisplay } from "@/lib/taskHelpers";
 import Chip from "./ui/Chip";
 import ProgressBar from "./ui/ProgressBar";
 
 const MAX_FILE_MB = 10;
+const MAX_FILES = 5;
 
 interface ThreadMessage {
   id: string;
@@ -39,17 +40,30 @@ const fetcher = (url: string) => fetch(url).then(async (r) => {
 export default function TrackPageContent({ token }: { token: string }) {
   const { data, error, isLoading, mutate } = useSWR<TrackData>(`/api/public/track/${token}`, fetcher, { refreshInterval: 30000 });
   const [reply, setReply] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState("");
 
-  function onFileChange(f: File | null) {
+  function onFilesChange(picked: FileList | null) {
     setSendError("");
-    if (f && f.size > MAX_FILE_MB * 1024 * 1024) {
-      setSendError(`File is too large (max ${MAX_FILE_MB}MB)`);
-      return;
+    if (!picked || picked.length === 0) return;
+    const next = [...files];
+    for (const f of Array.from(picked)) {
+      if (f.size > MAX_FILE_MB * 1024 * 1024) {
+        setSendError(`"${f.name}" is too large (max ${MAX_FILE_MB}MB each)`);
+        continue;
+      }
+      if (next.length >= MAX_FILES) {
+        setSendError(`You can attach up to ${MAX_FILES} files`);
+        break;
+      }
+      next.push(f);
     }
-    setFile(f);
+    setFiles(next);
+  }
+
+  function removeFile(index: number) {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
   }
 
   async function sendReply() {
@@ -59,12 +73,12 @@ export default function TrackPageContent({ token }: { token: string }) {
     try {
       const form = new FormData();
       form.set("message", reply.trim());
-      if (file) form.set("file", file);
+      files.forEach((f) => form.append("file", f));
       const res = await fetch(`/api/public/track/${token}`, { method: "POST", body: form });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || "Couldn't send your reply");
       setReply("");
-      setFile(null);
+      setFiles([]);
       await mutate();
     } catch (e) {
       setSendError(e instanceof Error ? e.message : "Couldn't send your reply");
@@ -146,16 +160,32 @@ export default function TrackPageContent({ token }: { token: string }) {
             maxLength={5000}
             className="w-full rounded-lg border border-brand-border px-2.5 py-1.5 text-[12.5px] outline-none resize-y"
           />
-          <label className="mt-1.5 flex items-center gap-1.5 rounded-lg border border-dashed border-brand-border px-2.5 py-1.5 text-[12px] bg-white cursor-pointer text-brand-sub">
-            <Paperclip size={12} />
-            {file ? file.name : `Attach a file (optional, max ${MAX_FILE_MB}MB)`}
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,.doc,.docx"
-              onChange={(e) => onFileChange(e.target.files?.[0] ?? null)}
-              className="hidden"
-            />
-          </label>
+          {files.length > 0 && (
+            <div className="mt-1.5 flex flex-col gap-1">
+              {files.map((f, i) => (
+                <div key={i} className="flex items-center gap-1.5 text-[11px] text-brand-text bg-brand-bg rounded-lg border border-brand-border px-2 py-1">
+                  <Paperclip size={11} className="flex-shrink-0 text-brand-sub" />
+                  <span className="flex-1 truncate">{f.name}</span>
+                  <button onClick={() => removeFile(i)} className="flex-shrink-0 text-brand-sub hover:text-red-600">
+                    <X size={11} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          {files.length < MAX_FILES && (
+            <label className="mt-1.5 flex items-center gap-1.5 rounded-lg border border-dashed border-brand-border px-2.5 py-1.5 text-[12px] bg-white cursor-pointer text-brand-sub">
+              <Paperclip size={12} />
+              {`Attach files (optional, up to ${MAX_FILES}, max ${MAX_FILE_MB}MB each)`}
+              <input
+                type="file"
+                multiple
+                accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,.doc,.docx"
+                onChange={(e) => { onFilesChange(e.target.files); e.target.value = ""; }}
+                className="hidden"
+              />
+            </label>
+          )}
           {sendError && <div className="text-[11px] text-red-600 mt-1">{sendError}</div>}
           <button
             onClick={sendReply}

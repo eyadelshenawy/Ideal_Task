@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { MessageSquare, Pencil, Trash2, Mail, Paperclip } from "lucide-react";
+import { MessageSquare, Pencil, Trash2, Mail, Paperclip, X } from "lucide-react";
 import { api } from "@/lib/apiClient";
 
 const TO_CUSTOMER_PREFIX = "[To customer] ";
 const FROM_CUSTOMER_PREFIX = "[Customer] ";
 const MAX_FILE_MB = 10;
+const MAX_FILES = 5;
 
 interface TaskEvent {
   id: string;
@@ -44,17 +45,30 @@ export default function TaskActivityPanel({ taskId, currentUserId, isSuperAdmin 
   const [showEmailBox, setShowEmailBox] = useState(false);
   const [emailDraft, setEmailDraft] = useState("");
   const [emailRecipients, setEmailRecipients] = useState("");
-  const [emailFile, setEmailFile] = useState<File | null>(null);
+  const [emailFiles, setEmailFiles] = useState<File[]>([]);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailError, setEmailError] = useState("");
 
-  function onEmailFileChange(f: File | null) {
+  function onEmailFilesChange(picked: FileList | null) {
     setEmailError("");
-    if (f && f.size > MAX_FILE_MB * 1024 * 1024) {
-      setEmailError(`File is too large (max ${MAX_FILE_MB}MB)`);
-      return;
+    if (!picked || picked.length === 0) return;
+    const next = [...emailFiles];
+    for (const f of Array.from(picked)) {
+      if (f.size > MAX_FILE_MB * 1024 * 1024) {
+        setEmailError(`"${f.name}" is too large (max ${MAX_FILE_MB}MB each)`);
+        continue;
+      }
+      if (next.length >= MAX_FILES) {
+        setEmailError(`You can attach up to ${MAX_FILES} files`);
+        break;
+      }
+      next.push(f);
     }
-    setEmailFile(f);
+    setEmailFiles(next);
+  }
+
+  function removeEmailFile(index: number) {
+    setEmailFiles((prev) => prev.filter((_, i) => i !== index));
   }
 
   async function sendCustomerEmail() {
@@ -63,10 +77,10 @@ export default function TaskActivityPanel({ taskId, currentUserId, isSuperAdmin 
     setEmailError("");
     try {
       const recipients = emailRecipients.split(",").map((r) => r.trim()).filter(Boolean);
-      await api.emailCustomer(taskId, emailDraft.trim(), recipients, emailFile);
+      await api.emailCustomer(taskId, emailDraft.trim(), recipients, emailFiles);
       setEmailDraft("");
       setEmailRecipients("");
-      setEmailFile(null);
+      setEmailFiles([]);
       setShowEmailBox(false);
       await mutate();
     } catch (e) {
@@ -152,19 +166,35 @@ export default function TaskActivityPanel({ taskId, currentUserId, isSuperAdmin 
             maxLength={5000}
             className="w-full rounded-lg border border-brand-border px-2 py-1.5 text-xs outline-none resize-y bg-white"
           />
-          <label className="flex items-center gap-1.5 rounded-lg border border-dashed border-brand-border px-2 py-1.5 text-xs bg-white cursor-pointer text-brand-sub">
-            <Paperclip size={12} />
-            {emailFile ? emailFile.name : `Attach a file (optional, max ${MAX_FILE_MB}MB)`}
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,.doc,.docx"
-              onChange={(ev) => onEmailFileChange(ev.target.files?.[0] ?? null)}
-              className="hidden"
-            />
-          </label>
+          {emailFiles.length > 0 && (
+            <div className="flex flex-col gap-1">
+              {emailFiles.map((f, i) => (
+                <div key={i} className="flex items-center gap-1.5 text-[11px] text-brand-text bg-white rounded-lg border border-brand-border px-2 py-1">
+                  <Paperclip size={11} className="flex-shrink-0 text-brand-sub" />
+                  <span className="flex-1 truncate">{f.name}</span>
+                  <button onClick={() => removeEmailFile(i)} className="flex-shrink-0 text-brand-sub hover:text-red-600">
+                    <X size={11} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          {emailFiles.length < MAX_FILES && (
+            <label className="flex items-center gap-1.5 rounded-lg border border-dashed border-brand-border px-2 py-1.5 text-xs bg-white cursor-pointer text-brand-sub">
+              <Paperclip size={12} />
+              {`Attach files (optional, up to ${MAX_FILES}, max ${MAX_FILE_MB}MB each)`}
+              <input
+                type="file"
+                multiple
+                accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,.doc,.docx"
+                onChange={(ev) => { onEmailFilesChange(ev.target.files); ev.target.value = ""; }}
+                className="hidden"
+              />
+            </label>
+          )}
           {emailError && <div className="text-[11px] text-red-600">{emailError}</div>}
           <div className="flex gap-1.5 justify-end">
-            <button onClick={() => { setShowEmailBox(false); setEmailError(""); setEmailRecipients(""); setEmailFile(null); }} className="rounded-lg px-2.5 py-1 text-[11px] font-semibold text-brand-sub hover:bg-gray-100">
+            <button onClick={() => { setShowEmailBox(false); setEmailError(""); setEmailRecipients(""); setEmailFiles([]); }} className="rounded-lg px-2.5 py-1 text-[11px] font-semibold text-brand-sub hover:bg-gray-100">
               Cancel
             </button>
             <button

@@ -25,11 +25,11 @@ export const api = {
   updateTaskComment: (taskId: string, eventId: string, message: string) =>
     request(`/api/tasks/${taskId}/events/${eventId}`, "PATCH", { message }),
   deleteTaskComment: (taskId: string, eventId: string) => request(`/api/tasks/${taskId}/events/${eventId}`, "DELETE"),
-  emailCustomer: (taskId: string, message: string, recipients: string[] = [], file?: File | null) => {
+  emailCustomer: (taskId: string, message: string, recipients: string[] = [], files: File[] = []) => {
     const form = new FormData();
     form.set("message", message);
     form.set("recipients", recipients.join(","));
-    if (file) form.set("file", file);
+    files.forEach((f) => form.append("file", f));
     return fetch(`/api/tasks/${taskId}/email-customer`, { method: "POST", body: form }).then(handleResponse);
   },
   duplicateTask: (taskId: string, projectId?: string) => request(`/api/tasks/${taskId}/duplicate`, "POST", { projectId }),

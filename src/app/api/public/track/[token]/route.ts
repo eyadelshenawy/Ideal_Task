@@ -8,6 +8,7 @@ import { customerReplyEmailHtml } from "@/lib/notifications";
 import { uploadToR2, r2Configured } from "@/lib/r2";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB — same cap as the public intake form's attachment.
+const MAX_FILES = 5; // caps a burst of screenshots at something reasonable
 const ALLOWED_MIME_TYPES = new Set([
   "image/png", "image/jpeg", "image/gif", "image/webp",
   "application/pdf",
@@ -96,13 +97,16 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     return NextResponse.json({ error: "Message can't be empty" }, { status: 400 });
   }
 
-  const file = form.get("file");
-  if (file instanceof File && file.size > 0) {
-    if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json({ error: "File is too large (max 10MB)" }, { status: 400 });
+  const files = form.getAll("file").filter((f): f is File => f instanceof File && f.size > 0);
+  if (files.length > MAX_FILES) {
+    return NextResponse.json({ error: `You can attach up to ${MAX_FILES} files` }, { status: 400 });
+  }
+  for (const f of files) {
+    if (f.size > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: `"${f.name}" is too large (max 10MB each)` }, { status: 400 });
     }
-    if (!ALLOWED_MIME_TYPES.has(file.type)) {
-      return NextResponse.json({ error: "That file type isn't supported — please attach an image, PDF, or Word document" }, { status: 400 });
+    if (!ALLOWED_MIME_TYPES.has(f.type)) {
+      return NextResponse.json({ error: `"${f.name}" isn't a supported type — please attach images, PDFs, or Word documents` }, { status: 400 });
     }
   }
 
@@ -124,23 +128,25 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     return NextResponse.json({ error: "This link is no longer valid" }, { status: 404 });
   }
 
-  const replyMessage = file instanceof File && file.size > 0
-    ? `[Customer] ${parsed.data.message}\n\n📎 ${file.name}`
+  const replyMessage = files.length > 0
+    ? `[Customer] ${parsed.data.message}\n\n${files.map((f) => `📎 ${f.name}`).join("\n")}`
     : `[Customer] ${parsed.data.message}`;
   await prisma.taskEvent.create({
     data: { taskId: task.id, type: "COMMENT", authorId: null, message: replyMessage },
   });
 
-  if (file instanceof File && file.size > 0 && r2Configured()) {
-    try {
-      const buffer = Buffer.from(await file.arrayBuffer());
-      const key = `tasks/${task.id}/${Date.now()}-${file.name}`;
-      await uploadToR2(key, buffer, file.type || "application/octet-stream");
-      await prisma.attachment.create({
-        data: { taskId: task.id, fileName: file.name, fileKey: key, fileSize: file.size, mimeType: file.type || "application/octet-stream" },
-      });
-    } catch (err) {
-      console.error("track reply attachment upload failed:", err);
+  if (r2Configured()) {
+    for (const f of files) {
+      try {
+        const buffer = Buffer.from(await f.arrayBuffer());
+        const key = `tasks/${task.id}/${Date.now()}-${f.name}`;
+        await uploadToR2(key, buffer, f.type || "application/octet-stream");
+        await prisma.attachment.create({
+          data: { taskId: task.id, fileName: f.name, fileKey: key, fileSize: f.size, mimeType: f.type || "application/octet-stream" },
+        });
+      } catch (err) {
+        console.error("track reply attachment upload failed:", err);
+      }
     }
   }
 

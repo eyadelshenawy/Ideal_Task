@@ -10,9 +10,12 @@ import { uploadToR2, r2Configured } from "@/lib/r2";
 
 const APP_URL = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
 
-// Same limits as the public intake form's attachment — kept small since the
-// file also travels inline in the outbound email (base64 inflates size ~33%).
+// Same per-file limit as the public intake form's attachment — kept small
+// since each file also travels inline in the outbound email (base64 inflates
+// size ~33%). MAX_FILES caps a burst of screenshots at something an email
+// can reasonably carry.
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_FILES = 5;
 const ALLOWED_MIME_TYPES = new Set([
   "image/png", "image/jpeg", "image/gif", "image/webp",
   "application/pdf",
@@ -46,13 +49,16 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: "Message can't be empty, and every recipient must be a valid email" }, { status: 400 });
   }
 
-  const file = form.get("file");
-  if (file instanceof File && file.size > 0) {
-    if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json({ error: "File is too large (max 10MB)" }, { status: 400 });
+  const files = form.getAll("file").filter((f): f is File => f instanceof File && f.size > 0);
+  if (files.length > MAX_FILES) {
+    return NextResponse.json({ error: `You can attach up to ${MAX_FILES} files` }, { status: 400 });
+  }
+  for (const f of files) {
+    if (f.size > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: `"${f.name}" is too large (max 10MB each)` }, { status: 400 });
     }
-    if (!ALLOWED_MIME_TYPES.has(file.type)) {
-      return NextResponse.json({ error: "That file type isn't supported — please attach an image, PDF, or Word document" }, { status: 400 });
+    if (!ALLOWED_MIME_TYPES.has(f.type)) {
+      return NextResponse.json({ error: `"${f.name}" isn't a supported type — please attach images, PDFs, or Word documents` }, { status: 400 });
     }
   }
 
@@ -76,17 +82,18 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     await prisma.task.update({ where: { id: task.id }, data: { trackingToken } });
   }
 
-  let fileBuffer: Buffer | null = null;
-  if (file instanceof File && file.size > 0) {
-    fileBuffer = Buffer.from(await file.arrayBuffer());
+  const emailAttachments: { filename: string; content: Buffer }[] = [];
+  for (const f of files) {
+    const buffer = Buffer.from(await f.arrayBuffer());
+    emailAttachments.push({ filename: f.name, content: buffer });
     if (r2Configured()) {
       try {
-        const key = `tasks/${task.id}/${Date.now()}-${file.name}`;
-        await uploadToR2(key, fileBuffer, file.type || "application/octet-stream");
+        const key = `tasks/${task.id}/${Date.now()}-${f.name}`;
+        await uploadToR2(key, buffer, f.type || "application/octet-stream");
         await prisma.attachment.create({
-          data: { taskId: task.id, fileName: file.name, fileKey: key, fileSize: file.size, mimeType: file.type || "application/octet-stream", uploadedById: session.user.id },
+          data: { taskId: task.id, fileName: f.name, fileKey: key, fileSize: f.size, mimeType: f.type || "application/octet-stream", uploadedById: session.user.id },
         });
-        await logActivity(task.id, session.user.id, `Attached "${file.name}"`);
+        await logActivity(task.id, session.user.id, `Attached "${f.name}"`);
       } catch (err) {
         console.error("email-customer attachment upload failed:", err);
       }
@@ -100,13 +107,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       { code: task.code, title: task.title, trackingUrl: `${APP_URL}/track/${trackingToken}` },
       parsed.data.message
     ),
-    attachments: file instanceof File && fileBuffer ? [{ filename: file.name, content: fileBuffer }] : undefined,
+    attachments: emailAttachments.length > 0 ? emailAttachments : undefined,
   });
 
-  const messageWithAttachment = file instanceof File && file.size > 0
-    ? `[To customer] ${parsed.data.message}\n\n📎 ${file.name}`
+  const messageWithAttachments = files.length > 0
+    ? `[To customer] ${parsed.data.message}\n\n${files.map((f) => `📎 ${f.name}`).join("\n")}`
     : `[To customer] ${parsed.data.message}`;
-  const event = await addComment(task.id, session.user.id, messageWithAttachment);
+  const event = await addComment(task.id, session.user.id, messageWithAttachments);
   const withAuthor = await prisma.taskEvent.findUniqueOrThrow({
     where: { id: event.id },
     include: { author: { select: { name: true } } },
