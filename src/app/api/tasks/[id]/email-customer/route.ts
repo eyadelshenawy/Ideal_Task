@@ -10,12 +10,13 @@ import { uploadToR2, r2Configured } from "@/lib/r2";
 
 const APP_URL = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
 
-// Same per-file limit as the public intake form's attachment — kept small
-// since each file also travels inline in the outbound email (base64 inflates
-// size ~33%). MAX_FILES caps a burst of screenshots at something an email
-// can reasonably carry.
+// Same per-file limit as the public intake form's attachment. MAX_TOTAL_SIZE
+// caps the combined size of everything attached to one message — Resend
+// rejects requests over ~40MB total, and the file also travels inline as
+// base64 in the outbound email (inflates size ~33%), so this stays well
+// under that ceiling regardless of how many files make it up.
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const MAX_FILES = 5;
+const MAX_TOTAL_SIZE = 25 * 1024 * 1024;
 const ALLOWED_MIME_TYPES = new Set([
   "image/png", "image/jpeg", "image/gif", "image/webp",
   "application/pdf",
@@ -50,9 +51,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 
   const files = form.getAll("file").filter((f): f is File => f instanceof File && f.size > 0);
-  if (files.length > MAX_FILES) {
-    return NextResponse.json({ error: `You can attach up to ${MAX_FILES} files` }, { status: 400 });
-  }
   for (const f of files) {
     if (f.size > MAX_FILE_SIZE) {
       return NextResponse.json({ error: `"${f.name}" is too large (max 10MB each)` }, { status: 400 });
@@ -60,6 +58,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     if (!ALLOWED_MIME_TYPES.has(f.type)) {
       return NextResponse.json({ error: `"${f.name}" isn't a supported type — please attach images, PDFs, or Word documents` }, { status: 400 });
     }
+  }
+  const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+  if (totalSize > MAX_TOTAL_SIZE) {
+    return NextResponse.json({ error: "Attachments are too large together (max 25MB combined) — try fewer or smaller files" }, { status: 400 });
   }
 
   const task = await prisma.task.findUnique({

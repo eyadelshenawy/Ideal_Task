@@ -8,7 +8,7 @@ import { customerReplyEmailHtml } from "@/lib/notifications";
 import { uploadToR2, r2Configured } from "@/lib/r2";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB — same cap as the public intake form's attachment.
-const MAX_FILES = 5; // caps a burst of screenshots at something reasonable
+const MAX_TOTAL_SIZE = 25 * 1024 * 1024; // combined size of everything on one reply — blunts abuse of this public, unauthenticated endpoint.
 const ALLOWED_MIME_TYPES = new Set([
   "image/png", "image/jpeg", "image/gif", "image/webp",
   "application/pdf",
@@ -98,9 +98,6 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
   }
 
   const files = form.getAll("file").filter((f): f is File => f instanceof File && f.size > 0);
-  if (files.length > MAX_FILES) {
-    return NextResponse.json({ error: `You can attach up to ${MAX_FILES} files` }, { status: 400 });
-  }
   for (const f of files) {
     if (f.size > MAX_FILE_SIZE) {
       return NextResponse.json({ error: `"${f.name}" is too large (max 10MB each)` }, { status: 400 });
@@ -108,6 +105,10 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     if (!ALLOWED_MIME_TYPES.has(f.type)) {
       return NextResponse.json({ error: `"${f.name}" isn't a supported type — please attach images, PDFs, or Word documents` }, { status: 400 });
     }
+  }
+  const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+  if (totalSize > MAX_TOTAL_SIZE) {
+    return NextResponse.json({ error: "Attachments are too large together (max 25MB combined) — try fewer or smaller files" }, { status: 400 });
   }
 
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";

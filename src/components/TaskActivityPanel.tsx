@@ -8,7 +8,7 @@ import { api } from "@/lib/apiClient";
 const TO_CUSTOMER_PREFIX = "[To customer] ";
 const FROM_CUSTOMER_PREFIX = "[Customer] ";
 const MAX_FILE_MB = 10;
-const MAX_FILES = 5;
+const MAX_TOTAL_MB = 25;
 
 interface TaskEvent {
   id: string;
@@ -58,8 +58,9 @@ export default function TaskActivityPanel({ taskId, currentUserId, isSuperAdmin 
         setEmailError(`"${f.name}" is too large (max ${MAX_FILE_MB}MB each)`);
         continue;
       }
-      if (next.length >= MAX_FILES) {
-        setEmailError(`You can attach up to ${MAX_FILES} files`);
+      const totalMB = [...next, f].reduce((sum, x) => sum + x.size, 0) / (1024 * 1024);
+      if (totalMB > MAX_TOTAL_MB) {
+        setEmailError(`Attachments are too large together (max ${MAX_TOTAL_MB}MB combined)`);
         break;
       }
       next.push(f);
@@ -179,10 +180,10 @@ export default function TaskActivityPanel({ taskId, currentUserId, isSuperAdmin 
               ))}
             </div>
           )}
-          {emailFiles.length < MAX_FILES && (
+          {emailFiles.reduce((sum, f) => sum + f.size, 0) < MAX_TOTAL_MB * 1024 * 1024 && (
             <label className="flex items-center gap-1.5 rounded-lg border border-dashed border-brand-border px-2 py-1.5 text-xs bg-white cursor-pointer text-brand-sub">
               <Paperclip size={12} />
-              {`Attach files (optional, up to ${MAX_FILES}, max ${MAX_FILE_MB}MB each)`}
+              {`Attach files (optional, max ${MAX_FILE_MB}MB each, ${MAX_TOTAL_MB}MB combined)`}
               <input
                 type="file"
                 multiple
