@@ -6,6 +6,7 @@ export async function sendEmail(params: {
   to: string | string[];
   subject: string;
   html: string;
+  attachments?: { filename: string; content: Buffer }[];
 }) {
   const from = process.env.EMAIL_FROM;
   if (!process.env.RESEND_API_KEY || !from) {
@@ -18,6 +19,7 @@ export async function sendEmail(params: {
     to: params.to,
     subject: params.subject,
     html: params.html,
+    attachments: params.attachments,
   });
 
   if (error) {

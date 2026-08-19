@@ -2,10 +2,19 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { Loader2, Send, Check } from "lucide-react";
+import { Loader2, Send, Paperclip } from "lucide-react";
 import { STATUSES, formatDateDisplay } from "@/lib/taskHelpers";
 import Chip from "./ui/Chip";
 import ProgressBar from "./ui/ProgressBar";
+
+const MAX_FILE_MB = 10;
+
+interface ThreadMessage {
+  id: string;
+  from: "team" | "customer";
+  message: string;
+  createdAt: string;
+}
 
 interface TrackData {
   code: string | null;
@@ -14,6 +23,12 @@ interface TrackData {
   dueDate: string | null;
   progress: number;
   projectName: string | null;
+  thread: ThreadMessage[];
+}
+
+function formatWhen(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 const fetcher = (url: string) => fetch(url).then(async (r) => {
@@ -22,26 +37,35 @@ const fetcher = (url: string) => fetch(url).then(async (r) => {
 });
 
 export default function TrackPageContent({ token }: { token: string }) {
-  const { data, error, isLoading } = useSWR<TrackData>(`/api/public/track/${token}`, fetcher, { refreshInterval: 30000 });
+  const { data, error, isLoading, mutate } = useSWR<TrackData>(`/api/public/track/${token}`, fetcher, { refreshInterval: 30000 });
   const [reply, setReply] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState("");
-  const [sent, setSent] = useState(false);
+
+  function onFileChange(f: File | null) {
+    setSendError("");
+    if (f && f.size > MAX_FILE_MB * 1024 * 1024) {
+      setSendError(`File is too large (max ${MAX_FILE_MB}MB)`);
+      return;
+    }
+    setFile(f);
+  }
 
   async function sendReply() {
     if (!reply.trim()) return;
     setSending(true);
     setSendError("");
     try {
-      const res = await fetch(`/api/public/track/${token}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: reply.trim() }),
-      });
+      const form = new FormData();
+      form.set("message", reply.trim());
+      if (file) form.set("file", file);
+      const res = await fetch(`/api/public/track/${token}`, { method: "POST", body: form });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || "Couldn't send your reply");
       setReply("");
-      setSent(true);
+      setFile(null);
+      await mutate();
     } catch (e) {
       setSendError(e instanceof Error ? e.message : "Couldn't send your reply");
     } finally {
@@ -91,30 +115,55 @@ export default function TrackPageContent({ token }: { token: string }) {
 
         <div className="bg-white border border-brand-border rounded-[10px] px-4 py-3 mt-3">
           <div className="text-[12.5px] font-semibold text-brand-text mb-1.5">Have a question or update?</div>
-          {sent ? (
-            <div className="flex items-center gap-1.5 text-[12px] text-brand-dark py-1">
-              <Check size={14} /> Sent — our team will follow up.
+
+          {data.thread.length > 0 && (
+            <div className="flex flex-col gap-2 mb-3 max-h-[260px] overflow-y-auto">
+              {data.thread.map((m) => (
+                <div
+                  key={m.id}
+                  className="rounded-lg px-2.5 py-1.5 max-w-[85%]"
+                  style={m.from === "team"
+                    ? { background: "#EEF3F0", alignSelf: "flex-start" }
+                    : { background: "#0A5A46", color: "#fff", alignSelf: "flex-end" }}
+                >
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-[10.5px] font-semibold" style={{ opacity: 0.75 }}>
+                      {m.from === "team" ? "Our team" : "You"}
+                    </span>
+                    <span className="text-[10px]" style={{ opacity: 0.6 }}>{formatWhen(m.createdAt)}</span>
+                  </div>
+                  <div className="text-[12px] whitespace-pre-wrap">{m.message}</div>
+                </div>
+              ))}
             </div>
-          ) : (
-            <>
-              <textarea
-                value={reply}
-                onChange={(e) => setReply(e.target.value)}
-                placeholder="Type your reply here…"
-                rows={3}
-                maxLength={5000}
-                className="w-full rounded-lg border border-brand-border px-2.5 py-1.5 text-[12.5px] outline-none resize-y"
-              />
-              {sendError && <div className="text-[11px] text-red-600 mt-1">{sendError}</div>}
-              <button
-                onClick={sendReply}
-                disabled={sending || !reply.trim()}
-                className="mt-1.5 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-semibold bg-brand-dark text-white disabled:opacity-50"
-              >
-                <Send size={12} /> {sending ? "Sending…" : "Send reply"}
-              </button>
-            </>
           )}
+
+          <textarea
+            value={reply}
+            onChange={(e) => setReply(e.target.value)}
+            placeholder="Type your reply here…"
+            rows={3}
+            maxLength={5000}
+            className="w-full rounded-lg border border-brand-border px-2.5 py-1.5 text-[12.5px] outline-none resize-y"
+          />
+          <label className="mt-1.5 flex items-center gap-1.5 rounded-lg border border-dashed border-brand-border px-2.5 py-1.5 text-[12px] bg-white cursor-pointer text-brand-sub">
+            <Paperclip size={12} />
+            {file ? file.name : `Attach a file (optional, max ${MAX_FILE_MB}MB)`}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,.doc,.docx"
+              onChange={(e) => onFileChange(e.target.files?.[0] ?? null)}
+              className="hidden"
+            />
+          </label>
+          {sendError && <div className="text-[11px] text-red-600 mt-1">{sendError}</div>}
+          <button
+            onClick={sendReply}
+            disabled={sending || !reply.trim()}
+            className="mt-1.5 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-semibold bg-brand-dark text-white disabled:opacity-50"
+          >
+            <Send size={12} /> {sending ? "Sending…" : "Send reply"}
+          </button>
         </div>
       </div>
 
