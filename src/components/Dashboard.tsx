@@ -185,18 +185,13 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   }
 
   const today = todayStr();
-  const stats = useMemo(() => ({
-    total: taskList.length,
-    inProgress: taskList.filter((t) => t.status === "INPROGRESS").length,
-    overdue: taskList.filter((t) => t.dueDate && t.dueDate < today && t.status !== "DONE").length,
-    done: taskList.filter((t) => t.status === "DONE").length,
-    milestones: taskList.filter((t) => t.isMilestone).length,
-  }), [taskList, today]);
 
-  const filteredTasks = useMemo(() => taskList.filter((t) => {
-    if (hideDone && t.status === "DONE") return false;
-    if (filters.overdueOnly && !(t.dueDate && t.dueDate < today && t.status !== "DONE")) return false;
-    if (filters.milestonesOnly && !t.isMilestone) return false;
+  // Everything except the three view-toggles (hideDone, overdueOnly,
+  // milestonesOnly) — those live on the stat cards themselves, so basing the
+  // cards' own counts on them would make a card's number change depending on
+  // whether it's toggled on. The stat cards reflect this; the toggles then
+  // narrow it further for the actual task list below.
+  const statsBase = useMemo(() => taskList.filter((t) => {
     if (filters.dueThisWeek && !isDueThisWeek(t)) return false;
     if (filters.assigneeId !== "all" && !t.assigneeIds.includes(filters.assigneeId)) return false;
     if (filters.priority !== "all" && t.priority !== filters.priority) return false;
@@ -212,7 +207,22 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
       ) return false;
     }
     return true;
-  }), [taskList, filters, today, projectList, hideDone]);
+  }), [taskList, filters, projectList]);
+
+  const stats = useMemo(() => ({
+    total: statsBase.length,
+    inProgress: statsBase.filter((t) => t.status === "INPROGRESS").length,
+    overdue: statsBase.filter((t) => t.dueDate && t.dueDate < today && t.status !== "DONE").length,
+    done: statsBase.filter((t) => t.status === "DONE").length,
+    milestones: statsBase.filter((t) => t.isMilestone).length,
+  }), [statsBase, today]);
+
+  const filteredTasks = useMemo(() => statsBase.filter((t) => {
+    if (hideDone && t.status === "DONE") return false;
+    if (filters.overdueOnly && !(t.dueDate && t.dueDate < today && t.status !== "DONE")) return false;
+    if (filters.milestonesOnly && !t.isMilestone) return false;
+    return true;
+  }), [statsBase, filters.overdueOnly, filters.milestonesOnly, hideDone, today]);
 
   const moduleList = useMemo(
     () => Array.from(new Set(taskList.flatMap((t) => splitModules(t.module)))).sort(),
