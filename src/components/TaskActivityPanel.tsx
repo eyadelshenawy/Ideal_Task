@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import useSWR from "swr";
-import { MessageSquare, Pencil, Trash2, Mail, Paperclip, X } from "lucide-react";
+import { MessageSquare, Pencil, Trash2, Mail, Paperclip, X, Download } from "lucide-react";
 import { api } from "@/lib/apiClient";
 
 const TO_CUSTOMER_PREFIX = "[To customer] ";
 const FROM_CUSTOMER_PREFIX = "[Customer] ";
+const ATTACHMENT_LINE_PREFIX = "📎 ";
 const MAX_FILE_MB = 10;
 const MAX_TOTAL_MB = 25;
 
@@ -18,6 +19,35 @@ interface TaskEvent {
   authorName: string | null;
   createdAt: string;
   editedAt: string | null;
+}
+
+interface AttachmentRef {
+  id: string;
+  fileName: string;
+  createdAt: string;
+}
+
+/** Matches each "📎 filename" line to the attachment it came from, oldest-first,
+ * so same-named files from different messages each resolve to their own row. */
+function matchAttachmentLines(events: TaskEvent[], attachments: AttachmentRef[]): Map<string, string> {
+  const byName = new Map<string, string[]>();
+  for (const a of [...attachments].sort((x, y) => x.createdAt.localeCompare(y.createdAt))) {
+    const list = byName.get(a.fileName) ?? [];
+    list.push(a.id);
+    byName.set(a.fileName, list);
+  }
+  const result = new Map<string, string>();
+  for (const e of [...events].sort((x, y) => x.createdAt.localeCompare(y.createdAt))) {
+    const lines = e.message.split("\n");
+    lines.forEach((line, i) => {
+      if (!line.startsWith(ATTACHMENT_LINE_PREFIX)) return;
+      const name = line.slice(ATTACHMENT_LINE_PREFIX.length);
+      const candidates = byName.get(name);
+      const id = candidates?.shift();
+      if (id) result.set(`${e.id}#${i}`, id);
+    });
+  }
+  return result;
 }
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -35,6 +65,11 @@ interface TaskActivityPanelProps {
 
 export default function TaskActivityPanel({ taskId, currentUserId, isSuperAdmin }: TaskActivityPanelProps) {
   const { data: events, mutate } = useSWR<TaskEvent[]>(`/api/tasks/${taskId}/events`, fetcher);
+  const { data: attachments } = useSWR<AttachmentRef[]>(`/api/tasks/${taskId}/attachments`, fetcher);
+  const attachmentLineMap = useMemo(
+    () => matchAttachmentLines(events ?? [], attachments ?? []),
+    [events, attachments]
+  );
   const [draft, setDraft] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -124,6 +159,13 @@ export default function TaskActivityPanel({ taskId, currentUserId, isSuperAdmin 
     } finally {
       setSavingEdit(false);
     }
+  }
+
+  async function downloadAttachment(attachmentId: string) {
+    const res = await fetch(`/api/tasks/${taskId}/attachments/${attachmentId}`);
+    if (!res.ok) return;
+    const { url } = await res.json();
+    window.open(url, "_blank");
   }
 
   async function deleteComment(eventId: string) {
@@ -292,7 +334,23 @@ export default function TaskActivityPanel({ taskId, currentUserId, isSuperAdmin 
                   </div>
                 </div>
               ) : (
-                <div className="text-[12px] text-brand-text whitespace-pre-wrap">{displayMessage}</div>
+                <div className="text-[12px] text-brand-text flex flex-col gap-0.5">
+                  {displayMessage.split("\n").map((line, i) => {
+                    const attachmentId = attachmentLineMap.get(`${e.id}#${i}`);
+                    if (attachmentId) {
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => downloadAttachment(attachmentId)}
+                          className="flex items-center gap-1 self-start text-brand-dark hover:underline"
+                        >
+                          <Download size={11} /> {line.slice(ATTACHMENT_LINE_PREFIX.length)}
+                        </button>
+                      );
+                    }
+                    return <div key={i} className="whitespace-pre-wrap">{line}</div>;
+                  })}
+                </div>
               )}
             </div>
           );

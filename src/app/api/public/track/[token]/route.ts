@@ -56,6 +56,14 @@ export async function GET(_req: Request, { params }: { params: { token: string }
     };
   });
 
+  // Only id + fileName + createdAt — enough for the client to turn a "📎 name"
+  // line in the thread into a download link, nothing else about the task.
+  const attachments = await prisma.attachment.findMany({
+    where: { taskId: task.id },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, fileName: true, createdAt: true },
+  });
+
   return NextResponse.json({
     code: task.code,
     title: task.title,
@@ -64,6 +72,7 @@ export async function GET(_req: Request, { params }: { params: { token: string }
     progress: task.progress,
     projectName: task.project?.name ?? null,
     thread,
+    attachments: attachments.map((a) => ({ id: a.id, fileName: a.fileName, createdAt: a.createdAt.toISOString() })),
   });
 }
 

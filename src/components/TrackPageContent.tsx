@@ -1,19 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import useSWR from "swr";
-import { Loader2, Send, Paperclip, X } from "lucide-react";
+import { Loader2, Send, Paperclip, X, Download } from "lucide-react";
 import { STATUSES, formatDateDisplay } from "@/lib/taskHelpers";
 import Chip from "./ui/Chip";
 import ProgressBar from "./ui/ProgressBar";
 
 const MAX_FILE_MB = 10;
 const MAX_TOTAL_MB = 25;
+const ATTACHMENT_LINE_PREFIX = "📎 ";
 
 interface ThreadMessage {
   id: string;
   from: "team" | "customer";
   message: string;
+  createdAt: string;
+}
+
+interface AttachmentRef {
+  id: string;
+  fileName: string;
   createdAt: string;
 }
 
@@ -25,11 +32,35 @@ interface TrackData {
   progress: number;
   projectName: string | null;
   thread: ThreadMessage[];
+  attachments: AttachmentRef[];
 }
 
 function formatWhen(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+/** Matches each "📎 filename" line to the attachment it came from, oldest-first,
+ * so same-named files from different messages each resolve to their own row. */
+function matchAttachmentLines(thread: ThreadMessage[], attachments: AttachmentRef[]): Map<string, string> {
+  const byName = new Map<string, string[]>();
+  for (const a of [...attachments].sort((x, y) => x.createdAt.localeCompare(y.createdAt))) {
+    const list = byName.get(a.fileName) ?? [];
+    list.push(a.id);
+    byName.set(a.fileName, list);
+  }
+  const result = new Map<string, string>();
+  for (const m of [...thread].sort((x, y) => x.createdAt.localeCompare(y.createdAt))) {
+    const lines = m.message.split("\n");
+    lines.forEach((line, i) => {
+      if (!line.startsWith(ATTACHMENT_LINE_PREFIX)) return;
+      const name = line.slice(ATTACHMENT_LINE_PREFIX.length);
+      const candidates = byName.get(name);
+      const id = candidates?.shift();
+      if (id) result.set(`${m.id}#${i}`, id);
+    });
+  }
+  return result;
 }
 
 const fetcher = (url: string) => fetch(url).then(async (r) => {
@@ -39,6 +70,10 @@ const fetcher = (url: string) => fetch(url).then(async (r) => {
 
 export default function TrackPageContent({ token }: { token: string }) {
   const { data, error, isLoading, mutate } = useSWR<TrackData>(`/api/public/track/${token}`, fetcher, { refreshInterval: 30000 });
+  const attachmentLineMap = useMemo(
+    () => matchAttachmentLines(data?.thread ?? [], data?.attachments ?? []),
+    [data?.thread, data?.attachments]
+  );
   const [reply, setReply] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [sending, setSending] = useState(false);
@@ -65,6 +100,13 @@ export default function TrackPageContent({ token }: { token: string }) {
 
   function removeFile(index: number) {
     setFiles((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  async function downloadAttachment(attachmentId: string) {
+    const res = await fetch(`/api/public/track/${token}/attachments/${attachmentId}`);
+    if (!res.ok) return;
+    const { url } = await res.json();
+    window.open(url, "_blank");
   }
 
   async function sendReply() {
@@ -147,7 +189,23 @@ export default function TrackPageContent({ token }: { token: string }) {
                     </span>
                     <span className="text-[10px]" style={{ opacity: 0.6 }}>{formatWhen(m.createdAt)}</span>
                   </div>
-                  <div className="text-[12px] whitespace-pre-wrap">{m.message}</div>
+                  <div className="text-[12px] flex flex-col gap-0.5">
+                    {m.message.split("\n").map((line, i) => {
+                      const attachmentId = attachmentLineMap.get(`${m.id}#${i}`);
+                      if (attachmentId) {
+                        return (
+                          <button
+                            key={i}
+                            onClick={() => downloadAttachment(attachmentId)}
+                            className="flex items-center gap-1 self-start underline"
+                          >
+                            <Download size={11} /> {line.slice(ATTACHMENT_LINE_PREFIX.length)}
+                          </button>
+                        );
+                      }
+                      return <div key={i} className="whitespace-pre-wrap">{line}</div>;
+                    })}
+                  </div>
                 </div>
               ))}
             </div>
