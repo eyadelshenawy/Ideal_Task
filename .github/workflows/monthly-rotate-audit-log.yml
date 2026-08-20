@@ -1,0 +1,18 @@
+name: Monthly audit log rotation
+
+# Deletes AuditLog rows older than 1 year. Runs on the 1st of every month
+# alongside the attachment cleanup; can also be triggered manually.
+on:
+  schedule:
+    - cron: "30 2 1 * *" # 02:30 UTC on day 1 of each month
+  workflow_dispatch: {}
+
+jobs:
+  rotate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call the rotate endpoint
+        run: |
+          curl --fail --max-time 60 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/rotate-audit-log"

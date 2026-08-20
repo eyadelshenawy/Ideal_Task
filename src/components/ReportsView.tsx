@@ -10,6 +10,7 @@ import StatCard from "./ui/StatCard";
 import ProgressBar from "./ui/ProgressBar";
 import Chip from "./ui/Chip";
 import SlaSettingsModal from "./SlaSettingsModal";
+import BulkTimeModal from "./BulkTimeModal";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -18,6 +19,7 @@ interface ReportsViewProps {
   projects: Project[];
   team: TeamMember[];
   isSuperAdmin: boolean;
+  currentUserId: string;
   onOpenTask: (taskId: string) => void;
 }
 
@@ -25,8 +27,9 @@ function isOverdue(task: Task, today: string): boolean {
   return !!task.dueDate && task.dueDate < today && task.status !== "DONE";
 }
 
-export default function ReportsView({ tasks, projects, team, isSuperAdmin, onOpenTask }: ReportsViewProps) {
+export default function ReportsView({ tasks, projects, team, isSuperAdmin, currentUserId, onOpenTask }: ReportsViewProps) {
   const [slaSettingsOpen, setSlaSettingsOpen] = useState(false);
+  const [bulkTimeOpen, setBulkTimeOpen] = useState(false);
   const [timeFrom, setTimeFrom] = useState(addDays(todayStr(), -6));
   const [timeTo, setTimeTo] = useState(todayStr());
   const { data: timeTotals } = useSWR<Record<string, number>>(
@@ -196,6 +199,9 @@ export default function ReportsView({ tasks, projects, team, isSuperAdmin, onOpe
         <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
           <div className="text-xs font-bold text-brand-sub uppercase tracking-wide">Time Logged</div>
           <div className="flex items-center gap-1.5 text-[11px] text-brand-sub">
+            <button onClick={() => setBulkTimeOpen(true)} className="text-brand-dark underline mr-1">
+              Log in bulk
+            </button>
             <input
               type="date" value={timeFrom} max={timeTo}
               onChange={(e) => setTimeFrom(e.target.value)}
@@ -238,6 +244,15 @@ export default function ReportsView({ tasks, projects, team, isSuperAdmin, onOpe
           )}
         </div>
         {slaSettingsOpen && <SlaSettingsModal onClose={() => setSlaSettingsOpen(false)} />}
+        {bulkTimeOpen && (
+          <BulkTimeModal
+            tasks={tasks}
+            team={team}
+            isSuperAdmin={isSuperAdmin}
+            currentUserId={currentUserId}
+            onClose={() => setBulkTimeOpen(false)}
+          />
+        )}
         {!sla ? (
           <div className="text-sm text-brand-sub py-6 text-center">Loading…</div>
         ) : sla.trackedCount === 0 ? (

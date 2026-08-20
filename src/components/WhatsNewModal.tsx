@@ -6,6 +6,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Log time in bulk",
+    description: "New \"Log in bulk\" button in Reports opens a modal where you can enter many time entries at once — one row per task/date/hours — instead of opening every task one by one. Handy after a busy week that didn't get logged in real time.",
+  },
+  {
     title: "Log or edit time on behalf of someone else",
     description: "Super Admins and Project Managers can now pick who a time entry is for when logging (drop-down next to hours/date), and can edit or re-assign anyone's existing entry. Everyone else still logs and edits their own only.",
   },
