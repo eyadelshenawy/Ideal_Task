@@ -168,6 +168,20 @@ export default function TaskActivityPanel({ taskId, currentUserId, isSuperAdmin 
     window.open(url, "_blank");
   }
 
+  async function resetTrackingLink() {
+    const ok = window.confirm(
+      "Reset the customer tracking link? The current link will stop working immediately. Any customer using the old link will need a fresh one — send a new email to give it to them."
+    );
+    if (!ok) return;
+    const res = await fetch(`/api/tasks/${taskId}/regenerate-tracking-token`, { method: "POST" });
+    if (!res.ok) {
+      setEmailError("Couldn't reset the link — please try again");
+      return;
+    }
+    setEmailError("");
+    window.alert("Link reset. Send a new email so the customer gets the new one.");
+  }
+
   async function deleteComment(eventId: string) {
     setDeletingId(eventId);
     try {
@@ -236,7 +250,16 @@ export default function TaskActivityPanel({ taskId, currentUserId, isSuperAdmin 
             </label>
           )}
           {emailError && <div className="text-[11px] text-red-600">{emailError}</div>}
-          <div className="flex gap-1.5 justify-end">
+          <div className="flex gap-1.5 justify-end items-center">
+            {isSuperAdmin && (
+              <button
+                onClick={resetTrackingLink}
+                title="Invalidate the current tracking link (e.g. if it was forwarded to the wrong person)"
+                className="mr-auto rounded-lg px-2.5 py-1 text-[11px] font-semibold text-brand-sub hover:text-red-600"
+              >
+                Reset link
+              </button>
+            )}
             <button onClick={() => { setShowEmailBox(false); setEmailError(""); setEmailRecipients(""); setEmailFiles([]); }} className="rounded-lg px-2.5 py-1 text-[11px] font-semibold text-brand-sub hover:bg-gray-100">
               Cancel
             </button>
