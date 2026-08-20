@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireTaskAccess } from "@/lib/permissions";
 import { addComment } from "@/lib/activity";
 import { notify } from "@/lib/inAppNotify";
-import { resolveMentions } from "@/lib/mentions";
+import { resolveVisibleMentions } from "@/lib/mentions";
 import { notifyMention } from "@/lib/notifications";
 
 function serializeEvent(e: { id: string; type: string; message: string; createdAt: Date; editedAt: Date | null; authorId: string | null; author: { name: string } | null }) {
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   // A mention gets its own, more specific notification — including for
   // someone who isn't an assignee at all, and skipping anyone who'd already
   // get the generic "commented on" one above.
-  const mentioned = await resolveMentions(parsed.data.message);
+  const mentioned = await resolveVisibleMentions(parsed.data.message, task.id);
   const mentionIds = mentioned.map((m) => m.id).filter((id) => id !== session.user.id && !assigneeIds.has(id));
   if (mentionIds.length > 0) {
     notify(mentionIds, `${authorName} mentioned you in a comment on "${task.title}"`, task.id);
