@@ -607,7 +607,7 @@ export default function TaskModal({
 
         {draft.id && draft.projectId && <TaskCustomFieldsPanel taskId={draft.id} />}
         {draft.id && <TaskChecklistPanel taskId={draft.id} />}
-        {draft.id && <TaskTimePanel taskId={draft.id} currentUserId={currentUserId} isSuperAdmin={isSuperAdmin} />}
+        {draft.id && <TaskTimePanel taskId={draft.id} currentUserId={currentUserId} canManageOthers={canFullyEdit} team={team} />}
         {draft.id && <TaskAttachmentsPanel taskId={draft.id} />}
         {draft.id && <TaskActivityPanel taskId={draft.id} currentUserId={currentUserId} isSuperAdmin={isSuperAdmin} />}
         </div>

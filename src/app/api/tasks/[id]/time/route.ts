@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireTaskAccess } from "@/lib/permissions";
+import { requireTaskAccess, getUserAccess } from "@/lib/permissions";
 import { dateStrToUTC } from "@/lib/serverDates";
 
 function serializeEntry(e: { id: string; hours: number; date: Date; note: string | null; userId: string | null; createdAt: Date; user: { name: string } | null }) {
@@ -35,6 +35,10 @@ const createSchema = z.object({
   hours: z.number().min(0.25).max(24),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD"),
   note: z.string().trim().max(300).optional(),
+  // Super Admins and Project Admins can log time on behalf of another team
+  // member (e.g. someone who forgot to log their own). Everyone else has
+  // this field silently ignored — they can only log for themselves.
+  userId: z.string().optional(),
 });
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
@@ -46,10 +50,21 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid time entry" }, { status: 400 });
   }
 
+  let logForUserId = session.user.id;
+  if (parsed.data.userId && parsed.data.userId !== session.user.id) {
+    const task = await prisma.task.findUnique({ where: { id: params.id }, select: { projectId: true } });
+    const access = await getUserAccess(session);
+    const canLogForOthers = access.isSuperAdmin || (!!task?.projectId && access.administeredProjectIds.includes(task.projectId));
+    if (!canLogForOthers) {
+      return NextResponse.json({ error: "Only Super Admins and Project Managers can log time for someone else" }, { status: 403 });
+    }
+    logForUserId = parsed.data.userId;
+  }
+
   const entry = await prisma.timeEntry.create({
     data: {
       taskId: params.id,
-      userId: session.user.id,
+      userId: logForUserId,
       hours: parsed.data.hours,
       date: dateStrToUTC(parsed.data.date)!,
       note: parsed.data.note || null,

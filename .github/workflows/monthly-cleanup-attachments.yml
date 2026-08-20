@@ -1,0 +1,19 @@
+name: Monthly attachment cleanup
+
+# Removes R2 files + Attachment rows for tasks that have been in the trash
+# for more than 30 days. Runs on the 1st of every month, and can be
+# triggered manually from the Actions tab.
+on:
+  schedule:
+    - cron: "0 2 1 * *" # 02:00 UTC on day 1 of each month
+  workflow_dispatch: {}
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call the cleanup endpoint
+        run: |
+          curl --fail --max-time 300 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/cleanup-attachments"

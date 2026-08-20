@@ -6,6 +6,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Log or edit time on behalf of someone else",
+    description: "Super Admins and Project Managers can now pick who a time entry is for when logging (drop-down next to hours/date), and can edit or re-assign anyone's existing entry. Everyone else still logs and edits their own only.",
+  },
+  {
     title: "Reset a leaked tracking link",
     description: "If a customer's tracking link ends up in the wrong hands, Super Admins can hit \"Reset link\" in the Email customer box to invalidate the old one on the spot, then send a fresh email to hand out the new one.",
   },

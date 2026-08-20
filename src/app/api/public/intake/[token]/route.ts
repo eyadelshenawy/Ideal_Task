@@ -59,7 +59,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     return NextResponse.json({ ok: true, trackingToken: crypto.randomBytes(9).toString("base64url") }, { status: 201 });
   }
 
-  if (checkRateLimit(`intake:${ipFromRequest(req)}`, 5, 60 * 60 * 1000)) {
+  if (checkRateLimit(`intake:${ipFromRequest(req)}`, 20, 60 * 60 * 1000)) {
     return NextResponse.json({ error: "Too many submissions — please try again later" }, { status: 429 });
   }
 
