@@ -7,22 +7,9 @@ import { addComment, logActivity } from "@/lib/activity";
 import { sendEmail } from "@/lib/email";
 import { customerMessageEmailHtml } from "@/lib/notifications";
 import { uploadToR2, r2Configured } from "@/lib/r2";
+import { MAX_FILE_SIZE, MAX_TOTAL_SIZE, ALLOWED_MIME_TYPES } from "@/lib/uploadLimits";
 
 const APP_URL = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
-
-// Same per-file limit as the public intake form's attachment. MAX_TOTAL_SIZE
-// caps the combined size of everything attached to one message — Resend
-// rejects requests over ~40MB total, and the file also travels inline as
-// base64 in the outbound email (inflates size ~33%), so this stays well
-// under that ceiling regardless of how many files make it up.
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const MAX_TOTAL_SIZE = 25 * 1024 * 1024;
-const ALLOWED_MIME_TYPES = new Set([
-  "image/png", "image/jpeg", "image/gif", "image/webp",
-  "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-]);
 
 const bodySchema = z.object({
   message: z.string().trim().min(1).max(5000),

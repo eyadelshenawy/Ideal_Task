@@ -4,12 +4,11 @@ import { useMemo, useState } from "react";
 import useSWR from "swr";
 import { MessageSquare, Pencil, Trash2, Mail, Paperclip, X, Download } from "lucide-react";
 import { api } from "@/lib/apiClient";
+import { MAX_FILE_MB, MAX_TOTAL_MB, FILE_INPUT_ACCEPT } from "@/lib/uploadLimits";
+import { matchAttachmentLines, ATTACHMENT_LINE_PREFIX } from "@/lib/attachmentMatcher";
 
 const TO_CUSTOMER_PREFIX = "[To customer] ";
 const FROM_CUSTOMER_PREFIX = "[Customer] ";
-const ATTACHMENT_LINE_PREFIX = "📎 ";
-const MAX_FILE_MB = 10;
-const MAX_TOTAL_MB = 25;
 
 interface TaskEvent {
   id: string;
@@ -25,29 +24,6 @@ interface AttachmentRef {
   id: string;
   fileName: string;
   createdAt: string;
-}
-
-/** Matches each "📎 filename" line to the attachment it came from, oldest-first,
- * so same-named files from different messages each resolve to their own row. */
-function matchAttachmentLines(events: TaskEvent[], attachments: AttachmentRef[]): Map<string, string> {
-  const byName = new Map<string, string[]>();
-  for (const a of [...attachments].sort((x, y) => x.createdAt.localeCompare(y.createdAt))) {
-    const list = byName.get(a.fileName) ?? [];
-    list.push(a.id);
-    byName.set(a.fileName, list);
-  }
-  const result = new Map<string, string>();
-  for (const e of [...events].sort((x, y) => x.createdAt.localeCompare(y.createdAt))) {
-    const lines = e.message.split("\n");
-    lines.forEach((line, i) => {
-      if (!line.startsWith(ATTACHMENT_LINE_PREFIX)) return;
-      const name = line.slice(ATTACHMENT_LINE_PREFIX.length);
-      const candidates = byName.get(name);
-      const id = candidates?.shift();
-      if (id) result.set(`${e.id}#${i}`, id);
-    });
-  }
-  return result;
 }
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -243,7 +219,7 @@ export default function TaskActivityPanel({ taskId, currentUserId, isSuperAdmin 
               <input
                 type="file"
                 multiple
-                accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,.doc,.docx"
+                accept={FILE_INPUT_ACCEPT}
                 onChange={(ev) => { onEmailFilesChange(ev.target.files); ev.target.value = ""; }}
                 className="hidden"
               />

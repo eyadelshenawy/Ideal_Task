@@ -6,8 +6,24 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Reset a leaked tracking link",
+    description: "If a customer's tracking link ends up in the wrong hands, Super Admins can hit \"Reset link\" in the Email customer box to invalidate the old one on the spot, then send a fresh email to hand out the new one.",
+  },
+  {
+    title: "Dashboard numbers follow your filters",
+    description: "The five stat cards at the top of the dashboard now reflect whatever project, assignee, priority, module, or search you've filtered by — not the whole workspace.",
+  },
+  {
+    title: "Attachments both ways in Email customer",
+    description: "Both your team and the customer can now attach files to any message — as many as you like, up to 10MB each and 25MB combined. Files show as clickable download links right inside the conversation thread.",
+  },
+  {
+    title: "Conversation thread on the tracking page",
+    description: "The customer's tracking link now shows the back-and-forth of messages between them and your team, so they see what was said before they reply.",
+  },
+  {
     title: "Email the customer, right from the task",
-    description: "New \"Email customer\" button sends them the task code, title, and a tracking link, and logs it as a comment. They can reply from that same tracking page — no account needed — and your team gets notified.",
+    description: "New \"Email customer\" button sends them the task code, title, and a tracking link, and logs it as a comment. They can reply from that same tracking page — no account needed — and your team gets notified. Also send to extra addresses (comma-separated) for tasks with no contact on file yet.",
   },
   {
     title: "Delete a comment",

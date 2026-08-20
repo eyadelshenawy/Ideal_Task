@@ -3,6 +3,7 @@
 import { useState } from "react";
 import useSWR from "swr";
 import { Loader2, CheckCircle2, Paperclip, Copy } from "lucide-react";
+import { MAX_FILE_MB, FILE_INPUT_ACCEPT } from "@/lib/uploadLimits";
 
 interface IntakeMeta {
   projectName: string;
@@ -13,7 +14,6 @@ const fetcher = (url: string) => fetch(url).then(async (r) => {
   return r.json();
 });
 
-const MAX_FILE_MB = 10;
 
 export default function IntakePageContent({ token }: { token: string }) {
   const { data, error, isLoading } = useSWR<IntakeMeta>(`/api/public/intake/${token}`, fetcher);
@@ -181,7 +181,7 @@ export default function IntakePageContent({ token }: { token: string }) {
             {file ? file.name : `Choose a file — image, PDF, or Word (max ${MAX_FILE_MB}MB)`}
             <input
               type="file"
-              accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,.doc,.docx"
+              accept={FILE_INPUT_ACCEPT}
               onChange={(e) => onFileChange(e.target.files?.[0] ?? null)}
               className="hidden"
             />

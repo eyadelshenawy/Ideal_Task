@@ -4,12 +4,11 @@ import { useMemo, useState } from "react";
 import useSWR from "swr";
 import { Loader2, Send, Paperclip, X, Download } from "lucide-react";
 import { STATUSES, formatDateDisplay } from "@/lib/taskHelpers";
+import { MAX_FILE_MB, MAX_TOTAL_MB, FILE_INPUT_ACCEPT } from "@/lib/uploadLimits";
+import { matchAttachmentLines, ATTACHMENT_LINE_PREFIX } from "@/lib/attachmentMatcher";
 import Chip from "./ui/Chip";
 import ProgressBar from "./ui/ProgressBar";
 
-const MAX_FILE_MB = 10;
-const MAX_TOTAL_MB = 25;
-const ATTACHMENT_LINE_PREFIX = "📎 ";
 
 interface ThreadMessage {
   id: string;
@@ -38,29 +37,6 @@ interface TrackData {
 function formatWhen(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-}
-
-/** Matches each "📎 filename" line to the attachment it came from, oldest-first,
- * so same-named files from different messages each resolve to their own row. */
-function matchAttachmentLines(thread: ThreadMessage[], attachments: AttachmentRef[]): Map<string, string> {
-  const byName = new Map<string, string[]>();
-  for (const a of [...attachments].sort((x, y) => x.createdAt.localeCompare(y.createdAt))) {
-    const list = byName.get(a.fileName) ?? [];
-    list.push(a.id);
-    byName.set(a.fileName, list);
-  }
-  const result = new Map<string, string>();
-  for (const m of [...thread].sort((x, y) => x.createdAt.localeCompare(y.createdAt))) {
-    const lines = m.message.split("\n");
-    lines.forEach((line, i) => {
-      if (!line.startsWith(ATTACHMENT_LINE_PREFIX)) return;
-      const name = line.slice(ATTACHMENT_LINE_PREFIX.length);
-      const candidates = byName.get(name);
-      const id = candidates?.shift();
-      if (id) result.set(`${m.id}#${i}`, id);
-    });
-  }
-  return result;
 }
 
 const fetcher = (url: string) => fetch(url).then(async (r) => {
@@ -239,7 +215,7 @@ export default function TrackPageContent({ token }: { token: string }) {
               <input
                 type="file"
                 multiple
-                accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,.doc,.docx"
+                accept={FILE_INPUT_ACCEPT}
                 onChange={(e) => { onFilesChange(e.target.files); e.target.value = ""; }}
                 className="hidden"
               />

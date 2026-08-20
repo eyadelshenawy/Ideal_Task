@@ -6,15 +6,8 @@ import { notify } from "@/lib/inAppNotify";
 import { sendEmail } from "@/lib/email";
 import { customerReplyEmailHtml } from "@/lib/notifications";
 import { uploadToR2, r2Configured } from "@/lib/r2";
-
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB — same cap as the public intake form's attachment.
-const MAX_TOTAL_SIZE = 25 * 1024 * 1024; // combined size of everything on one reply — blunts abuse of this public, unauthenticated endpoint.
-const ALLOWED_MIME_TYPES = new Set([
-  "image/png", "image/jpeg", "image/gif", "image/webp",
-  "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-]);
+import { MAX_FILE_SIZE, MAX_TOTAL_SIZE, ALLOWED_MIME_TYPES } from "@/lib/uploadLimits";
+import { checkRateLimit, ipFromRequest } from "@/lib/rateLimit";
 
 // Same markers TaskActivityPanel.tsx uses to tag customer-facing comments —
 // only these ever get exposed on this public, unauthenticated endpoint.
@@ -78,20 +71,6 @@ export async function GET(_req: Request, { params }: { params: { token: string }
 
 const replySchema = z.object({ message: z.string().trim().min(1).max(5000) });
 
-// Best-effort in-memory rate limit — same tradeoff as the intake endpoint's:
-// resets on deploy/restart, just meant to blunt casual spam.
-const repliesByIp = new Map<string, number[]>();
-const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
-const RATE_LIMIT_MAX = 10;
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const recent = (repliesByIp.get(ip) ?? []).filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
-  recent.push(now);
-  repliesByIp.set(ip, recent);
-  return recent.length > RATE_LIMIT_MAX;
-}
-
 // Public, unauthenticated — logs a Comment on the task (marked as from the
 // customer) and notifies the task's assignees + Super Admins, mirroring the
 // existing comment/new-ticket notification patterns.
@@ -120,8 +99,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     return NextResponse.json({ error: "Attachments are too large together (max 25MB combined) — try fewer or smaller files" }, { status: 400 });
   }
 
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  if (isRateLimited(ip)) {
+  if (checkRateLimit(`track-reply:${ipFromRequest(req)}`, 10, 60 * 60 * 1000)) {
     return NextResponse.json({ error: "Too many replies — please try again later" }, { status: 429 });
   }
 

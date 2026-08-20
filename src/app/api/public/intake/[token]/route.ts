@@ -8,6 +8,8 @@ import { notify } from "@/lib/inAppNotify";
 import { uploadToR2, r2Configured } from "@/lib/r2";
 import { sendEmail } from "@/lib/email";
 import { newTicketEmailHtml } from "@/lib/notifications";
+import { MAX_FILE_SIZE, ALLOWED_MIME_TYPES } from "@/lib/uploadLimits";
+import { checkRateLimit, ipFromRequest } from "@/lib/rateLimit";
 
 // Public, unauthenticated — the token is the only gate. Only ever returns
 // the project's name, never anything else about it.
@@ -22,21 +24,6 @@ export async function GET(_req: Request, { params }: { params: { token: string }
   return NextResponse.json({ projectName: project.name });
 }
 
-// Best-effort in-memory rate limit — resets on every deploy/restart, which
-// is an acceptable tradeoff for a small internal tool; not meant to survive
-// a determined attacker, just to blunt casual spam.
-const submissionsByIp = new Map<string, number[]>();
-const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
-const RATE_LIMIT_MAX = 5;
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const recent = (submissionsByIp.get(ip) ?? []).filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
-  recent.push(now);
-  submissionsByIp.set(ip, recent);
-  return recent.length > RATE_LIMIT_MAX;
-}
-
 const submitSchema = z.object({
   title: z.string().trim().min(1).max(200),
   description: z.string().trim().min(1).max(2000),
@@ -49,14 +36,6 @@ const submitSchema = z.object({
   // instead of revealing that it was rejected.
   website: z.string().optional(),
 });
-
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB — tighter than the logged-in 25MB cap, since this endpoint is unauthenticated.
-const ALLOWED_MIME_TYPES = new Set([
-  "image/png", "image/jpeg", "image/gif", "image/webp",
-  "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-]);
 
 export async function POST(req: NextRequest, { params }: { params: { token: string } }) {
   const form = await req.formData().catch(() => null);
@@ -80,8 +59,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     return NextResponse.json({ ok: true, trackingToken: crypto.randomBytes(9).toString("base64url") }, { status: 201 });
   }
 
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  if (isRateLimited(ip)) {
+  if (checkRateLimit(`intake:${ipFromRequest(req)}`, 5, 60 * 60 * 1000)) {
     return NextResponse.json({ error: "Too many submissions — please try again later" }, { status: 429 });
   }
 
