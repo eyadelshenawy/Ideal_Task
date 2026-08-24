@@ -8,12 +8,7 @@ import { customerReplyEmailHtml } from "@/lib/notifications";
 import { uploadToR2, r2Configured } from "@/lib/r2";
 import { MAX_FILE_SIZE, MAX_TOTAL_SIZE, ALLOWED_MIME_TYPES } from "@/lib/uploadLimits";
 import { checkRateLimit, ipFromRequest } from "@/lib/rateLimit";
-
-// Same markers TaskActivityPanel.tsx uses to tag customer-facing comments —
-// only these ever get exposed on this public, unauthenticated endpoint.
-// Internal team comments and the activity log are never included here.
-const TO_CUSTOMER_PREFIX = "[To customer] ";
-const FROM_CUSTOMER_PREFIX = "[Customer] ";
+import { TO_CUSTOMER_PREFIX, FROM_CUSTOMER_PREFIX } from "@/lib/customerThread";
 
 // Public, unauthenticated — the token is the only gate. Deliberately
 // minimal: status of one ticket plus the customer-facing message thread —

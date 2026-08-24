@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getR2DownloadUrl } from "@/lib/r2";
+import { TO_CUSTOMER_PREFIX, FROM_CUSTOMER_PREFIX } from "@/lib/customerThread";
 
 // Public, unauthenticated — same token gate as the project-level share
-// endpoint. Deliberately shown here (unlike the summary list): full
-// description, every comment, and downloadable attachments — a task
-// belongs to the client, so unlike the rest of the app's privacy defaults,
-// they get to see everything written on it. Still never reveals *who* on
-// the team wrote what — comments/attachments are attributed to "Team" only.
+// endpoint. Deliberately shows the customer thread only: any comment
+// explicitly sent to the customer via "Email customer" or replied by the
+// customer stays visible; every internal team comment stays hidden. The
+// team is still never named — team-side messages read as "Team" only.
 export async function GET(_req: Request, { params }: { params: { token: string; taskId: string } }) {
   const project = await prisma.project.findUnique({
     where: { shareToken: params.token },
@@ -22,7 +22,14 @@ export async function GET(_req: Request, { params }: { params: { token: string; 
     select: {
       id: true, projectId: true, deletedAt: true,
       code: true, title: true, description: true, status: true, dueDate: true, progress: true, isMilestone: true,
-      events: { where: { type: "COMMENT" }, orderBy: { createdAt: "asc" }, select: { message: true, createdAt: true } },
+      events: {
+        where: {
+          type: "COMMENT",
+          OR: [{ message: { startsWith: TO_CUSTOMER_PREFIX } }, { message: { startsWith: FROM_CUSTOMER_PREFIX } }],
+        },
+        orderBy: { createdAt: "asc" },
+        select: { id: true, message: true, createdAt: true },
+      },
       attachments: { orderBy: { createdAt: "desc" }, select: { id: true, fileName: true, fileKey: true, fileSize: true, createdAt: true } },
     },
   });
@@ -43,6 +50,16 @@ export async function GET(_req: Request, { params }: { params: { token: string; 
     }))
   );
 
+  const comments = task.events.map((e) => {
+    const fromTeam = e.message.startsWith(TO_CUSTOMER_PREFIX);
+    return {
+      id: e.id,
+      from: fromTeam ? "team" : "customer",
+      message: fromTeam ? e.message.slice(TO_CUSTOMER_PREFIX.length) : e.message.slice(FROM_CUSTOMER_PREFIX.length),
+      createdAt: e.createdAt.toISOString(),
+    };
+  });
+
   return NextResponse.json({
     code: task.code,
     title: task.title,
@@ -51,7 +68,7 @@ export async function GET(_req: Request, { params }: { params: { token: string; 
     dueDate: task.dueDate ? task.dueDate.toISOString().slice(0, 10) : null,
     progress: task.progress,
     isMilestone: task.isMilestone,
-    comments: task.events.map((e) => ({ message: e.message, createdAt: e.createdAt.toISOString() })),
+    comments,
     attachments: attachments.filter((a) => a.url !== null),
   });
 }

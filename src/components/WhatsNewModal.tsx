@@ -6,6 +6,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Customers can comment from the project tracking link",
+    description: "The project tracking link a customer opens now lets them add a comment on any specific ticket — no need to wait for you to email them first. They type their name once and can send. And any internal comments your team writes on a ticket now stay internal on that view — only messages sent via \"Email customer\" (and customer replies) appear in the customer's thread.",
+  },
+  {
     title: "Log time in bulk",
     description: "New \"Log in bulk\" button in Reports opens a modal where you can enter many time entries at once — one row per task/date/hours — instead of opening every task one by one. Handy after a busy week that didn't get logged in real time.",
   },

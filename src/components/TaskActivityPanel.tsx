@@ -6,9 +6,7 @@ import { MessageSquare, Pencil, Trash2, Mail, Paperclip, X, Download } from "luc
 import { api } from "@/lib/apiClient";
 import { MAX_FILE_MB, MAX_TOTAL_MB, FILE_INPUT_ACCEPT } from "@/lib/uploadLimits";
 import { matchAttachmentLines, ATTACHMENT_LINE_PREFIX } from "@/lib/attachmentMatcher";
-
-const TO_CUSTOMER_PREFIX = "[To customer] ";
-const FROM_CUSTOMER_PREFIX = "[Customer] ";
+import { TO_CUSTOMER_PREFIX, FROM_CUSTOMER_PREFIX } from "@/lib/customerThread";
 
 interface TaskEvent {
   id: string;
