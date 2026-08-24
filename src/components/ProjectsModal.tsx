@@ -311,13 +311,6 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
     if (res.ok) onChanged();
   }
 
-  async function resetShareLink(id: string) {
-    if (!window.confirm("Reset the share link? The old link stops working immediately. Anyone using it will need the new one.")) return;
-    // Same POST — the server just overwrites the old shareToken with a fresh one.
-    const res = await fetch(`/api/projects/${id}/share`, { method: "POST" });
-    if (res.ok) onChanged();
-  }
-
   async function generateIntakeLink(id: string) {
     const res = await fetch(`/api/projects/${id}/intake`, { method: "POST" });
     if (res.ok) onChanged();
@@ -432,9 +425,6 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
                       </span>
                       <button onClick={() => copyShareLink(p.shareToken!)} title="Copy link" className="p-0.5 text-brand-sub hover:text-brand-text">
                         <Copy size={12} />
-                      </button>
-                      <button onClick={() => resetShareLink(p.id)} className="text-[11px] text-brand-sub underline">
-                        Reset
                       </button>
                       <button onClick={() => revokeShareLink(p.id)} className="text-[11px] text-red-600 underline">
                         Revoke
