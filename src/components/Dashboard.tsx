@@ -1165,12 +1165,14 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
           </div>
         )}
 
-        {selectMode && selectedIds.size > 0 && (
+        {selectMode && (
           <BulkActionBar
             selectedCount={selectedIds.size}
+            totalVisible={filteredTasks.length}
             team={teamList}
             projects={modalProjects}
             onClear={() => setSelectedIds(new Set())}
+            onSelectAll={() => setSelectedIds(new Set(filteredTasks.map((t) => t.id)))}
             onBulkUpdate={bulkPatch}
             onDelete={bulkDelete}
           />

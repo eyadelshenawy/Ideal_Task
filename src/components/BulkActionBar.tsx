@@ -7,15 +7,17 @@ import { STATUSES } from "@/lib/taskHelpers";
 
 interface BulkActionBarProps {
   selectedCount: number;
+  totalVisible: number;
   team: TeamMember[];
   projects: Project[];
   onClear: () => void;
+  onSelectAll: () => void;
   onBulkUpdate: (patch: Record<string, unknown>) => Promise<void>;
   onDelete: () => Promise<void>;
 }
 
 export default function BulkActionBar({
-  selectedCount, team, projects, onClear, onBulkUpdate, onDelete,
+  selectedCount, totalVisible, team, projects, onClear, onSelectAll, onBulkUpdate, onDelete,
 }: BulkActionBarProps) {
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -59,7 +61,15 @@ export default function BulkActionBar({
 
   return (
     <div className="sticky top-0 z-10 flex items-center gap-2 flex-wrap rounded-lg px-3 py-2 mb-3 bg-brand-dark text-white">
-      <span className="text-xs font-semibold">{selectedCount} selected</span>
+      <span className="text-xs font-semibold">{selectedCount} of {totalVisible} selected</span>
+      <button
+        onClick={selectedCount === totalVisible && totalVisible > 0 ? onClear : onSelectAll}
+        disabled={busy || totalVisible === 0}
+        className="rounded-md px-2 py-1 text-[11px] font-semibold bg-white/15"
+        title={selectedCount === totalVisible ? "Deselect all" : "Select every visible task"}
+      >
+        {selectedCount === totalVisible && totalVisible > 0 ? "Deselect all" : "Select all"}
+      </button>
 
       <select
         disabled={busy}
