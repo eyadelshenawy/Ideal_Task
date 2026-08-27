@@ -47,6 +47,8 @@ export default function TrashModal({ isSuperAdmin, onClose, onChanged }: TrashMo
   const { data, mutate } = useSWR<TrashData>("/api/trash", fetcher);
   const [confirmingEmpty, setConfirmingEmpty] = useState(false);
   const [error, setError] = useState("");
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
+  const [restoringBulk, setRestoringBulk] = useState(false);
 
   async function restoreTask(id: string) {
     setError("");
@@ -57,6 +59,34 @@ export default function TrashModal({ isSuperAdmin, onClose, onChanged }: TrashMo
     }
     await mutate();
     onChanged();
+  }
+
+  async function restoreSelected() {
+    if (selectedTaskIds.size === 0) return;
+    setError("");
+    setRestoringBulk(true);
+    try {
+      // One request per task — no server-side batch endpoint yet, and the
+      // trash view is bounded (30-day retention) so this stays cheap.
+      const results = await Promise.all(
+        Array.from(selectedTaskIds).map((id) => fetch(`/api/tasks/${id}/restore`, { method: "POST" }))
+      );
+      const failedCount = results.filter((r) => !r.ok).length;
+      if (failedCount > 0) setError(`Couldn't restore ${failedCount} of ${results.length} — the rest were restored.`);
+      setSelectedTaskIds(new Set());
+      await mutate();
+      onChanged();
+    } finally {
+      setRestoringBulk(false);
+    }
+  }
+
+  function toggleTaskSelected(id: string) {
+    setSelectedTaskIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   }
 
   async function restoreProject(id: string) {
@@ -107,9 +137,27 @@ export default function TrashModal({ isSuperAdmin, onClose, onChanged }: TrashMo
           <div className="space-y-4">
             {tasks.length > 0 && (
               <div>
-                <div className="font-semibold text-[12px] text-brand-sub mb-1.5">Tasks ({tasks.length})</div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="font-semibold text-[12px] text-brand-sub">Tasks ({tasks.length})</div>
+                  {selectedTaskIds.size > 0 && (
+                    <button
+                      onClick={restoreSelected}
+                      disabled={restoringBulk}
+                      className="flex items-center gap-1 text-[11.5px] font-semibold text-brand-dark"
+                      style={{ opacity: restoringBulk ? 0.5 : 1 }}
+                    >
+                      <RotateCcw size={12} /> Restore {selectedTaskIds.size} selected
+                    </button>
+                  )}
+                </div>
                 {tasks.map((t) => (
                   <div key={t.id} className="flex items-center gap-2 py-1.5 border-b border-brand-border">
+                    <input
+                      type="checkbox"
+                      checked={selectedTaskIds.has(t.id)}
+                      onChange={() => toggleTaskSelected(t.id)}
+                      className="flex-shrink-0"
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="text-[13px] text-brand-text truncate">{t.title}</div>
                       <div className="text-[11px] text-brand-sub">

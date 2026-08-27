@@ -395,18 +395,8 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
     setSelectedIds(new Set());
   }
 
-  async function bulkSetStatus(status: Status) {
-    await api.bulkUpdateTasks({ taskIds: Array.from(selectedIds), status });
-    await mutateTasks();
-  }
-
-  async function bulkSetAssignee(userId: string) {
-    await api.bulkUpdateTasks({ taskIds: Array.from(selectedIds), assignees: [{ type: "user", id: userId }] });
-    await mutateTasks();
-  }
-
-  async function bulkSetProject(projectId: string | null) {
-    await api.bulkUpdateTasks({ taskIds: Array.from(selectedIds), projectId });
+  async function bulkPatch(patch: Record<string, unknown>) {
+    await api.bulkUpdateTasks({ taskIds: Array.from(selectedIds), ...patch });
     await mutateTasks();
   }
 
@@ -1181,9 +1171,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             team={teamList}
             projects={modalProjects}
             onClear={() => setSelectedIds(new Set())}
-            onSetStatus={bulkSetStatus}
-            onSetAssignee={bulkSetAssignee}
-            onSetProject={bulkSetProject}
+            onBulkUpdate={bulkPatch}
             onDelete={bulkDelete}
           />
         )}

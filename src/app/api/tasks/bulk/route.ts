@@ -6,6 +6,8 @@ import { notifyAssignment } from "@/lib/notifications";
 import { logActivity, describeTaskChanges, loadNameLookups } from "@/lib/activity";
 import { createNextOccurrence } from "@/lib/recurrence";
 import { getDescendantIds, syncAncestorChain } from "@/lib/taskHierarchy";
+import { resolveTags } from "@/lib/tags";
+import { dateStrToUTC } from "@/lib/serverDates";
 
 // Bulk edit: same patch (status / assignees / project) applied to every task
 // id the requester is allowed to manage. Ids they can't manage are silently
@@ -19,8 +21,16 @@ export async function PATCH(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request" }, { status: 400 });
   }
-  const { taskIds, status, assignees, projectId } = parsed.data;
+  const { taskIds, status, assignees, projectId, priority, startDate, dueDate, progress, module, addTag, removeTag } = parsed.data;
   const access = await getUserAccess(session);
+
+  // Resolve tag names once for the whole batch — same helper the import path
+  // uses. Missing addTag creates the tag automatically; removeTag simply
+  // no-ops on tasks that don't have that tag connected.
+  const addTagRecord = addTag ? (await resolveTags([addTag]))[0] : null;
+  const removeTagRecord = removeTag
+    ? (await prisma.tag.findFirst({ where: { name: { equals: removeTag, mode: "insensitive" } }, select: { id: true } }))
+    : null;
 
   const tasks = await prisma.task.findMany({
     where: { id: { in: taskIds }, deletedAt: null },
@@ -29,15 +39,19 @@ export async function PATCH(req: NextRequest) {
 
   const updated: string[] = [];
   const skipped: string[] = [];
-  // A status-only bulk change (no assignee/project change bundled in) follows
-  // the same rule as a single-task status update: any assignee may do it,
-  // not just Super Admin / a project-admin grant holder.
-  const isStatusOnly = assignees === undefined && projectId === undefined;
+  // A status-or-progress-only bulk change follows the same rule as a
+  // single-task status/progress update: any assignee may do it, not just
+  // Super Admin / a project-admin grant holder. Any of the other fields
+  // being touched requires manage rights on the task's project.
+  const touchesOnlyStatusOrProgress =
+    assignees === undefined && projectId === undefined && priority === undefined &&
+    startDate === undefined && dueDate === undefined && module === undefined &&
+    addTag === undefined && removeTag === undefined;
 
   for (const task of tasks) {
     const canManage = access.isSuperAdmin || (task.projectId !== null && access.administeredProjectIds.includes(task.projectId));
     const isAssignee = task.assignees.some((a) => a.id === session.user.id);
-    if (!canManage && !(isStatusOnly && isAssignee)) {
+    if (!canManage && !(touchesOnlyStatusOrProgress && isAssignee)) {
       skipped.push(task.id);
       continue;
     }
@@ -66,13 +80,29 @@ export async function PATCH(req: NextRequest) {
           ? null
           : undefined;
 
+    // A standalone bulk progress change becomes the new progress (unless
+    // combined with status=DONE, which forces 100 above).
+    const progressUpdate =
+      status === "DONE"
+        ? undefined
+        : progress !== undefined
+          ? progress
+          : undefined;
+
     const updatedTask = await prisma.task.update({
       where: { id: task.id },
       data: {
         ...(status !== undefined ? { status, progress: status === "DONE" ? 100 : undefined } : {}),
+        ...(progressUpdate !== undefined ? { progress: progressUpdate } : {}),
         ...(completedAtUpdate !== undefined ? { completedAt: completedAtUpdate } : {}),
         ...(assignees !== undefined ? assigneesToSet(assignees) : {}),
         ...(projectId !== undefined ? { projectId: projectId || null } : {}),
+        ...(priority !== undefined ? { priority } : {}),
+        ...(startDate !== undefined ? { startDate: dateStrToUTC(startDate) } : {}),
+        ...(dueDate !== undefined ? { dueDate: dateStrToUTC(dueDate) } : {}),
+        ...(module !== undefined ? { module: module || null } : {}),
+        ...(addTagRecord ? { tags: { connect: [{ id: addTagRecord.id }] } } : {}),
+        ...(removeTagRecord ? { tags: { disconnect: [{ id: removeTagRecord.id }] } } : {}),
       },
       include: { assignees: { select: { id: true } }, contactAssignees: { select: { id: true } } },
     });

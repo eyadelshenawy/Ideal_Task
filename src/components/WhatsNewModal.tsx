@@ -6,6 +6,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "More fields you can bulk-edit at once",
+    description: "The bulk action bar (visible when you multi-select tasks) now covers priority, start/due dates, progress %, module, and adding or removing a tag — plus a quick \"Mark Done\" shortcut. All hidden behind a compact \"More…\" popover so the bar stays tidy. In Trash, you can tick multiple tasks and restore them together instead of one-by-one.",
+  },
+  {
     title: "Customers can comment from the project tracking link",
     description: "The project tracking link a customer opens now lets them add a comment on any specific ticket — no need to wait for you to email them first. They type their name once and can send. And any internal comments your team writes on a ticket now stay internal on that view — only messages sent via \"Email customer\" (and customer replies) appear in the customer's thread.",
   },

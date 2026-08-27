@@ -95,6 +95,14 @@ export const taskBulkUpdateSchema = z.object({
   status: z.enum(["TODO", "READY", "INPROGRESS", "INTERNAL_TEST", "CUSTOMER_TEST", "DONE"]).optional(),
   assignees: assigneesSchema.optional(),
   projectId: z.string().nullable().optional(),
+  priority: z.enum(["HIGH", "MEDIUM", "LOW"]).optional(),
+  // `null` explicitly clears the field; omit to leave untouched.
+  startDate: dateOnly.optional(),
+  dueDate: dateOnly.optional(),
+  progress: z.number().min(0).max(100).optional(),
+  module: z.string().trim().max(80).nullable().optional(),
+  addTag: z.string().trim().min(1).max(40).optional(),
+  removeTag: z.string().trim().min(1).max(40).optional(),
 });
 
 export const taskBulkDeleteSchema = z.object({
