@@ -8,6 +8,11 @@ import { STATUSES } from "@/lib/taskHelpers";
 interface BulkActionBarProps {
   selectedCount: number;
   totalVisible: number;
+  // False for members with no project-admin grants: hides the actions the
+  // API would silently skip for them anyway (assignee, project, More…, and
+  // Move to Trash), leaving just status / Mark Done — the only things they
+  // can actually apply across the selection.
+  canManageAny: boolean;
   team: TeamMember[];
   projects: Project[];
   onClear: () => void;
@@ -17,7 +22,7 @@ interface BulkActionBarProps {
 }
 
 export default function BulkActionBar({
-  selectedCount, totalVisible, team, projects, onClear, onSelectAll, onBulkUpdate, onDelete,
+  selectedCount, totalVisible, canManageAny, team, projects, onClear, onSelectAll, onBulkUpdate, onDelete,
 }: BulkActionBarProps) {
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -85,34 +90,38 @@ export default function BulkActionBar({
         {STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
       </select>
 
-      <select
-        disabled={busy}
-        defaultValue=""
-        onChange={(e) => {
-          const userId = e.target.value;
-          e.target.value = "";
-          if (userId) run({ assignees: [{ type: "user", id: userId }] });
-        }}
-        className="rounded-md px-2 py-1 text-xs text-brand-text"
-      >
-        <option value="" disabled>Set assignee…</option>
-        {team.filter((m) => m.active).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-      </select>
+      {canManageAny && (
+        <select
+          disabled={busy}
+          defaultValue=""
+          onChange={(e) => {
+            const userId = e.target.value;
+            e.target.value = "";
+            if (userId) run({ assignees: [{ type: "user", id: userId }] });
+          }}
+          className="rounded-md px-2 py-1 text-xs text-brand-text"
+        >
+          <option value="" disabled>Set assignee…</option>
+          {team.filter((m) => m.active).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+        </select>
+      )}
 
-      <select
-        disabled={busy}
-        defaultValue=""
-        onChange={(e) => {
-          const value = e.target.value;
-          e.target.value = "";
-          if (value) run({ projectId: value === "__none__" ? null : value });
-        }}
-        className="rounded-md px-2 py-1 text-xs text-brand-text"
-      >
-        <option value="" disabled>Move to project…</option>
-        <option value="__none__">No project</option>
-        {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-      </select>
+      {canManageAny && (
+        <select
+          disabled={busy}
+          defaultValue=""
+          onChange={(e) => {
+            const value = e.target.value;
+            e.target.value = "";
+            if (value) run({ projectId: value === "__none__" ? null : value });
+          }}
+          className="rounded-md px-2 py-1 text-xs text-brand-text"
+        >
+          <option value="" disabled>Move to project…</option>
+          <option value="__none__">No project</option>
+          {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+      )}
 
       <button
         disabled={busy}
@@ -123,6 +132,7 @@ export default function BulkActionBar({
         <Check size={12} className="inline mr-1" />Mark Done
       </button>
 
+      {canManageAny && (
       <div ref={moreRef} className="relative">
         <button
           disabled={busy}
@@ -259,7 +269,9 @@ export default function BulkActionBar({
           </div>
         )}
       </div>
+      )}
 
+      {canManageAny && (
       <button
         disabled={busy}
         onClick={async () => {
@@ -272,6 +284,7 @@ export default function BulkActionBar({
       >
         {confirming ? "Click to confirm delete" : "Move to Trash"}
       </button>
+      )}
 
       {busy && <Loader2 size={14} className="animate-spin" />}
 

@@ -31,6 +31,7 @@ import ChecklistTemplatesModal from "./ChecklistTemplatesModal";
 import LogoutButton from "./LogoutButton";
 import GlobalSearchModal from "./GlobalSearchModal";
 import PushAutoSubscribe from "./PushAutoSubscribe";
+import PushPermissionBanner from "./PushPermissionBanner";
 import StatCard from "./ui/StatCard";
 
 const fetcher = (url: string) =>
@@ -870,6 +871,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
       )}
 
       <div className="px-4 py-3">
+        <PushPermissionBanner />
         {view === "reports" ? (
           <ReportsView tasks={taskList} projects={projectList} team={teamList} isSuperAdmin={isSuperAdmin} currentUserId={userId} onOpenTask={openTaskById} />
         ) : view === "attention" ? (
@@ -1169,6 +1171,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
           <BulkActionBar
             selectedCount={selectedIds.size}
             totalVisible={filteredTasks.length}
+            canManageAny={canCreateAnywhere}
             team={teamList}
             projects={modalProjects}
             onClear={() => setSelectedIds(new Set())}

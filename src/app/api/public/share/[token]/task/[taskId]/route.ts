@@ -2,12 +2,16 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getR2DownloadUrl } from "@/lib/r2";
 import { TO_CUSTOMER_PREFIX, FROM_CUSTOMER_PREFIX } from "@/lib/customerThread";
+import { matchAttachmentLines } from "@/lib/attachmentMatcher";
 
 // Public, unauthenticated — same token gate as the project-level share
 // endpoint. Deliberately shows the customer thread only: any comment
 // explicitly sent to the customer via "Email customer" or replied by the
 // customer stays visible; every internal team comment stays hidden. The
 // team is still never named — team-side messages read as "Team" only.
+// Attachments are filtered the same way — only files referenced by a
+// customer-thread message (via its "📎 name" line) are exposed. Anything
+// the team uploaded through the internal attachments panel stays hidden.
 export async function GET(_req: Request, { params }: { params: { token: string; taskId: string } }) {
   const project = await prisma.project.findUnique({
     where: { shareToken: params.token },
@@ -40,14 +44,26 @@ export async function GET(_req: Request, { params }: { params: { token: string; 
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  // Which attachment rows were referenced by a "📎 name" line inside a
+  // customer-thread message — these are the only files the customer is
+  // meant to see. Internal-only uploads (via the team's attachments panel,
+  // never handed off to the customer) don't show up in any thread message
+  // and stay hidden here.
+  const eventShapes = task.events.map((e) => ({ id: e.id, message: e.message, createdAt: e.createdAt.toISOString() }));
+  const attachmentShapes = task.attachments.map((a) => ({ id: a.id, fileName: a.fileName, createdAt: a.createdAt.toISOString() }));
+  const matched = matchAttachmentLines(eventShapes, attachmentShapes);
+  const referencedIds = new Set(matched.values());
+
   const attachments = await Promise.all(
-    task.attachments.map(async (a) => ({
-      id: a.id,
-      fileName: a.fileName,
-      fileSize: a.fileSize,
-      createdAt: a.createdAt.toISOString(),
-      url: await getR2DownloadUrl(a.fileKey, a.fileName).catch(() => null),
-    }))
+    task.attachments
+      .filter((a) => referencedIds.has(a.id))
+      .map(async (a) => ({
+        id: a.id,
+        fileName: a.fileName,
+        fileSize: a.fileSize,
+        createdAt: a.createdAt.toISOString(),
+        url: await getR2DownloadUrl(a.fileKey, a.fileName).catch(() => null),
+      }))
   );
 
   const comments = task.events.map((e) => {

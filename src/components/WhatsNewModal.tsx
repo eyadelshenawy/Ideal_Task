@@ -6,6 +6,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Cleaner share-link privacy + a nudge if notifications are off",
+    description: "Two safety tweaks: on the project share link, only files your team explicitly shared with the customer (via Email customer or a customer reply) are downloadable now — internal-only uploads stay hidden. And if your browser has notifications turned off, a small banner nudges you to re-enable them so you stop missing pings about assignments and customer replies. Dismiss it and it stays quiet for a week.",
+  },
+  {
     title: "More fields you can bulk-edit at once",
     description: "The bulk action bar (visible when you multi-select tasks) now covers priority, start/due dates, progress %, module, and adding or removing a tag — plus a quick \"Mark Done\" shortcut. All hidden behind a compact \"More…\" popover so the bar stays tidy. In Trash, you can tick multiple tasks and restore them together instead of one-by-one.",
   },
