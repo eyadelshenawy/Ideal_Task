@@ -24,6 +24,8 @@ export interface Project {
   intakeToken: string | null;
   /** Off by default — only support/ticket-style projects should count toward SLA percentages. */
   slaTrackingEnabled: boolean;
+  /** True means this project is a template kept for cloning; hidden from the main dashboard and its task lists. */
+  isTemplate: boolean;
 }
 
 export interface TrashedProject extends Project {

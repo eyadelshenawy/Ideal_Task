@@ -17,8 +17,17 @@ export async function GET() {
   if (error) return error;
 
   const access = await getUserAccess(session);
+  // Tasks living in a template project stay hidden here — the template
+  // shape is meant to be cloned, not worked on. The Projects modal's
+  // Templates section is the only place you interact with it. Tasks with
+  // no project at all (projectId null) still show up as before.
   const tasks = await prisma.task.findMany({
-    where: visibleTasksWhere(session.user.id, access.isSuperAdmin, access.administeredProjectIds),
+    where: {
+      AND: [
+        visibleTasksWhere(session.user.id, access.isSuperAdmin, access.administeredProjectIds),
+        { OR: [{ projectId: null }, { project: { isTemplate: false } }] },
+      ],
+    },
     include: taskInclude,
     orderBy: { createdAt: "desc" },
   });

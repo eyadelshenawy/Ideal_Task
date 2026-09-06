@@ -6,6 +6,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Templates — keep reusable project shapes out of the Dashboard",
+    description: "Any project can now be flagged as a Template (Projects → \"Mark as template\"). A template disappears from the Dashboard and its task lists, and only shows up in a dedicated Templates section inside the Projects modal. Perfect for onboarding checklists, training paths, or any \"stamp out a fresh copy per client\" workflow — clone it from there, dates shift to the new start date, and the working project is a real one on your Dashboard.",
+  },
+  {
     title: "Cleaner share-link privacy + a nudge if notifications are off",
     description: "Two safety tweaks: on the project share link, only files your team explicitly shared with the customer (via Email customer or a customer reply) are downloadable now — internal-only uploads stay hidden. And if your browser has notifications turned off, a small banner nudges you to re-enable them so you stop missing pings about assignments and customer replies. Dismiss it and it stays quiet for a week.",
   },

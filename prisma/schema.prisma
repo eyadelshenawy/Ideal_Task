@@ -158,6 +158,14 @@ model Project {
   // per-project for the ones that are actually support contracts.
   slaTrackingEnabled Boolean @default(false)
 
+  // Marks a project as a template — a shape kept around to clone from,
+  // never worked on directly. Templates are hidden from the main Dashboard
+  // (both the project list and the task list) and only appear in the
+  // dedicated Templates section of the Projects modal. Toggle with the
+  // per-row "Template" switch there. The clone endpoint doesn't care about
+  // this flag — any project can still be a source, template or not.
+  isTemplate Boolean @default(false)
+
   tasks        Task[]
   admins       ProjectAdmin[]
   customFields CustomField[]

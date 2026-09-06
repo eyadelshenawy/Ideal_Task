@@ -4,11 +4,20 @@ import { requireSession, requireSuperAdmin } from "@/lib/permissions";
 import { projectCreateSchema } from "@/lib/validation/project";
 import { logAudit } from "@/lib/audit";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const { error } = await requireSession();
   if (error) return error;
 
-  const projects = await prisma.project.findMany({ where: { deletedAt: null }, orderBy: { name: "asc" } });
+  // Templates are hidden from the main dashboard by default — everything
+  // that just wants "the live projects" (the dashboard, filter dropdowns,
+  // reports) gets the default response. The Projects modal opts in with
+  // ?includeTemplates=true so it can render its own Templates section
+  // alongside the active list.
+  const includeTemplates = req.nextUrl.searchParams.get("includeTemplates") === "true";
+  const projects = await prisma.project.findMany({
+    where: { deletedAt: null, ...(includeTemplates ? {} : { isTemplate: false }) },
+    orderBy: { name: "asc" },
+  });
   return NextResponse.json(projects);
 }
 

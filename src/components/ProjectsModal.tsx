@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import useSWR from "swr";
-import { Plus, X, Trash2, Check, Link2, Copy, FolderPlus, SlidersHorizontal, Timer, Inbox, FileText } from "lucide-react";
+import { Plus, X, Trash2, Check, Link2, Copy, FolderPlus, SlidersHorizontal, Timer, Inbox, FileText, Archive } from "lucide-react";
 import type { Project, Priority } from "@/types/models";
 import type { SlaTargets } from "@/lib/sla";
 import type { SlaConfigDto } from "@/lib/slaConfig";
@@ -228,6 +228,16 @@ interface ProjectsModalProps {
 }
 
 export default function ProjectsModal({ projects, onClose, onChanged }: ProjectsModalProps) {
+  // The Dashboard's own /api/projects fetch excludes templates so they stay
+  // out of the main workspace — the modal opts in with ?includeTemplates=true
+  // so its Templates section can render alongside the active list. Falling
+  // back to the prop while the local fetch resolves keeps the modal usable
+  // on first paint.
+  const { data: allProjects, mutate: mutateAll } = useSWR<Project[]>("/api/projects?includeTemplates=true", fieldsFetcher);
+  const workingList = allProjects ?? projects;
+  const activeProjects = workingList.filter((p) => !p.isTemplate);
+  const templateProjects = workingList.filter((p) => p.isTemplate);
+
   const [newName, setNewName] = useState("");
   const [newCode, setNewCode] = useState("");
   const [newIsSupport, setNewIsSupport] = useState(false);
@@ -255,7 +265,7 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
       setNewName("");
       setNewCode("");
       setNewIsSupport(false);
-      onChanged();
+      onChanged(); mutateAll();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't add project");
     }
@@ -268,7 +278,7 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: name.trim() }),
     });
-    onChanged();
+    onChanged(); mutateAll();
   }
 
   async function recodeProject(id: string, code: string) {
@@ -283,13 +293,13 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
       const body = await res.json().catch(() => ({}));
       setError(body.error || "Couldn't update code");
     }
-    onChanged();
+    onChanged(); mutateAll();
   }
 
   async function deleteProject(id: string) {
     await fetch(`/api/projects/${id}`, { method: "DELETE" });
     setConfirmingId(null);
-    onChanged();
+    onChanged(); mutateAll();
   }
 
   async function toggleSlaTracking(id: string, enabled: boolean) {
@@ -298,27 +308,36 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ slaTrackingEnabled: enabled }),
     });
-    onChanged();
+    onChanged(); mutateAll();
+  }
+
+  async function toggleTemplate(id: string, isTemplate: boolean) {
+    await fetch(`/api/projects/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isTemplate }),
+    });
+    onChanged(); mutateAll();
   }
 
   async function generateShareLink(id: string) {
     const res = await fetch(`/api/projects/${id}/share`, { method: "POST" });
-    if (res.ok) onChanged();
+    if (res.ok) onChanged(); mutateAll();
   }
 
   async function revokeShareLink(id: string) {
     const res = await fetch(`/api/projects/${id}/share`, { method: "DELETE" });
-    if (res.ok) onChanged();
+    if (res.ok) onChanged(); mutateAll();
   }
 
   async function generateIntakeLink(id: string) {
     const res = await fetch(`/api/projects/${id}/intake`, { method: "POST" });
-    if (res.ok) onChanged();
+    if (res.ok) onChanged(); mutateAll();
   }
 
   async function revokeIntakeLink(id: string) {
     const res = await fetch(`/api/projects/${id}/intake`, { method: "DELETE" });
-    if (res.ok) onChanged();
+    if (res.ok) onChanged(); mutateAll();
   }
 
   function intakeUrl(token: string) {
@@ -366,7 +385,7 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || "Couldn't clone project");
       setCloningId(null);
-      onChanged();
+      onChanged(); mutateAll();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't clone project");
     } finally {
@@ -387,7 +406,10 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
         {error && <div className="mb-3 text-xs text-red-600">{error}</div>}
 
         <div>
-          {projects.map((p) => {
+          {activeProjects.length === 0 && templateProjects.length === 0 && (
+            <div className="text-[11.5px] text-brand-sub py-2">No projects yet — add one below.</div>
+          )}
+          {activeProjects.map((p) => {
             const isConfirming = confirmingId === p.id;
             return (
               <div key={p.id} className="py-1.5 border-b border-brand-border">
@@ -454,6 +476,13 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
                   )}
                   <button onClick={() => startCloning(p)} className="flex items-center gap-1 text-[11px] text-brand-sub underline">
                     <FolderPlus size={11} /> Use as template
+                  </button>
+                  <button
+                    onClick={() => toggleTemplate(p.id, !p.isTemplate)}
+                    className="flex items-center gap-1 text-[11px] text-brand-sub underline"
+                    title={p.isTemplate ? "Restore to active projects — its tasks will show on the Dashboard again" : "Marks this project as a template — it and its tasks disappear from the Dashboard and only show in the Templates section here"}
+                  >
+                    <Archive size={11} /> {p.isTemplate ? "Move out of templates" : "Mark as template"}
                   </button>
                   <a
                     href={`/projects/${p.id}/report`}
@@ -533,6 +562,84 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
             );
           })}
         </div>
+
+        {templateProjects.length > 0 && (
+          <div className="mt-4">
+            <div className="flex items-center gap-1.5 text-[11px] font-bold text-brand-sub uppercase tracking-wide mb-1">
+              <Archive size={12} /> Templates
+            </div>
+            <div className="text-[11px] text-brand-sub mb-2">
+              Templates stay out of the Dashboard. Clone one when you start a new engagement — Onboarding, Training, a new client — and the tasks come across with dates shifted to the start date you pick.
+            </div>
+            {templateProjects.map((p) => {
+              const isConfirming = confirmingId === p.id;
+              return (
+                <div key={p.id} className="py-1.5 border-b border-brand-border">
+                  <div className="flex items-center gap-2">
+                    <span className="flex-1 text-[13px] text-brand-text">{p.name}</span>
+                    <span className="w-[70px] text-[12px] font-mono text-brand-sub uppercase">{p.code}</span>
+                    <button
+                      onClick={() => (isConfirming ? deleteProject(p.id) : setConfirmingId(p.id))}
+                      title={isConfirming ? "Click to confirm delete" : "Delete"}
+                      style={{ color: isConfirming ? "#C4443D" : "#5B6B64" }}
+                    >
+                      {isConfirming ? <Check size={16} /> : <Trash2 size={16} />}
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    <button onClick={() => startCloning(p)} className="flex items-center gap-1 text-[11px] text-brand-sub underline">
+                      <FolderPlus size={11} /> Clone into a new project
+                    </button>
+                    <button
+                      onClick={() => toggleTemplate(p.id, false)}
+                      className="flex items-center gap-1 text-[11px] text-brand-sub underline"
+                      title="Restore this project — it and its tasks show on the Dashboard again"
+                    >
+                      <Archive size={11} /> Restore to active
+                    </button>
+                  </div>
+                  {cloningId === p.id && (
+                    <div className="mt-2 p-2 rounded-lg bg-brand-bg flex flex-col gap-1.5">
+                      <div className="text-[10.5px] text-brand-sub">
+                        Creates a new project with every task from &quot;{p.name}&quot; copied over (structure and dates only — no assignees, comments, or files), shifted to start on the date below.
+                      </div>
+                      <input
+                        value={cloneName}
+                        onChange={(e) => setCloneName(e.target.value)}
+                        placeholder="New project name"
+                        className="rounded-lg border border-brand-border px-2 py-1.5 text-xs outline-none"
+                      />
+                      <div className="flex gap-1.5">
+                        <input
+                          value={cloneCode}
+                          onChange={(e) => setCloneCode(e.target.value.toUpperCase())}
+                          placeholder="CODE"
+                          className="w-[80px] rounded-lg border border-brand-border px-2 py-1.5 text-xs font-mono outline-none uppercase"
+                        />
+                        <input
+                          type="date"
+                          value={cloneStartDate}
+                          onChange={(e) => setCloneStartDate(e.target.value)}
+                          className="flex-1 rounded-lg border border-brand-border px-2 py-1.5 text-xs outline-none"
+                        />
+                      </div>
+                      <div className="flex gap-1.5 justify-end">
+                        <button onClick={() => setCloningId(null)} className="text-[11px] text-brand-sub px-2 py-1">Cancel</button>
+                        <button
+                          onClick={confirmClone}
+                          disabled={cloning || !cloneName.trim() || !cloneCode.trim()}
+                          className="rounded-lg px-3 py-1 text-[11px] font-semibold bg-brand-dark text-white disabled:opacity-50"
+                        >
+                          {cloning ? "Cloning…" : "Create"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         <div className="flex gap-2 mt-3">
           <input
