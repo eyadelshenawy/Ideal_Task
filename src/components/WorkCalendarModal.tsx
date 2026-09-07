@@ -101,87 +101,68 @@ export default function WorkCalendarModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(20,30,26,0.45)" }}>
-      <div className="bg-white rounded-2xl w-full max-w-[440px] max-h-[85vh] overflow-y-auto p-5">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="flex items-center gap-1.5 font-bold text-[16px] text-brand-text">
-            <Calendar size={16} className="text-brand-dark" /> Work Calendar
-          </h2>
-          <button onClick={onClose} className="text-brand-sub"><X size={18} /></button>
-        </div>
-        <div className="text-[11.5px] text-brand-sub mb-3">
-          Working days and holidays used by any task&apos;s Duration ↔ Due auto-compute. Pick a duration and the app skips the days marked off here.
-        </div>
-        {error && <div className="mb-3 text-xs text-red-600">{error}</div>}
-
-        <div className="mb-4">
-          <div className="text-[11px] font-bold text-brand-sub uppercase tracking-wide mb-1.5">Work week</div>
-          <div className="flex gap-1.5 flex-wrap">
-            {DAYS.map((d) => {
-              const on = workWeek ? workWeek[d.key] : d.key !== "fri" && d.key !== "sat";
-              return (
-                <button
-                  key={d.key}
-                  onClick={() => toggleDay(d.key)}
-                  disabled={!canEdit}
-                  className="rounded-md px-2.5 py-1 text-[11.5px] font-semibold border transition-colors"
-                  style={{
-                    background: on ? "#1F5548" : "transparent",
-                    color: on ? "white" : "#5B6B64",
-                    borderColor: on ? "#1F5548" : "#E5E7E3",
-                    cursor: canEdit ? "pointer" : "default",
-                    opacity: canEdit ? 1 : 0.7,
-                  }}
-                  title={on ? "Working day" : "Non-working day"}
-                >
-                  {d.label}
-                </button>
-              );
-            })}
+      <div className="bg-white rounded-2xl w-full max-w-[440px] max-h-[85vh] flex flex-col overflow-hidden">
+        {/* Sticky header: title + description + work-week row + add-holiday row.
+            The Holidays list below is the only part that scrolls, so the
+            controls the user needs to see stay pinned even with 30 holidays. */}
+        <div className="p-5 pb-3 border-b border-brand-border flex-shrink-0">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="flex items-center gap-1.5 font-bold text-[16px] text-brand-text">
+              <Calendar size={16} className="text-brand-dark" /> Work Calendar
+            </h2>
+            <button onClick={onClose} className="text-brand-sub"><X size={18} /></button>
           </div>
-          {canEdit && draft && (
-            <div className="flex gap-2 mt-2">
-              <button
-                onClick={saveWorkWeek}
-                disabled={saving}
-                className="rounded-lg px-3 py-1 text-[11.5px] font-semibold bg-brand-dark text-white disabled:opacity-50"
-              >
-                {saving ? <Loader2 size={12} className="animate-spin inline mr-1" /> : null}
-                Save work week
-              </button>
-              <button
-                onClick={() => setDraft(null)}
-                className="text-[11.5px] text-brand-sub px-2"
-              >
-                Cancel
-              </button>
-            </div>
-          )}
-        </div>
+          <div className="text-[11.5px] text-brand-sub mb-3">
+            Working days and holidays used by any task&apos;s Duration ↔ Due auto-compute. Pick a duration and the app skips the days marked off here.
+          </div>
+          {error && <div className="mb-3 text-xs text-red-600">{error}</div>}
 
-        <div>
-          <div className="text-[11px] font-bold text-brand-sub uppercase tracking-wide mb-1.5">Holidays</div>
-          {(!holidays || holidays.length === 0) && (
-            <div className="text-[11.5px] text-brand-sub mb-2">No holidays yet.{canEdit ? " Add ones your team observes below." : ""}</div>
-          )}
-          {holidays && holidays.length > 0 && (
-            <div className="mb-2">
-              {holidays.map((h) => (
-                <div key={h.id} className="flex items-center gap-2 py-1 border-b border-brand-border last:border-0">
-                  <span className="text-[12px] font-mono text-brand-sub w-[90px] flex-shrink-0">{h.date}</span>
-                  <span className="flex-1 text-[12.5px] text-brand-text">{h.name}</span>
-                  {canEdit && (
-                    <button
-                      onClick={() => (confirmingId === h.id ? deleteHoliday(h.id) : setConfirmingId(h.id))}
-                      title={confirmingId === h.id ? "Click to confirm delete" : "Delete"}
-                      className="text-brand-sub hover:text-red-600"
-                    >
-                      <Trash2 size={13} style={{ color: confirmingId === h.id ? "#C4443D" : undefined }} />
-                    </button>
-                  )}
-                </div>
-              ))}
+          <div className="mb-3">
+            <div className="text-[11px] font-bold text-brand-sub uppercase tracking-wide mb-1.5">Work week</div>
+            <div className="flex gap-1.5 flex-wrap">
+              {DAYS.map((d) => {
+                const on = workWeek ? workWeek[d.key] : d.key !== "fri" && d.key !== "sat";
+                return (
+                  <button
+                    key={d.key}
+                    onClick={() => toggleDay(d.key)}
+                    disabled={!canEdit}
+                    className="rounded-md px-2.5 py-1 text-[11.5px] font-semibold border transition-colors"
+                    style={{
+                      background: on ? "#1F5548" : "transparent",
+                      color: on ? "white" : "#5B6B64",
+                      borderColor: on ? "#1F5548" : "#E5E7E3",
+                      cursor: canEdit ? "pointer" : "default",
+                      opacity: canEdit ? 1 : 0.7,
+                    }}
+                    title={on ? "Working day" : "Non-working day"}
+                  >
+                    {d.label}
+                  </button>
+                );
+              })}
             </div>
-          )}
+            {canEdit && draft && (
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={saveWorkWeek}
+                  disabled={saving}
+                  className="rounded-lg px-3 py-1 text-[11.5px] font-semibold bg-brand-dark text-white disabled:opacity-50"
+                >
+                  {saving ? <Loader2 size={12} className="animate-spin inline mr-1" /> : null}
+                  Save work week
+                </button>
+                <button
+                  onClick={() => setDraft(null)}
+                  className="text-[11.5px] text-brand-sub px-2"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="text-[11px] font-bold text-brand-sub uppercase tracking-wide mb-1.5">Holidays</div>
           {canEdit && (
             <div className="flex gap-1.5">
               <input
@@ -204,6 +185,32 @@ export default function WorkCalendarModal({
               >
                 <Plus size={14} />
               </button>
+            </div>
+          )}
+        </div>
+
+        {/* Only the holidays list scrolls */}
+        <div className="flex-1 overflow-y-auto p-5 pt-3">
+          {(!holidays || holidays.length === 0) && (
+            <div className="text-[11.5px] text-brand-sub">No holidays yet.{canEdit ? " Add one using the row above." : ""}</div>
+          )}
+          {holidays && holidays.length > 0 && (
+            <div>
+              {holidays.map((h) => (
+                <div key={h.id} className="flex items-center gap-2 py-1 border-b border-brand-border last:border-0">
+                  <span className="text-[12px] font-mono text-brand-sub w-[90px] flex-shrink-0">{h.date}</span>
+                  <span className="flex-1 text-[12.5px] text-brand-text">{h.name}</span>
+                  {canEdit && (
+                    <button
+                      onClick={() => (confirmingId === h.id ? deleteHoliday(h.id) : setConfirmingId(h.id))}
+                      title={confirmingId === h.id ? "Click to confirm delete" : "Delete"}
+                      className="text-brand-sub hover:text-red-600"
+                    >
+                      <Trash2 size={13} style={{ color: confirmingId === h.id ? "#C4443D" : undefined }} />
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </div>
