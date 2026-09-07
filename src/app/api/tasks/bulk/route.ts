@@ -8,6 +8,7 @@ import { createNextOccurrence } from "@/lib/recurrence";
 import { getDescendantIds, syncAncestorChain } from "@/lib/taskHierarchy";
 import { resolveTags } from "@/lib/tags";
 import { dateStrToUTC } from "@/lib/serverDates";
+import { loadSchedulingCalendar, resolveTaskDates, toDateOnly } from "@/lib/scheduling";
 
 // Bulk edit: same patch (status / assignees / project) applied to every task
 // id the requester is allowed to manage. Ids they can't manage are silently
@@ -21,8 +22,14 @@ export async function PATCH(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request" }, { status: 400 });
   }
-  const { taskIds, status, assignees, projectId, priority, startDate, dueDate, progress, module, addTag, removeTag } = parsed.data;
+  const { taskIds, status, assignees, projectId, priority, startDate, dueDate, durationDays, progress, module, addTag, removeTag } = parsed.data;
   const access = await getUserAccess(session);
+
+  // Loaded once per batch so every row reconciles Start/Due/Duration against
+  // the same calendar snapshot — matches the single-task PATCH's behavior.
+  const cal = (startDate !== undefined || dueDate !== undefined || durationDays !== undefined)
+    ? await loadSchedulingCalendar()
+    : null;
 
   // Resolve tag names once for the whole batch — same helper the import path
   // uses. Missing addTag creates the tag automatically; removeTag simply
@@ -45,8 +52,8 @@ export async function PATCH(req: NextRequest) {
   // being touched requires manage rights on the task's project.
   const touchesOnlyStatusOrProgress =
     assignees === undefined && projectId === undefined && priority === undefined &&
-    startDate === undefined && dueDate === undefined && module === undefined &&
-    addTag === undefined && removeTag === undefined;
+    startDate === undefined && dueDate === undefined && durationDays === undefined &&
+    module === undefined && addTag === undefined && removeTag === undefined;
 
   for (const task of tasks) {
     const canManage = access.isSuperAdmin || (task.projectId !== null && access.administeredProjectIds.includes(task.projectId));
@@ -89,6 +96,30 @@ export async function PATCH(req: NextRequest) {
           ? progress
           : undefined;
 
+    // Same reconciliation as the single-task PATCH: whenever Start / Due /
+    // Duration are touched in a bulk edit, the missing piece is computed
+    // from the org's Work Calendar so every row stays coherent per-row.
+    // An explicit dueDate in the bulk payload wins over Duration.
+    let bulkDateData: { startDate?: Date | null; dueDate?: Date | null; durationDays?: number | null } = {};
+    if (cal && (startDate !== undefined || dueDate !== undefined || durationDays !== undefined)) {
+      const existingStartStr = task.startDate ? toDateOnly(task.startDate) : null;
+      const existingDueStr = task.dueDate ? toDateOnly(task.dueDate) : null;
+      const resolved = resolveTaskDates(
+        {
+          startDate: startDate !== undefined ? startDate : existingStartStr,
+          dueDate: dueDate !== undefined ? dueDate : existingDueStr,
+          durationDays: durationDays !== undefined ? durationDays : task.durationDays,
+        },
+        cal,
+        dueDate !== undefined,
+      );
+      bulkDateData = {
+        startDate: dateStrToUTC(resolved.startDate),
+        dueDate: dateStrToUTC(resolved.dueDate),
+        durationDays: resolved.durationDays,
+      };
+    }
+
     const updatedTask = await prisma.task.update({
       where: { id: task.id },
       data: {
@@ -98,8 +129,7 @@ export async function PATCH(req: NextRequest) {
         ...(assignees !== undefined ? assigneesToSet(assignees) : {}),
         ...(projectId !== undefined ? { projectId: projectId || null } : {}),
         ...(priority !== undefined ? { priority } : {}),
-        ...(startDate !== undefined ? { startDate: dateStrToUTC(startDate) } : {}),
-        ...(dueDate !== undefined ? { dueDate: dateStrToUTC(dueDate) } : {}),
+        ...bulkDateData,
         ...(module !== undefined ? { module: module || null } : {}),
         ...(addTagRecord ? { tags: { connect: [{ id: addTagRecord.id }] } } : {}),
         ...(removeTagRecord ? { tags: { disconnect: [{ id: removeTagRecord.id }] } } : {}),

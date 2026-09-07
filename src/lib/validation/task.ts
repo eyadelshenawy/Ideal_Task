@@ -100,6 +100,7 @@ export const taskBulkUpdateSchema = z.object({
   // `null` explicitly clears the field; omit to leave untouched.
   startDate: dateOnly.optional(),
   dueDate: dateOnly.optional(),
+  durationDays: z.number().int().min(1).nullable().optional(),
   progress: z.number().min(0).max(100).optional(),
   module: z.string().trim().max(80).nullable().optional(),
   addTag: z.string().trim().min(1).max(40).optional(),

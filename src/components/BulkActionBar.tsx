@@ -34,6 +34,7 @@ export default function BulkActionBar({
   // call — unlike the top-level dropdowns which fire on change.
   const [startDate, setStartDate] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [duration, setDuration] = useState("");
   const [progress, setProgress] = useState("");
   const [module, setModule] = useState("");
   const [addTag, setAddTag] = useState("");
@@ -189,6 +190,32 @@ export default function BulkActionBar({
               />
               <button
                 onClick={() => applyMore({ dueDate: dueDate || null }, () => setDueDate(""))}
+                className="rounded-md px-2 py-1 text-[11px] font-semibold bg-brand-dark text-white"
+              >
+                Apply
+              </button>
+            </div>
+
+            <label
+              className="block text-[11px] font-semibold text-brand-sub mb-1"
+              title="Working days; each selected task's Due Date is recomputed from its own Start Date, skipping weekends and holidays"
+            >
+              Duration (days)
+            </label>
+            <div className="flex gap-1 mb-3">
+              <input
+                type="number"
+                min={1}
+                placeholder="e.g. 5"
+                value={duration}
+                onChange={(e) => setDuration(e.target.value)}
+                className="flex-1 rounded-md px-2 py-1 text-xs border border-brand-border"
+              />
+              <button
+                onClick={() => {
+                  const n = Number(duration);
+                  if (Number.isFinite(n) && n >= 1) applyMore({ durationDays: n }, () => setDuration(""));
+                }}
                 className="rounded-md px-2 py-1 text-[11px] font-semibold bg-brand-dark text-white"
               >
                 Apply
