@@ -6,6 +6,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Cloning a project keeps its task codes and dependencies",
+    description: "When you clone a template into a fresh project, task codes now carry their author's readable suffix onto the new prefix — a source task coded ONBOARD-W1 becomes ADEL-W1 under a new project coded ADEL, instead of being renumbered. Dependencies (\"Week 2 waits for Week 1\") also survive the clone now, remapped to the new tasks — so a template's sequencing works as designed on the first hire and every hire after.",
+  },
+  {
     title: "Templates — keep reusable project shapes out of the Dashboard",
     description: "Any project can now be flagged as a Template (Projects → \"Mark as template\"). A template disappears from the Dashboard and its task lists, and only shows up in a dedicated Templates section inside the Projects modal. Perfect for onboarding checklists, training paths, or any \"stamp out a fresh copy per client\" workflow — clone it from there, dates shift to the new start date, and the working project is a real one on your Dashboard.",
   },

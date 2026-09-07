@@ -7,12 +7,18 @@ import { nextChildCode } from "@/lib/taskHierarchy";
 import { logAudit } from "@/lib/audit";
 
 // Clones every task in a project into a brand-new one — the "template" use
-// case: build the shape once (e.g. Explore/Realize/Deploy/Run phases with
-// their subtasks), then stamp out a fresh copy per new client/engagement
-// with dates shifted to a new start date. Deliberately does NOT copy
-// assignees, comments, attachments, time entries, or dependsOn links — a
+// case: build the shape once (e.g. Explore/Realize/Deploy/Run phases, or an
+// Onboarding program with weekly milestones), then stamp out a fresh copy
+// per engagement/hire with dates shifted to a new start date. Deliberately
+// does NOT copy assignees, comments, attachments, or time entries — a
 // clone is a fresh structural skeleton, not a snapshot of one engagement's
-// history. Everything starts at status TODO / progress 0.
+// history. dependsOn links ARE copied (remapped to the new tasks' IDs) so
+// a template's sequencing — "Week 2 waits for Week 1" — survives every
+// clone. Task codes carry their source suffix onto the new project's
+// prefix: source ONBOARD-W1 → new-project-code-W1, preserving the readable
+// naming the template author chose. Codes that don't share the source
+// project's prefix fall back to the standard auto-numbered scheme.
+// Everything starts at status TODO / progress 0.
 const cloneSchema = z.object({
   name: z.string().trim().min(1, "New project name is required"),
   code: z.string().trim().min(1, "New project code is required"),
@@ -35,7 +41,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const sourceTasks = await prisma.task.findMany({
     where: { projectId: params.id, deletedAt: null },
-    include: { tags: { select: { id: true } }, checklistItems: { select: { text: true, order: true } } },
+    include: {
+      tags: { select: { id: true } },
+      checklistItems: { select: { text: true, order: true } },
+      dependsOn: { select: { id: true } },
+    },
     orderBy: { createdAt: "asc" },
   });
 
@@ -65,11 +75,30 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const ordered = [...sourceTasks].sort((a, b) => (a.parentId ? 1 : 0) - (b.parentId ? 1 : 0));
     const idMap = new Map<string, string>();
 
+    // If the source task code starts with the source project's own prefix
+    // ("ONBOARD-W1" for a project coded ONBOARD), swap that prefix out for
+    // the new project's — new code "ADEL-W1" carries the author's readable
+    // suffix onto the fresh project. Codes that don't fit the pattern fall
+    // through to the standard auto-numbered scheme so nothing goes missing.
+    const sourcePrefix = `${sourceProject.code}-`;
+    function transformCode(oldCode: string): string | null {
+      if (oldCode.startsWith(sourcePrefix)) {
+        return `${newProject.code}-${oldCode.slice(sourcePrefix.length)}`;
+      }
+      return null;
+    }
+
     for (const t of ordered) {
       const newParentId = t.parentId ? idMap.get(t.parentId) ?? null : null;
-      const code = newParentId
-        ? await nextChildCode(prisma, newParentId)
-        : await nextTaskCode(prisma, newProject.id);
+      const transformed = t.code ? transformCode(t.code) : null;
+      let code: string | null;
+      if (transformed) {
+        code = transformed;
+      } else if (newParentId) {
+        code = await nextChildCode(prisma, newParentId);
+      } else {
+        code = await nextTaskCode(prisma, newProject.id);
+      }
 
       const created = await prisma.task.create({
         data: {
@@ -91,6 +120,24 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         },
       });
       idMap.set(t.id, created.id);
+    }
+
+    // Second pass: hook up dependsOn on the new tasks by remapping every
+    // source-side predecessor id through idMap. Done after the create loop
+    // so both sides of each edge already exist. Predecessors that live
+    // outside this project (rare, but possible if the template ever
+    // referenced a system-wide task) are silently dropped — a clone
+    // shouldn't leak references into whatever project the source pointed
+    // at last.
+    for (const t of ordered) {
+      const mappedDeps = t.dependsOn.map((d) => idMap.get(d.id)).filter((id): id is string => !!id);
+      if (mappedDeps.length === 0) continue;
+      const newId = idMap.get(t.id);
+      if (!newId) continue;
+      await prisma.task.update({
+        where: { id: newId },
+        data: { dependsOn: { connect: mappedDeps.map((id) => ({ id })) } },
+      });
     }
 
     logAudit(session.user.id, `Cloned project "${sourceProject.name}" into new project "${newProject.name}" (${newProject.code}), ${ordered.length} tasks`);
