@@ -560,14 +560,22 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
     e.target.value = "";
   }
 
-  async function confirmImport() {
+  async function confirmImport(fallbackProjectId: string | null) {
     if (!importPreview) return;
     setImportSubmitting(true);
     try {
+      // Rows whose Project column was blank get assigned to the fallback the
+      // user picked in the preview modal — a nullable choice, so "keep them
+      // without a project" is still allowed explicitly.
+      const tasksToAdd = fallbackProjectId
+        ? importPreview.tasksToAdd.map((t) =>
+            !t.projectId && !t.newProjectName ? { ...t, projectId: fallbackProjectId } : t,
+          )
+        : importPreview.tasksToAdd;
       const res = await fetch("/api/import/commit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tasksToAdd: importPreview.tasksToAdd, newProjectNames: importPreview.newProjectNames }),
+        body: JSON.stringify({ tasksToAdd, newProjectNames: importPreview.newProjectNames }),
       });
       if (!res.ok) throw new Error("Import failed");
       await Promise.all([mutateTasks(), mutateProjects()]);
@@ -1331,6 +1339,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
       {importPreview && (
         <ImportPreviewModal
           preview={importPreview}
+          projects={projectList}
           onConfirm={confirmImport}
           onCancel={() => setImportPreview(null)}
           submitting={importSubmitting}
