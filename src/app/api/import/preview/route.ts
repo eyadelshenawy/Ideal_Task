@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireSuperAdmin } from "@/lib/permissions";
 import { importRawRowsSchema } from "@/lib/validation/import";
 import { parseSheetRows } from "@/lib/excelImport";
+import { codeMatchesProject } from "@/lib/taskCode";
 import type { ImportPreview } from "@/types/import";
 
 export async function POST(req: NextRequest) {
@@ -23,6 +24,9 @@ export async function POST(req: NextRequest) {
   ]);
 
   const projectByName = new Map(existingProjects.map((p) => [p.name.toLowerCase(), p.id]));
+  // Also keep each existing project's own code around so the row-level
+  // Code-prefix warning below has something to compare against.
+  const projectCodeById = new Map(existingProjects.map((p) => [p.id, p.code]));
   const memberByName = new Map(existingMembers.map((m) => [m.name.toLowerCase(), m.id]));
   const existingCodeToId = new Map<string, string>();
   existingTasks.forEach((t) => {
@@ -45,6 +49,19 @@ export async function POST(req: NextRequest) {
       } else {
         newProjectName = t.projectName;
         newProjectNamesSet.add(t.projectName);
+      }
+    }
+
+    // Row-level code check: whenever the row references an EXISTING project
+    // and supplied its own Code column, warn if the code doesn't start with
+    // that project's own prefix. Ignore rows headed for a brand-new project
+    // — its code isn't known until commit runs (auto-derived from name).
+    if (t.code && projectId) {
+      const projectCode = projectCodeById.get(projectId);
+      if (projectCode && !codeMatchesProject(t.code, projectCode)) {
+        warnings.push(
+          `"${t.title}": Code "${t.code}" doesn't start with the project prefix "${projectCode}-" — the row will import, but any later edit to that task will be blocked until the code is fixed.`,
+        );
       }
     }
 

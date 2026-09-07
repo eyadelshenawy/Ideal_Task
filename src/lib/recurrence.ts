@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity";
 import { nextTaskCode } from "@/lib/taskCode";
-import { nextChildCode } from "@/lib/taskHierarchy";
+import { nextChildCode, syncAncestorChain } from "@/lib/taskHierarchy";
 import type { RecurrenceFreq, Task } from "@prisma/client";
 
 export function computeNextDate(date: Date, freq: RecurrenceFreq): Date {
@@ -70,4 +70,15 @@ export async function createNextOccurrence(task: RecurringTask): Promise<void> {
 
   await logActivity(next.id, task.createdById, "Auto-created as the next occurrence of a recurring task");
   await logActivity(task.id, task.createdById, `Created the next occurrence, due ${nextDue.toISOString().slice(0, 10)}`);
+
+  // The new occurrence is a sibling of the completed one under the same
+  // parent; its later Due extends the parent's rolled-up span. Without this
+  // sync the parent keeps the old range and looks "done" when there's
+  // actually an open, future occurrence under it. Fire-and-forget: this is
+  // best-effort — a rare failure shouldn't leave the new task uncreated.
+  if (next.parentId) {
+    syncAncestorChain(prisma, next.parentId).catch((err) =>
+      console.error("recurrence syncAncestorChain failed:", err),
+    );
+  }
 }
