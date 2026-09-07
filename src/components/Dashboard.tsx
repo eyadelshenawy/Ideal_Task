@@ -577,11 +577,14 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tasksToAdd, newProjectNames: importPreview.newProjectNames }),
       });
-      if (!res.ok) throw new Error("Import failed");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Import failed");
+      }
       await Promise.all([mutateTasks(), mutateProjects()]);
       setImportPreview(null);
-    } catch {
-      setImportError("Import failed — please try again.");
+    } catch (e) {
+      setImportError(e instanceof Error ? e.message : "Import failed — please try again.");
     } finally {
       setImportSubmitting(false);
     }

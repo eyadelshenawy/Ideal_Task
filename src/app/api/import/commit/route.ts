@@ -273,6 +273,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ created });
   } catch (e) {
     console.error("Import commit failed:", e);
-    return NextResponse.json({ error: "Import failed — no tasks were created" }, { status: 400 });
+    // Bubble up the underlying database/Prisma message when we have one — a
+    // silent "Import failed" hides duplicate-code collisions, dependency
+    // cycles, and other fixable errors behind a wall the user can't debug.
+    // Only the .message string is exposed (never a stack or full object).
+    const detail = e instanceof Error && e.message ? e.message : "";
+    return NextResponse.json(
+      { error: detail ? `Import failed — no tasks were created. Details: ${detail}` : "Import failed — no tasks were created" },
+      { status: 400 },
+    );
   }
 }
