@@ -10,6 +10,7 @@ export interface SlaConfigDto {
 }
 
 function toDto(row: {
+  criticalResponseHours: number; criticalResolutionDays: number;
   highResponseHours: number; highResolutionDays: number;
   mediumResponseHours: number; mediumResolutionDays: number;
   lowResponseHours: number; lowResolutionDays: number;
@@ -17,6 +18,7 @@ function toDto(row: {
 }): SlaConfigDto {
   return {
     targets: {
+      CRITICAL: { responseHours: row.criticalResponseHours, resolutionDays: row.criticalResolutionDays },
       HIGH: { responseHours: row.highResponseHours, resolutionDays: row.highResolutionDays },
       MEDIUM: { responseHours: row.mediumResponseHours, resolutionDays: row.mediumResolutionDays },
       LOW: { responseHours: row.lowResponseHours, resolutionDays: row.lowResolutionDays },

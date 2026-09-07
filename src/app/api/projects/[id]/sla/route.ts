@@ -13,6 +13,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
 const slaConfigSchema = z.object({
   targets: z.object({
+    CRITICAL: z.object({ responseHours: z.number().min(1).max(720), resolutionDays: z.number().min(1).max(365) }),
     HIGH: z.object({ responseHours: z.number().min(1).max(720), resolutionDays: z.number().min(1).max(365) }),
     MEDIUM: z.object({ responseHours: z.number().min(1).max(720), resolutionDays: z.number().min(1).max(365) }),
     LOW: z.object({ responseHours: z.number().min(1).max(720), resolutionDays: z.number().min(1).max(365) }),
@@ -33,6 +34,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
   const { targets, cutoffDate } = parsed.data;
   const data = {
+    criticalResponseHours: targets.CRITICAL.responseHours,
+    criticalResolutionDays: targets.CRITICAL.resolutionDays,
     highResponseHours: targets.HIGH.responseHours,
     highResolutionDays: targets.HIGH.resolutionDays,
     mediumResponseHours: targets.MEDIUM.responseHours,

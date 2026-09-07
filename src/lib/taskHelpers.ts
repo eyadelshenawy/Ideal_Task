@@ -4,6 +4,7 @@ import type { Priority, Status, Task, TeamMember } from "@/types/models";
 // Ported from ideal-tasks.jsx, with enum ids uppercased to match the Prisma schema.
 
 export const PRIORITIES: { id: Priority; label: string; color: string }[] = [
+  { id: "CRITICAL", label: "Critical", color: "#8B1A16" },
   { id: "HIGH", label: "High", color: "#C4443D" },
   { id: "MEDIUM", label: "Medium", color: "#D98B3A" },
   { id: "LOW", label: "Low", color: "#6B8F80" },
@@ -86,7 +87,7 @@ export function initials(name: string): string {
 }
 
 export function priorityWeight(p: Priority): number {
-  return p === "HIGH" ? 0 : p === "MEDIUM" ? 1 : 2;
+  return p === "CRITICAL" ? 0 : p === "HIGH" ? 1 : p === "MEDIUM" ? 2 : 3;
 }
 
 /** Direct + transitive descendant ids of `taskId` within `tasks`, not including itself. */

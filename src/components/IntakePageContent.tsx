@@ -152,6 +152,7 @@ export default function IntakePageContent({ token }: { token: string }) {
             onChange={(e) => setPriority(e.target.value)}
             className="w-full mt-1 rounded-lg border border-brand-border px-3 py-2 text-sm outline-none bg-white"
           >
+            <option value="CRITICAL">Critical</option>
             <option value="HIGH">High</option>
             <option value="MEDIUM">Medium</option>
             <option value="LOW">Low</option>

@@ -18,6 +18,7 @@ enum Role {
 }
 
 enum Priority {
+  CRITICAL
   HIGH
   MEDIUM
   LOW
@@ -109,12 +110,14 @@ model SlaConfig {
   id        String @id @default(cuid())
   projectId String @unique
 
-  highResponseHours    Int @default(4)
-  highResolutionDays   Int @default(2)
-  mediumResponseHours  Int @default(24)
-  mediumResolutionDays Int @default(5)
-  lowResponseHours     Int @default(48)
-  lowResolutionDays    Int @default(10)
+  criticalResponseHours    Int @default(4)
+  criticalResolutionDays   Int @default(2)
+  highResponseHours        Int @default(24)
+  highResolutionDays       Int @default(4)
+  mediumResponseHours      Int @default(48)
+  mediumResolutionDays     Int @default(7)
+  lowResponseHours         Int @default(72)
+  lowResolutionDays        Int @default(10)
 
   // Tasks created before this date are excluded from SLA calculations
   // entirely — without this, importing/pre-existing backlog tasks that

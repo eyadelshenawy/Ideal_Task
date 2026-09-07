@@ -11,9 +11,10 @@ export type SlaTargets = Record<Priority, SlaTarget>;
 // row is somehow missing) — reasonable starting points for a support/
 // implementation shop.
 export const DEFAULT_SLA_TARGETS: SlaTargets = {
-  HIGH: { responseHours: 4, resolutionDays: 2 },
-  MEDIUM: { responseHours: 24, resolutionDays: 5 },
-  LOW: { responseHours: 48, resolutionDays: 10 },
+  CRITICAL: { responseHours: 4, resolutionDays: 2 },
+  HIGH: { responseHours: 24, resolutionDays: 4 },
+  MEDIUM: { responseHours: 48, resolutionDays: 7 },
+  LOW: { responseHours: 72, resolutionDays: 10 },
 };
 
 export type SlaState = "met" | "breached" | "pending";

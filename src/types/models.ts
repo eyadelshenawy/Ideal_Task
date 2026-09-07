@@ -1,5 +1,5 @@
 export type Role = "SUPER_ADMIN" | "MEMBER";
-export type Priority = "HIGH" | "MEDIUM" | "LOW";
+export type Priority = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
 export type Status = "TODO" | "READY" | "INPROGRESS" | "INTERNAL_TEST" | "CUSTOMER_TEST" | "DONE";
 export type RecurrenceFreq = "DAILY" | "WEEKLY" | "MONTHLY";
 
@@ -26,6 +26,13 @@ export interface Project {
   slaTrackingEnabled: boolean;
   /** True means this project is a template kept for cloning; hidden from the main dashboard and its task lists. */
   isTemplate: boolean;
+  /**
+   * Resolution days per priority level, taken from the project's SLA override
+   * or falling back to the org default. Only present on SLA-tracked projects;
+   * null when SLA isn't enabled here. The Task modal uses this to prefill
+   * Duration when the user picks a priority for a new task in this project.
+   */
+  sla: Record<Priority, number> | null;
 }
 
 /** Org-wide work-week configuration (which weekdays count as working days). Singleton row. */

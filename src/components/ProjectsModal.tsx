@@ -9,6 +9,7 @@ import type { SlaConfigDto } from "@/lib/slaConfig";
 import { todayStr } from "@/lib/taskHelpers";
 
 const SLA_ROWS: { key: Priority; label: string }[] = [
+  { key: "CRITICAL", label: "Critical" },
   { key: "HIGH", label: "High" },
   { key: "MEDIUM", label: "Medium" },
   { key: "LOW", label: "Low" },
@@ -29,7 +30,12 @@ function ProjectSlaEditor({ projectId }: { projectId: string }) {
   }, [data]);
 
   function startCustom() {
-    setTargets({ HIGH: { responseHours: 4, resolutionDays: 2 }, MEDIUM: { responseHours: 24, resolutionDays: 5 }, LOW: { responseHours: 48, resolutionDays: 10 } });
+    setTargets({
+      CRITICAL: { responseHours: 4, resolutionDays: 2 },
+      HIGH: { responseHours: 24, resolutionDays: 4 },
+      MEDIUM: { responseHours: 48, resolutionDays: 7 },
+      LOW: { responseHours: 72, resolutionDays: 10 },
+    });
   }
 
   function setField(priority: Priority, field: "responseHours" | "resolutionDays", value: number) {

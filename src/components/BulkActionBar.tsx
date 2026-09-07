@@ -157,6 +157,7 @@ export default function BulkActionBar({
               className="w-full rounded-md px-2 py-1 text-xs border border-brand-border mb-3"
             >
               <option value="" disabled>Set priority…</option>
+              <option value="CRITICAL">Critical</option>
               <option value="HIGH">High</option>
               <option value="MEDIUM">Medium</option>
               <option value="LOW">Low</option>

@@ -113,7 +113,7 @@ export default function ReportsView({ tasks, projects, team, isSuperAdmin, curre
     const rows = team.filter((m) => m.active).map((m) => {
       const mine = open.filter((t) => t.assigneeIds.includes(m.id));
       const overdue = mine.filter((t) => isOverdue(t, today)).length;
-      const highPriority = mine.filter((t) => t.priority === "HIGH").length;
+      const highPriority = mine.filter((t) => t.priority === "CRITICAL" || t.priority === "HIGH").length;
       return { id: m.id, name: m.name, total: mine.length, overdue, highPriority };
     });
     const maxTotal = Math.max(1, ...rows.map((r) => r.total));

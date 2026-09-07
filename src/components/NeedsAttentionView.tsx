@@ -26,7 +26,7 @@ export default function NeedsAttentionView({
     const overdue = tasks.filter((t) => t.dueDate && t.dueDate < today && t.status !== "DONE");
     const dueSoonHighPriority = tasks.filter((t) => {
       if (!t.dueDate || t.status === "DONE" || t.dueDate < today) return false;
-      return t.priority === "HIGH" && diffDays(today, t.dueDate) <= 3;
+      return (t.priority === "CRITICAL" || t.priority === "HIGH") && diffDays(today, t.dueDate) <= 3;
     });
     return {
       overdue: sortTasks(overdue, "dueDate", []),

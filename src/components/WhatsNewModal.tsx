@@ -6,6 +6,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "New Critical priority + SLA-driven Duration auto-fill",
+    description: "Tasks now have a Critical priority level above High — for anything that has to be resolved right away. Defaults: Critical 4h response / 2 days resolution, High 24h / 4 days, Medium 48h / 7 days, Low 72h / 10 days. Change these per project in Manage Projects → SLA targets, or org-wide in Reports → Default SLA. On top of that, when you create a task in an SLA-tracked project and pick a priority, Duration is now pre-filled from that project's SLA resolution days — so the Due Date computes itself from your Start Date without extra typing. Changing the priority later always rewrites Duration (a Low task escalated to Critical MUST tighten the deadline). Typing your own Duration keeps it until the priority changes again.",
+  },
+  {
     title: "Duration on a task — the app fills in the missing side of Start / Duration / Due",
     description: "Every task now has a Duration field alongside Start and Due Date. Enter any two of the three and the app computes the missing one on save — skipping weekends and any dates in the new Work Calendar (Admin menu → Work Calendar), where a Super Admin sets which weekdays count as working days and lists holidays your team observes. Cloning a template also honors the calendar: dates shift by working days from your new start, so a clone that would have landed on a Friday is pushed to the next working day automatically. Excel import and export both pick up the new Duration column. Only Super Admins and Project Admins can edit dates or duration — everyone else still just moves status and progress.",
   },

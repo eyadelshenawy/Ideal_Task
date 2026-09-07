@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import type { Task, Project, TeamMember, Contact, Priority, Status, RecurrenceFreq } from "@/types/models";
 import { PRIORITIES, STATUSES, descendantIds, splitModules } from "@/lib/taskHelpers";
@@ -101,6 +101,44 @@ export default function TaskModal({
   const [contactError, setContactError] = useState("");
   const [newTagText, setNewTagText] = useState("");
   const [newModuleText, setNewModuleText] = useState("");
+
+  // SLA-driven Duration auto-fill for tasks in an SLA-tracked project.
+  // Rules (in order of who wins):
+  //   1. Priority change is authoritative — the SLA class of the task is
+  //      whatever priority it now carries, so Duration gets rewritten from
+  //      the project's SLA numbers even if the user typed one earlier.
+  //      Escalating from Low to Critical MUST tighten the deadline.
+  //   2. First-time entry into an SLA project (project just picked, no prior
+  //      duration in the draft) also fills Duration.
+  //   3. Any manual edit the user makes AFTER the auto-fill sticks until the
+  //      priority is changed again — the effect below never overwrites a
+  //      value the user just typed, because it only fires on
+  //      priority/project changes, not on every Duration keystroke.
+  // Non-SLA projects (project.sla === null) are left alone entirely.
+  const prevKeyRef = useRef<string>("");
+  useEffect(() => {
+    const key = `${draft.projectId}|${draft.priority}`;
+    if (prevKeyRef.current === key) return;
+    const isInitialLoad = prevKeyRef.current === "";
+    prevKeyRef.current = key;
+
+    const project = projects.find((p) => p.id === draft.projectId);
+    if (!project?.sla) return;
+    const days = project.sla[draft.priority];
+    if (!days) return;
+
+    // On the very first render for an existing task with a duration already
+    // set, don't stomp on it — that task's Duration is what the user (or a
+    // past auto-fill) put there. Auto-fill only kicks in when priority or
+    // project actually change from what they were.
+    if (isInitialLoad && draft.durationDays) return;
+
+    setDraft({ ...draft, durationDays: String(days), dueDate: "" });
+    // The setDraft closure captures the current draft; this is intentional —
+    // deps only fire on the two fields we actually key off, so the write is
+    // a one-shot per change and won't loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft.projectId, draft.priority, projects]);
 
   function addTag() {
     const name = newTagText.trim();

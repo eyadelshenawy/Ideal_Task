@@ -29,7 +29,7 @@ const submitSchema = z.object({
   description: z.string().trim().min(1).max(2000),
   contactName: z.string().trim().min(1).max(120),
   contactEmail: z.string().trim().email().max(200),
-  priority: z.enum(["HIGH", "MEDIUM", "LOW"]).default("MEDIUM"),
+  priority: z.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW"]).default("MEDIUM"),
   // Honeypot — a real visitor never sees or fills this field. Deliberately
   // unconstrained (no max(0)) so a bot that fills it still passes schema
   // validation and reaches the check below, which fakes a success response

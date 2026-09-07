@@ -24,7 +24,7 @@ const taskFields = z.object({
   module: z.string().trim().default(""),
   projectId: z.string().nullable().default(null),
   assignees: assigneesSchema.default([]),
-  priority: z.enum(["HIGH", "MEDIUM", "LOW"]).default("MEDIUM"),
+  priority: z.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW"]).default("MEDIUM"),
   status: z.enum(["TODO", "READY", "INPROGRESS", "INTERNAL_TEST", "CUSTOMER_TEST", "DONE"]).default("TODO"),
   startDate: dateOnly.default(null),
   dueDate: dateOnly.default(null),
@@ -48,7 +48,7 @@ export const taskCreateSchema = taskFields
     projectId: z.string().min(1, "Project is required"),
     assignees: assigneesSchema.min(1, "At least one assignee is required"),
     description: z.string().trim().min(1, "Description is required"),
-    priority: z.enum(["HIGH", "MEDIUM", "LOW"], { required_error: "Priority is required" }),
+    priority: z.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW"], { required_error: "Priority is required" }),
   })
   .superRefine((data, ctx) => {
     if (!data.dueDate) {
@@ -96,7 +96,7 @@ export const taskBulkUpdateSchema = z.object({
   status: z.enum(["TODO", "READY", "INPROGRESS", "INTERNAL_TEST", "CUSTOMER_TEST", "DONE"]).optional(),
   assignees: assigneesSchema.optional(),
   projectId: z.string().nullable().optional(),
-  priority: z.enum(["HIGH", "MEDIUM", "LOW"]).optional(),
+  priority: z.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW"]).optional(),
   // `null` explicitly clears the field; omit to leave untouched.
   startDate: dateOnly.optional(),
   dueDate: dateOnly.optional(),
@@ -128,7 +128,7 @@ export const taskStatusUpdateSchema = z
 export const personalTaskCreateSchema = z.object({
   title: z.string().trim().min(1, "Title is required"),
   description: z.string().default(""),
-  priority: z.enum(["HIGH", "MEDIUM", "LOW"]).default("MEDIUM"),
+  priority: z.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW"]).default("MEDIUM"),
   status: z.enum(["TODO", "READY", "INPROGRESS", "INTERNAL_TEST", "CUSTOMER_TEST", "DONE"]).default("TODO"),
   startDate: dateOnly.default(null),
   dueDate: dateOnly.default(null),

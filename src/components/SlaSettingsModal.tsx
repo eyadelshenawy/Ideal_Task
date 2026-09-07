@@ -14,6 +14,7 @@ interface SlaConfigResponse {
 }
 
 const ROWS: { key: Priority; label: string }[] = [
+  { key: "CRITICAL", label: "Critical" },
   { key: "HIGH", label: "High" },
   { key: "MEDIUM", label: "Medium" },
   { key: "LOW", label: "Low" },
