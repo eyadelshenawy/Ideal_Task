@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireSuperAdmin } from "@/lib/permissions";
 import { nextTaskCode } from "@/lib/taskCode";
-import { nextChildCode } from "@/lib/taskHierarchy";
+import { nextChildCode, syncAncestorChain } from "@/lib/taskHierarchy";
 import { logAudit } from "@/lib/audit";
 import { addWorkingDays, countWorkingDaysInclusive, loadSchedulingCalendar, toDateOnly } from "@/lib/scheduling";
 
@@ -191,6 +191,20 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         where: { id: newId },
         data: { dependsOn: { connect: mappedDeps.map((id) => ({ id })) } },
       });
+    }
+
+    // Roll every cloned parent's date span up from its cloned children so the
+    // parent's rollup reflects the actual children we just wrote rather than
+    // whatever `shift()` produced from source dates that may not have been in
+    // sync themselves.
+    const clonedParentIds = new Set<string>();
+    for (const t of ordered) {
+      if (!t.parentId) continue;
+      const mappedParent = idMap.get(t.parentId);
+      if (mappedParent) clonedParentIds.add(mappedParent);
+    }
+    for (const parentId of clonedParentIds) {
+      await syncAncestorChain(prisma, parentId);
     }
 
     logAudit(session.user.id, `Cloned project "${sourceProject.name}" into new project "${newProject.name}" (${newProject.code}), ${ordered.length} tasks`);

@@ -8,6 +8,7 @@ import { dateStrToUTC } from "@/lib/serverDates";
 import { resolveTags } from "@/lib/tags";
 import { addComment } from "@/lib/activity";
 import { loadSchedulingCalendar, resolveTaskDates } from "@/lib/scheduling";
+import { syncAncestorChain } from "@/lib/taskHierarchy";
 
 export async function POST(req: NextRequest) {
   const { session, error } = await requireSuperAdmin();
@@ -268,6 +269,23 @@ export async function POST(req: NextRequest) {
     // once the transaction that created those tasks has actually committed.
     for (const c of commentsToAdd) {
       addComment(c.taskId, createdById, c.message).catch((err) => console.error("import addComment failed:", err));
+    }
+
+    // Roll every affected parent's dates/status up from its brand-new
+    // children — the transaction above created the shape but never fired
+    // the ancestor sync (there's no per-row PATCH here). Missing this step
+    // was leaving imported parents with either whatever the sheet wrote in
+    // (often blank) or a stale span from before the children existed.
+    const parentIdsToSync = new Set<string>();
+    for (const t of tasksToAdd) {
+      if (t.parentExistingId) parentIdsToSync.add(t.parentExistingId);
+      if (t.parentTempId) {
+        const realId = idByTempId.get(t.parentTempId);
+        if (realId) parentIdsToSync.add(realId);
+      }
+    }
+    for (const parentId of parentIdsToSync) {
+      await syncAncestorChain(prisma, parentId);
     }
 
     return NextResponse.json({ created });
