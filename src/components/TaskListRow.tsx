@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Trash2, Check, Diamond, Copy, ChevronDown, ChevronRight, Paperclip, MessageSquare, ListChecks } from "lucide-react";
+import { Pencil, Trash2, Check, Diamond, Copy, ChevronDown, ChevronRight, Paperclip, MessageSquare, ListChecks, AlertTriangle } from "lucide-react";
 import type { Task, Project, AssigneeDisplay, Status } from "@/types/models";
 import { PRIORITIES, STATUSES, dueBadge, toneStyle, isBlocked, splitModules } from "@/lib/taskHelpers";
 import AvatarStack from "./ui/AvatarStack";
@@ -29,13 +29,15 @@ interface TaskListRowProps {
   doneChildCount?: number;
   totalChildCount?: number;
   density?: "comfortable" | "compact";
+  /** Human-readable "starts before predecessor finishes" label — chip is only shown when set. */
+  dependencyWarning?: string | null;
 }
 
 export default function TaskListRow({
   task, assignees, project, allTasks, canManage, onEdit, onDelete, onDuplicate, onChangeStatus,
   selectMode, selected, onToggleSelect,
   depth = 0, hasChildren = false, collapsed = false, onToggleCollapse, doneChildCount = 0, totalChildCount = 0,
-  density = "comfortable",
+  density = "comfortable", dependencyWarning,
 }: TaskListRowProps) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingDuplicate, setConfirmingDuplicate] = useState(false);
@@ -108,6 +110,13 @@ export default function TaskListRow({
             {STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
           </select>
           {badge && <Chip small style={toneStyle(badge.tone)}>{badge.label}</Chip>}
+          {dependencyWarning && (
+            <span title={dependencyWarning}>
+              <Chip small style={{ background: "#FBEEDD", color: "#8A5A20" }}>
+                <AlertTriangle size={9} style={{ display: "inline", marginRight: 3 }} />Dep
+              </Chip>
+            </span>
+          )}
           {!selectMode && (
             <>
               <button onClick={() => onEdit(task)} title="Edit" className="p-1 rounded hover:bg-gray-100 text-brand-sub">

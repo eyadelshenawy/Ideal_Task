@@ -521,6 +521,23 @@ export default function TaskModal({
                 Fill any two of Start / Duration / Due — the third is computed on save (skips weekends and holidays set in Work Calendar).
               </div>
             )}
+            {(() => {
+              // Live dependency-conflict banner: reflects the draft, not the
+              // saved task, so escalating a start date shows/hides the warning
+              // immediately as you type. Only flags DIRECT conflicts here —
+              // upstream cascades don't fit into the modal's frame of one task.
+              if (!draft.startDate || draft.dependsOn.length === 0) return null;
+              const clashing = draft.dependsOn
+                .map((id) => allTasks.find((t) => t.id === id))
+                .filter((t): t is Task => !!t && t.status !== "DONE" && !!t.dueDate && t.dueDate > draft.startDate);
+              if (clashing.length === 0) return null;
+              const labels = clashing.map((c) => c.code || c.title).slice(0, 3).join(", ");
+              return (
+                <div className="mt-1 rounded-md px-2 py-1.5 text-[11.5px]" style={{ background: "#FBEEDD", color: "#8A5A20" }}>
+                  ⚠️ Starts before {labels} finish{clashing.length === 1 ? "es" : ""}. Either push Start back or unset the predecessor.
+                </div>
+              );
+            })()}
 
             <div>
               <label className="text-xs font-semibold text-brand-sub">Status</label>

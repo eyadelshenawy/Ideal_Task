@@ -246,7 +246,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       createNextOccurrence(task).catch((err) => console.error("createNextOccurrence failed:", err));
     }
 
-    if (nextStatus !== existing.status || task.parentId !== existing.parentId) {
+    // Any change that affects the parent's rollup fires syncAncestorChain:
+    // status (may flip parent to/from DONE), dates or duration (roll up to
+    // parent's own date span), or moving to a different parent (both the
+    // old and the new parent need to be recomputed).
+    const datesChanged = resolvedDates !== null;
+    if (nextStatus !== existing.status || task.parentId !== existing.parentId || datesChanged) {
       if (task.parentId) await syncAncestorChain(prisma, task.parentId);
       if (existing.parentId && existing.parentId !== task.parentId) {
         await syncAncestorChain(prisma, existing.parentId);

@@ -86,7 +86,32 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 
   try {
-    const newProject = await prisma.project.create({ data: { name: parsed.data.name, code: parsed.data.code } });
+    const newProject = await prisma.project.create({
+      data: { name: parsed.data.name, code: parsed.data.code, slaTrackingEnabled: sourceProject.slaTrackingEnabled },
+    });
+
+    // Carry the source project's per-project SLA overrides onto the new
+    // project so an Onboarding or Support-project template clones a live
+    // SLA setup, not a fresh default. sourceSla is null when the source
+    // never had custom targets set — in that case the new project falls
+    // back to the org default the same way its source did.
+    const sourceSla = await prisma.slaConfig.findUnique({ where: { projectId: params.id } });
+    if (sourceSla) {
+      await prisma.slaConfig.create({
+        data: {
+          projectId: newProject.id,
+          criticalResponseHours: sourceSla.criticalResponseHours,
+          criticalResolutionDays: sourceSla.criticalResolutionDays,
+          highResponseHours: sourceSla.highResponseHours,
+          highResolutionDays: sourceSla.highResolutionDays,
+          mediumResponseHours: sourceSla.mediumResponseHours,
+          mediumResolutionDays: sourceSla.mediumResolutionDays,
+          lowResponseHours: sourceSla.lowResponseHours,
+          lowResolutionDays: sourceSla.lowResolutionDays,
+          cutoffDate: sourceSla.cutoffDate,
+        },
+      });
+    }
 
     // Roots before children, since a child's Prisma parentId needs the
     // parent's NEW id to already exist — sourceTasks is in creation order,

@@ -56,6 +56,11 @@ export async function createNextOccurrence(task: RecurringTask): Promise<void> {
       progress: 0,
       startDate: nextStart,
       dueDate: nextDue,
+      // Duration carries over as-is — a weekly-recurring 3-day task should
+      // stay a 3-day task on every occurrence. The concrete Due here is
+      // already computed above (nextDue), so this is just for consistency
+      // with the field and any later recompute.
+      durationDays: task.durationDays,
       isMilestone: task.isMilestone,
       recurrenceFreq: task.recurrenceFreq,
       recurrenceEndDate: task.recurrenceEndDate,

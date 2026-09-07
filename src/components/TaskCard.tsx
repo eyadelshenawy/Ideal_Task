@@ -26,11 +26,13 @@ interface TaskCardProps {
   /** Board drag-and-drop: this card is the drag source. */
   draggable?: boolean;
   onDragStart?: (id: string) => void;
+  /** Human-readable "starts before predecessor finishes" label — chip is only shown when set. */
+  dependencyWarning?: string | null;
 }
 
 export default function TaskCard({
   task, assignees, project, allTasks, canManage, onEdit, onDelete, onMove, onDuplicate,
-  selectMode, selected, onToggleSelect, draggable, onDragStart,
+  selectMode, selected, onToggleSelect, draggable, onDragStart, dependencyWarning,
 }: TaskCardProps) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingDuplicate, setConfirmingDuplicate] = useState(false);
@@ -160,6 +162,13 @@ export default function TaskCard({
         </div>
         <div className="flex items-center gap-2">
           {badge && <Chip small style={toneStyle(badge.tone)}>{badge.label}</Chip>}
+          {dependencyWarning && (
+            <span title={dependencyWarning}>
+              <Chip small style={{ background: "#FBEEDD", color: "#8A5A20" }}>
+                <AlertTriangle size={9} style={{ display: "inline", marginRight: 3 }} />Dep
+              </Chip>
+            </span>
+          )}
           <AvatarStack assignees={assignees} size={24} />
         </div>
       </div>

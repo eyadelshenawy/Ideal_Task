@@ -142,7 +142,14 @@ export async function PATCH(req: NextRequest) {
       createNextOccurrence(updatedTask).catch((err) => console.error("createNextOccurrence failed:", err));
     }
 
-    if (status !== undefined && status !== task.status && updatedTask.parentId) {
+    // Roll up to the parent whenever status OR any date-related field
+    // changes — a child's shifted deadline propagates the span to the
+    // parent the same way the single-task PATCH does.
+    const parentAffected = updatedTask.parentId && (
+      (status !== undefined && status !== task.status) ||
+      Object.keys(bulkDateData).length > 0
+    );
+    if (parentAffected && updatedTask.parentId) {
       await syncAncestorChain(prisma, updatedTask.parentId);
     }
 

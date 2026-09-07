@@ -56,32 +56,80 @@ export async function wouldCreateHierarchyCycle(db: Db, taskId: string, candidat
 }
 
 /**
- * Re-derives a single parent's status from its (non-deleted) children: DONE
- * if every child is DONE, reverted to INPROGRESS if it was DONE but a child
- * no longer is. Returns whether the parent's status actually changed.
+ * Re-derives a single parent's status AND date range from its (non-deleted)
+ * children: status goes DONE when every child is DONE (reverts to INPROGRESS
+ * otherwise), and startDate / dueDate / durationDays are rolled up from the
+ * earliest child start to the latest child due, with duration recomputed as
+ * working days across that span using the org calendar. Returns whether the
+ * parent's stored row actually changed — the ancestor loop uses that to stop
+ * when nothing propagates further up.
+ *
+ * Rollup is authoritative for any parent that has children: manually editing
+ * a parent's dates works, but the next time a child moves the parent snaps
+ * back to the computed span. This is intentional — the parent's dates aren't
+ * a fact of their own, they're a summary of the children.
  */
 async function recomputeOneLevel(db: Db, parentId: string): Promise<boolean> {
   const [parent, siblings] = await Promise.all([
-    db.task.findUnique({ where: { id: parentId }, select: { status: true } }),
-    db.task.findMany({ where: { parentId, deletedAt: null }, select: { status: true } }),
+    db.task.findUnique({
+      where: { id: parentId },
+      select: { status: true, startDate: true, dueDate: true, durationDays: true },
+    }),
+    db.task.findMany({
+      where: { parentId, deletedAt: null },
+      select: { status: true, startDate: true, dueDate: true },
+    }),
   ]);
   if (!parent) return false;
 
+  const patch: {
+    status?: "DONE" | "INPROGRESS";
+    progress?: number;
+    startDate?: Date | null;
+    dueDate?: Date | null;
+    durationDays?: number | null;
+  } = {};
+
   const allDone = siblings.length > 0 && siblings.every((s) => s.status === "DONE");
   if (allDone && parent.status !== "DONE") {
-    await db.task.update({ where: { id: parentId }, data: { status: "DONE", progress: 100 } });
-    return true;
-  }
-  if (!allDone && parent.status === "DONE") {
+    patch.status = "DONE";
+    patch.progress = 100;
+  } else if (!allDone && parent.status === "DONE") {
     // Reopening un-does the 100% this task got when it auto-completed —
     // otherwise the progress bar would keep reading "done" under a
     // now-incorrect "In Progress" status.
     const doneCount = siblings.filter((s) => s.status === "DONE").length;
-    const progress = siblings.length > 0 ? Math.round((doneCount / siblings.length) * 100) : 0;
-    await db.task.update({ where: { id: parentId }, data: { status: "INPROGRESS", progress } });
-    return true;
+    patch.status = "INPROGRESS";
+    patch.progress = siblings.length > 0 ? Math.round((doneCount / siblings.length) * 100) : 0;
   }
-  return false;
+
+  // Date rollup: earliest start across children, latest due. Only compute
+  // when there IS at least one child with a date — a parent whose children
+  // all lack dates keeps whatever it had (nothing to summarize).
+  const childStarts = siblings.map((s) => s.startDate).filter((d): d is Date => !!d);
+  const childDues = siblings.map((s) => s.dueDate).filter((d): d is Date => !!d);
+  if (childStarts.length > 0 || childDues.length > 0) {
+    const nextStart = childStarts.length > 0 ? new Date(Math.min(...childStarts.map((d) => d.getTime()))) : null;
+    const nextDue = childDues.length > 0 ? new Date(Math.max(...childDues.map((d) => d.getTime()))) : null;
+    const startChanged = nextStart?.getTime() !== parent.startDate?.getTime();
+    const dueChanged = nextDue?.getTime() !== parent.dueDate?.getTime();
+    if (startChanged || dueChanged) {
+      patch.startDate = nextStart;
+      patch.dueDate = nextDue;
+      if (nextStart && nextDue) {
+        const { countWorkingDaysInclusive, loadSchedulingCalendar, toDateOnly } = await import("@/lib/scheduling");
+        const cal = await loadSchedulingCalendar();
+        const days = countWorkingDaysInclusive(toDateOnly(nextStart), toDateOnly(nextDue), cal);
+        patch.durationDays = Math.max(1, days);
+      } else {
+        patch.durationDays = null;
+      }
+    }
+  }
+
+  if (Object.keys(patch).length === 0) return false;
+  await db.task.update({ where: { id: parentId }, data: patch });
+  return true;
 }
 
 /**

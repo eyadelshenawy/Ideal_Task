@@ -6,6 +6,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Parent-task date rollup, dependency conflict warnings, Recurring keeps Duration, Clone carries the SLA config",
+    description: "Four connected upgrades to the scheduling model. Parent tasks now roll their date span up from their subtasks — the parent's Start / Due / Duration automatically become the earliest child start through the latest child due. Manual edits to a parent still stick, but the next child change recomputes on top. Any task whose Start Date lands before one of its predecessors' Due Dates now shows a small ⚠️ Dep chip on the card and the row, with a banner in the Task modal showing which predecessor is the blocker (and the same chip cascades onto anything further downstream that's blocked by that same chain). Recurring tasks now carry Duration onto every next occurrence — a weekly 3-day task stays 3 days each time. And cloning a project (including template clones) now copies the source project's per-project SLA targets along with the shape, so an Onboarding or Support template doesn't quietly reset to org defaults.",
+  },
+  {
     title: "New Critical priority + SLA-driven Duration auto-fill",
     description: "Tasks now have a Critical priority level above High — for anything that has to be resolved right away. Defaults: Critical 4h response / 2 days resolution, High 24h / 4 days, Medium 48h / 7 days, Low 72h / 10 days. Change these per project in Manage Projects → SLA targets, or org-wide in Reports → Default SLA. On top of that, when you create a task in an SLA-tracked project and pick a priority, Duration is now pre-filled from that project's SLA resolution days — so the Due Date computes itself from your Start Date without extra typing. Changing the priority later always rewrites Duration (a Low task escalated to Critical MUST tighten the deadline). Typing your own Duration keeps it until the priority changes again.",
   },

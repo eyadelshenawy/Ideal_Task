@@ -10,6 +10,7 @@ import {
   colorForIndex, STATUSES, PRIORITIES, todayStr, sortTasks, toTreeRows, splitModules, isDueThisWeek,
   groupTaskRows, countGroupUnits, GROUP_FIELD_LABELS, type SortBy, type GroupField, type GroupNode, type TaskTreeRow,
 } from "@/lib/taskHelpers";
+import { computeDependencyWarnings, describeDependencyWarning } from "@/lib/dependencyWarnings";
 import { api } from "@/lib/apiClient";
 import TaskCard from "./TaskCard";
 import TaskListRow from "./TaskListRow";
@@ -163,6 +164,11 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
 
   const taskList = tasks ?? [];
+  // Compute dependency warnings across the entire visible task set once per
+  // render — used to decorate rows/cards and to surface a banner in the
+  // TaskModal. Direct = my own predecessor finishes after I start; cascaded
+  // = someone upstream of me has a direct conflict that will slip forward.
+  const dependencyWarnings = useMemo(() => computeDependencyWarnings(taskList), [taskList]);
   const teamList = team ?? [];
   const projectList = projects ?? [];
   const contactList = contacts ?? [];
@@ -620,6 +626,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
         doneChildCount={doneChildCount}
         totalChildCount={totalChildCount}
         density={density}
+        dependencyWarning={describeDependencyWarning(task.id, taskList, dependencyWarnings)}
       />
     );
   }
@@ -1245,6 +1252,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
                         onToggleSelect={toggleSelect}
                         draggable={!selectMode}
                         onDragStart={setDraggedTaskId}
+                        dependencyWarning={describeDependencyWarning(task.id, taskList, dependencyWarnings)}
                       />
                     ))}
                   </div>
