@@ -28,6 +28,7 @@ const taskFields = z.object({
   status: z.enum(["TODO", "READY", "INPROGRESS", "INTERNAL_TEST", "CUSTOMER_TEST", "DONE"]).default("TODO"),
   startDate: dateOnly.default(null),
   dueDate: dateOnly.default(null),
+  durationDays: z.number().int().min(1).nullable().default(null),
   completedAt: dateOnly.default(null),
   progress: z.number().min(0).max(100).default(0),
   isMilestone: z.boolean().default(false),

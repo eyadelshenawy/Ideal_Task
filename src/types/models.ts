@@ -28,6 +28,24 @@ export interface Project {
   isTemplate: boolean;
 }
 
+/** Org-wide work-week configuration (which weekdays count as working days). Singleton row. */
+export interface WorkWeekConfig {
+  sun: boolean;
+  mon: boolean;
+  tue: boolean;
+  wed: boolean;
+  thu: boolean;
+  fri: boolean;
+  sat: boolean;
+}
+
+/** An admin-managed calendar day that counts as non-working regardless of weekday. */
+export interface Holiday {
+  id: string;
+  name: string;
+  date: string; // YYYY-MM-DD
+}
+
 export interface TrashedProject extends Project {
   deletedAt: string;
 }
@@ -63,6 +81,8 @@ export interface Task {
   status: Status;
   startDate: string | null; // "YYYY-MM-DD"
   dueDate: string | null; // "YYYY-MM-DD"
+  /** Working-days between start and due (inclusive), skipping the org's weekends + holidays. Auto-kept in sync with dates. */
+  durationDays: number | null;
   completedAt: string | null; // "YYYY-MM-DD" — when it actually finished, auto-set on DONE
   progress: number;
   isMilestone: boolean;

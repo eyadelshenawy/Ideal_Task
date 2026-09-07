@@ -5,6 +5,7 @@ import { requireSuperAdmin } from "@/lib/permissions";
 import { nextTaskCode } from "@/lib/taskCode";
 import { nextChildCode } from "@/lib/taskHierarchy";
 import { logAudit } from "@/lib/audit";
+import { addWorkingDays, countWorkingDaysInclusive, loadSchedulingCalendar, toDateOnly } from "@/lib/scheduling";
 
 // Clones every task in a project into a brand-new one — the "template" use
 // case: build the shape once (e.g. Explore/Realize/Deploy/Run phases, or an
@@ -50,19 +51,38 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   });
 
   // The earliest startDate (falling back to dueDate) across the source
-  // project anchors the shift: every task's own dates move by the same
-  // number of days relative to that anchor.
+  // project anchors the shift. Every task's own start shifts by the same
+  // number of WORKING days from that anchor to the caller's new startDate,
+  // then its due is recomputed from that shifted start + its stored
+  // durationDays (also working-days). This makes the clone honor the org's
+  // work-week and holidays automatically — cloning onto a Sunday during an
+  // Eid week no longer strands a task's due on a non-working day.
   const anchorTime = sourceTasks.reduce<number | null>((min, t) => {
     const d = t.startDate ?? t.dueDate;
     if (!d) return min;
     return min === null || d.getTime() < min ? d.getTime() : min;
   }, null);
-  const newAnchor = new Date(`${parsed.data.startDate}T00:00:00.000Z`);
+  const anchorStr = anchorTime !== null ? toDateOnly(new Date(anchorTime)) : null;
+  const newAnchorStr = parsed.data.startDate;
+  const cal = await loadSchedulingCalendar();
 
-  function shift(d: Date | null): Date | null {
-    if (!d || anchorTime === null) return null;
-    const deltaDays = Math.round((d.getTime() - anchorTime) / 86400000);
-    return new Date(newAnchor.getTime() + deltaDays * 86400000);
+  function shift(d: Date | null): string | null {
+    if (!d || anchorStr === null) return null;
+    const workingDayOffset = countWorkingDaysInclusive(anchorStr, toDateOnly(d), cal) - 1;
+    if (workingDayOffset < 0) {
+      // Source date was BEFORE the anchor — shouldn't normally happen since
+      // anchor is the min, but if a task has only dueDate and it landed on a
+      // non-working day, we still want a graceful output.
+      return newAnchorStr;
+    }
+    return addWorkingDays(newAnchorStr, workingDayOffset + 1, cal);
+  }
+  function shiftEndFromStart(shiftedStart: string | null, duration: number | null, sourceEnd: Date | null): string | null {
+    if (!shiftedStart) return null;
+    if (duration && duration > 0) {
+      return addWorkingDays(shiftedStart, duration, cal);
+    }
+    return shift(sourceEnd);
   }
 
   try {
@@ -111,8 +131,16 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           priority: t.priority,
           status: "TODO",
           progress: 0,
-          startDate: shift(t.startDate),
-          dueDate: shift(t.dueDate),
+          startDate: (() => {
+            const s = shift(t.startDate);
+            return s ? new Date(`${s}T00:00:00.000Z`) : null;
+          })(),
+          dueDate: (() => {
+            const s = shift(t.startDate);
+            const e = shiftEndFromStart(s, t.durationDays, t.dueDate);
+            return e ? new Date(`${e}T00:00:00.000Z`) : null;
+          })(),
+          durationDays: t.durationDays,
           isMilestone: t.isMilestone,
           tags: { connect: t.tags.map((tag) => ({ id: tag.id })) },
           checklistItems: { create: t.checklistItems.map((c) => ({ text: c.text, order: c.order })) },

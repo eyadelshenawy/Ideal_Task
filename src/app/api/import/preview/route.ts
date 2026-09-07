@@ -109,6 +109,7 @@ export async function POST(req: NextRequest) {
       status: t.status,
       startDate: t.startDate || null,
       dueDate: t.dueDate || null,
+      durationDays: t.durationDays,
       progress: t.progress,
       isMilestone: t.isMilestone,
       dependsOnTempIds,

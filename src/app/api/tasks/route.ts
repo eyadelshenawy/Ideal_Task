@@ -11,6 +11,7 @@ import { resolveTags } from "@/lib/tags";
 import { visibleTasksWhere } from "@/lib/taskVisibility";
 import { codeMatchesProject } from "@/lib/taskCode";
 import { codeMatchesParent, syncAncestorChain } from "@/lib/taskHierarchy";
+import { loadSchedulingCalendar, resolveTaskDates } from "@/lib/scheduling";
 
 export async function GET() {
   const { session, error } = await requireSession();
@@ -79,6 +80,16 @@ export async function POST(req: NextRequest) {
 
   const tags = await resolveTags(data.tags);
 
+  // Reconcile Start/Due/Duration at creation the same way an edit does —
+  // whichever the caller supplied wins, and the missing side of the triple
+  // is computed from the org's work-week + holidays. See src/lib/scheduling.ts.
+  const cal = await loadSchedulingCalendar();
+  const resolvedDates = resolveTaskDates(
+    { startDate: data.startDate, dueDate: data.dueDate, durationDays: data.durationDays },
+    cal,
+    data.dueDate !== null,
+  );
+
   try {
     const task = await prisma.task.create({
       data: {
@@ -92,8 +103,9 @@ export async function POST(req: NextRequest) {
         tags: { connect: tags.map((t) => ({ id: t.id })) },
         priority: data.priority,
         status: data.status,
-        startDate: dateStrToUTC(data.startDate),
-        dueDate: dateStrToUTC(data.dueDate),
+        startDate: dateStrToUTC(resolvedDates.startDate),
+        dueDate: dateStrToUTC(resolvedDates.dueDate),
+        durationDays: resolvedDates.durationDays,
         completedAt: data.completedAt ? dateStrToUTC(data.completedAt) : data.status === "DONE" ? new Date() : null,
         progress: data.status === "DONE" ? 100 : data.progress,
         isMilestone: data.isMilestone,

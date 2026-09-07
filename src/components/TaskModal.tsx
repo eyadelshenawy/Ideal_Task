@@ -32,6 +32,7 @@ export interface TaskDraft {
   recurrenceEndDate: string;
   tags: string[];
   parentId: string;
+  durationDays: string;
 }
 
 export function blankDraft(): TaskDraft {
@@ -39,7 +40,7 @@ export function blankDraft(): TaskDraft {
     code: "", title: "", description: "", module: "", projectId: "", assignees: [],
     priority: "MEDIUM", status: "TODO", startDate: "", dueDate: "", completedAt: "",
     progress: 0, isMilestone: false, dependsOn: [],
-    recurrenceFreq: "", recurrenceEndDate: "", tags: [], parentId: "",
+    recurrenceFreq: "", recurrenceEndDate: "", tags: [], parentId: "", durationDays: "",
   };
 }
 
@@ -67,6 +68,7 @@ export function draftFromTask(task: Task): TaskDraft {
     recurrenceEndDate: task.recurrenceEndDate ?? "",
     tags: task.tags,
     parentId: task.parentId ?? "",
+    durationDays: task.durationDays !== null ? String(task.durationDays) : "",
   };
 }
 
@@ -437,14 +439,29 @@ export default function TaskModal({
               This is a milestone (single-date marker, no duration)
             </label>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className={draft.isMilestone ? "" : "grid grid-cols-3 gap-3"}>
               {!draft.isMilestone && (
                 <div>
                   <label className="text-xs font-semibold text-brand-sub">Start Date *</label>
                   <input
                     type="date"
                     value={draft.startDate}
-                    onChange={(e) => setDraft({ ...draft, startDate: e.target.value })}
+                    onChange={(e) => setDraft({ ...draft, startDate: e.target.value, dueDate: "" })}
+                    className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
+                  />
+                </div>
+              )}
+              {!draft.isMilestone && (
+                <div>
+                  <label className="text-xs font-semibold text-brand-sub" title="Working days between Start and Due. Fills in Due automatically.">
+                    Duration (days)
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    placeholder="e.g. 5"
+                    value={draft.durationDays}
+                    onChange={(e) => setDraft({ ...draft, durationDays: e.target.value, dueDate: "" })}
                     className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
                   />
                 </div>
@@ -456,11 +473,16 @@ export default function TaskModal({
                 <input
                   type="date"
                   value={draft.dueDate}
-                  onChange={(e) => setDraft({ ...draft, dueDate: e.target.value })}
+                  onChange={(e) => setDraft({ ...draft, dueDate: e.target.value, durationDays: "" })}
                   className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
                 />
               </div>
             </div>
+            {!draft.isMilestone && (
+              <div className="text-[10.5px] text-brand-sub mt-1">
+                Fill any two of Start / Duration / Due — the third is computed on save (skips weekends and holidays set in Work Calendar).
+              </div>
+            )}
 
             <div>
               <label className="text-xs font-semibold text-brand-sub">Status</label>

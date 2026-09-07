@@ -68,6 +68,7 @@ export interface RawParsedRow {
   status: Status;
   startDate: string;
   dueDate: string;
+  durationDays: number | null;
   progress: number;
   isMilestone: boolean;
   dependsOnCodes: string[];
@@ -97,6 +98,7 @@ export function parseSheetRows(rows: Record<string, unknown>[]): { parsed: RawPa
     const startRaw = nrow["start date"] ?? nrow["start"];
     const dueRaw = nrow["due date"] ?? nrow["due"] ?? nrow["end date"] ?? nrow["end"] ?? nrow["deadline"];
     const progressRaw = pick(nrow, ["progress", "%", "% complete", "percent complete"]);
+    const durationRaw = pick(nrow, ["duration", "duration days", "duration (days)", "working days"]);
     const milestoneRaw = pick(nrow, ["milestone", "is milestone"]);
     const dependsRaw = pick(nrow, ["depends on", "dependencies", "predecessor", "predecessors"]);
     const parentCodeRaw = pick(nrow, ["parent code", "parent", "parent task"]);
@@ -116,6 +118,10 @@ export function parseSheetRows(rows: Record<string, unknown>[]): { parsed: RawPa
       startDate: excelValueToDateStr(startRaw),
       dueDate: excelValueToDateStr(dueRaw),
       progress: Math.max(0, Math.min(100, Number(progressRaw) || 0)),
+      durationDays: (() => {
+        const n = Number(durationRaw);
+        return Number.isFinite(n) && n > 0 ? Math.floor(n) : null;
+      })(),
       isMilestone: matchBool(milestoneRaw),
       dependsOnCodes: dependsRaw ? dependsRaw.split(",").map((c) => c.trim()).filter(Boolean) : [],
       parentCode: parentCodeRaw.trim(),

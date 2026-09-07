@@ -7,6 +7,7 @@ import { importCommitSchema } from "@/lib/validation/import";
 import { dateStrToUTC } from "@/lib/serverDates";
 import { resolveTags } from "@/lib/tags";
 import { addComment } from "@/lib/activity";
+import { loadSchedulingCalendar, resolveTaskDates } from "@/lib/scheduling";
 
 export async function POST(req: NextRequest) {
   const { session, error } = await requireSuperAdmin();
@@ -174,9 +175,27 @@ export async function POST(req: NextRequest) {
       // which doesn't scale to a project with hundreds of tasks. createMany
       // plus raw bulk inserts into the two join tables below is the same
       // end result in 3 round trips total instead of one query per relation.
+      // Reconcile Start/Due/Duration per row once, up front — same rules the
+      // single-task API uses (an explicit Due wins; otherwise Duration fills
+      // in the missing side). Loaded once so the whole batch shares one
+      // calendar snapshot.
+      const cal = await loadSchedulingCalendar();
+      const resolvedByTempId = new Map<string, ReturnType<typeof resolveTaskDates>>();
+      for (const t of tasksToAdd) {
+        resolvedByTempId.set(
+          t.tempId,
+          resolveTaskDates(
+            { startDate: t.startDate, dueDate: t.dueDate, durationDays: t.durationDays },
+            cal,
+            t.dueDate !== null,
+          ),
+        );
+      }
+
       await tx.task.createMany({
         data: tasksToAdd.map((t) => {
           const ownRealId = idByTempId.get(t.tempId)!;
+          const dates = resolvedByTempId.get(t.tempId)!;
           return {
             id: ownRealId,
             code: codeByTempId.get(t.tempId) ?? null,
@@ -191,8 +210,9 @@ export async function POST(req: NextRequest) {
             childCodeSeq: childCodeSeqDelta.get(ownRealId) ?? 0,
             priority: t.priority,
             status: t.status,
-            startDate: dateStrToUTC(t.startDate),
-            dueDate: dateStrToUTC(t.dueDate),
+            startDate: dateStrToUTC(dates.startDate),
+            dueDate: dateStrToUTC(dates.dueDate),
+            durationDays: dates.durationDays,
             progress: t.status === "DONE" ? 100 : t.progress,
             isMilestone: t.isMilestone,
             createdById,

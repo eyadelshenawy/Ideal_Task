@@ -79,6 +79,7 @@ model User {
   projectAdminOf ProjectAdmin[]
 
   pushSubscriptions PushSubscription[]
+  holidaysCreated   Holiday[]
 }
 
 // One row per browser/device a user has opted into Web Push on. A user can
@@ -121,6 +122,41 @@ model SlaConfig {
   cutoffDate DateTime?
 
   updatedAt DateTime @updatedAt
+}
+
+// Org-wide work-week + holiday calendar, used by every date-math helper
+// (duration ↔ due auto-compute, warnings on non-working-day starts/dues,
+// clone shifts). Kept as a single-row singleton (fixed id "singleton") so
+// reads and writes never need a lookup by anything else. Only a Super
+// Admin can change it. Days are stored as booleans on named columns for
+// readability; sun/mon/... = true means "working day". Default matches
+// the Egyptian/Gulf pattern (Fri+Sat off) but the whole table is a
+// setting, not a constant — every consumer reads it live.
+model WorkWeekConfig {
+  id  String @id @default("singleton")
+  sun Boolean @default(true)
+  mon Boolean @default(true)
+  tue Boolean @default(true)
+  wed Boolean @default(true)
+  thu Boolean @default(true)
+  fri Boolean @default(false)
+  sat Boolean @default(false)
+  updatedAt DateTime @updatedAt
+}
+
+// A specific calendar day that counts as non-working regardless of the
+// weekday. Independent from WorkWeekConfig — used together in every
+// scheduling calculation. Named for the audit trail and for the tooltip
+// shown alongside any warning ("Start on 2026-06-15 (Eid al-Adha)").
+model Holiday {
+  id        String   @id @default(cuid())
+  name      String
+  date      DateTime @unique
+  createdAt DateTime @default(now())
+  createdById String?
+  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([date])
 }
 
 model Project {
@@ -284,6 +320,13 @@ model Task {
 
   startDate DateTime?
   dueDate   DateTime?
+  // Working-days duration between startDate and dueDate (inclusive of both),
+  // skipping the org's non-working days and holiday dates. Kept as a stored
+  // field so the picker can round-trip between (start, duration) and
+  // (start, due) without recomputing from scratch on every render. Nullable
+  // for legacy tasks with dates but no explicit duration. Auto-recomputed by
+  // the API whenever startDate or dueDate change — see src/lib/scheduling.ts.
+  durationDays Int?
   progress  Int       @default(0)
 
   // When this task actually finished — auto-set to today whenever status

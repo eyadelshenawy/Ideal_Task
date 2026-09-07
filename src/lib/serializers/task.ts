@@ -38,6 +38,7 @@ export function serializeTask(t: TaskWithRelations): Task {
     status: t.status,
     startDate: utcToDateStr(t.startDate),
     dueDate: utcToDateStr(t.dueDate),
+    durationDays: t.durationDays,
     completedAt: utcToDateStr(t.completedAt),
     progress: t.progress,
     isMilestone: t.isMilestone,

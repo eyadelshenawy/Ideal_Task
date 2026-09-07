@@ -11,6 +11,7 @@ import { resolveTags } from "@/lib/tags";
 import { codeMatchesProject } from "@/lib/taskCode";
 import { wouldCreateCycle } from "@/lib/taskDependencies";
 import { codeMatchesParent, wouldCreateHierarchyCycle, syncAncestorChain, getDescendantIds } from "@/lib/taskHierarchy";
+import { loadSchedulingCalendar, resolveTaskDates, toDateOnly } from "@/lib/scheduling";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await requireSession();
@@ -175,6 +176,28 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   const tags = data.tags !== undefined ? await resolveTags(data.tags) : null;
 
+  // Reconcile Start / Due / Duration into a coherent triple whenever any of
+  // the three is touched. Rule: an explicit dueDate always wins over a
+  // Duration in the same payload — see resolveTaskDates(). What ends up in
+  // the DB always satisfies "due = start + (duration-1) working days" per
+  // the org's calendar, or is left null when there's no anchor to compute
+  // from. Skip the whole thing if none of the three fields moved.
+  let resolvedDates: { startDate: string | null; dueDate: string | null; durationDays: number | null } | null = null;
+  if (data.startDate !== undefined || data.dueDate !== undefined || data.durationDays !== undefined) {
+    const existingStartStr = existing.startDate ? toDateOnly(existing.startDate) : null;
+    const existingDueStr = existing.dueDate ? toDateOnly(existing.dueDate) : null;
+    const cal = await loadSchedulingCalendar();
+    resolvedDates = resolveTaskDates(
+      {
+        startDate: data.startDate !== undefined ? data.startDate : existingStartStr,
+        dueDate: data.dueDate !== undefined ? data.dueDate : existingDueStr,
+        durationDays: data.durationDays !== undefined ? data.durationDays : existing.durationDays,
+      },
+      cal,
+      data.dueDate !== undefined,
+    );
+  }
+
   // Auto-track actual completion date: stamped the moment a task first
   // becomes DONE, cleared if reopened — but a manually-supplied value (the
   // user editing Completed Date in the form) always wins over the auto rule.
@@ -201,8 +224,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         ...(data.assignees !== undefined ? assigneesToSet(data.assignees) : {}),
         ...(data.priority !== undefined ? { priority: data.priority } : {}),
         status: nextStatus,
-        ...(data.startDate !== undefined ? { startDate: dateStrToUTC(data.startDate) } : {}),
-        ...(data.dueDate !== undefined ? { dueDate: dateStrToUTC(data.dueDate), dueSoonNotifiedAt: null } : {}),
+        ...(resolvedDates
+          ? {
+              startDate: dateStrToUTC(resolvedDates.startDate),
+              dueDate: dateStrToUTC(resolvedDates.dueDate),
+              durationDays: resolvedDates.durationDays,
+              ...(data.dueDate !== undefined ? { dueSoonNotifiedAt: null } : {}),
+            }
+          : {}),
         ...(completedAtUpdate !== undefined ? { completedAt: completedAtUpdate } : {}),
         progress: nextStatus === "DONE" ? 100 : data.progress ?? existing.progress,
         ...(data.isMilestone !== undefined ? { isMilestone: data.isMilestone } : {}),

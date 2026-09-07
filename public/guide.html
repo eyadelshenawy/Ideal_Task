@@ -303,6 +303,10 @@
       <li><strong>Due Date</strong> — always required.</li>
       <li><strong>Start Date</strong> — required <em>unless</em> the task is a Milestone, in which case only one date (Due Date) applies, since a milestone is a single-day marker rather than a date range.</li>
     </ul>
+    <h3>Duration and the Work Calendar</h3>
+    <p>Every non-milestone task also has a <strong>Duration</strong> field (in working days) next to Start Date and Due Date. Fill in any two of the three — the app computes the third on save, skipping weekends and any holidays configured in the Work Calendar. So &quot;Start = 2026-09-06, Duration = 5&quot; auto-fills the Due Date to the fifth working day; conversely &quot;Start = 2026-09-06, Due = 2026-09-10&quot; auto-fills Duration to 5. Editing Duration clears Due (and vice-versa) so the next save recomputes cleanly.</p>
+    <p>The <strong>Work Calendar</strong> lives in the admin menu (Super Admin only). It has two parts: a small toggle strip picking which weekdays count as working days (default: Sun–Thu on, Fri and Sat off), and a list of specific holiday dates your team observes (Eid, national holidays, company shutdowns). Both feed into every date calculation across the app — creating a task, editing one, importing Excel, cloning a project template. Everyone sees the same calendar; only Super Admins can change it.</p>
+    <p>Duration is the <em>same</em> permission tier as dates: only Super Admins and Project Admins can edit it. Everyone else still gets Status and Progress only.</p>
     <p><strong>Module</strong> (which part of the product this task belongs to, e.g. <code>Billing</code>, <code>Auth</code>) is optional — fill it in whenever it's useful, it shows up as a small chip on the task. A task can belong to more than one module: type a name and press Enter (or comma) to add it as its own chip, same as Tags — a task can be tagged <code>FICO</code> and <code>MM</code> at once.</p>
     <div class="card tip">
       Editing an <em>existing</em> task never blocks you on the mandatory-field rules above — they only apply at creation, so older tasks that predate a rule are never locked out of being edited.

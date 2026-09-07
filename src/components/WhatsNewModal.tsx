@@ -6,6 +6,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Duration on a task — the app fills in the missing side of Start / Duration / Due",
+    description: "Every task now has a Duration field alongside Start and Due Date. Enter any two of the three and the app computes the missing one on save — skipping weekends and any dates in the new Work Calendar (Admin menu → Work Calendar), where a Super Admin sets which weekdays count as working days and lists holidays your team observes. Cloning a template also honors the calendar: dates shift by working days from your new start, so a clone that would have landed on a Friday is pushed to the next working day automatically. Excel import and export both pick up the new Duration column. Only Super Admins and Project Admins can edit dates or duration — everyone else still just moves status and progress.",
+  },
+  {
     title: "Cloning a project keeps its task codes and dependencies",
     description: "When you clone a template into a fresh project, task codes now carry their author's readable suffix onto the new prefix — a source task coded ONBOARD-W1 becomes ADEL-W1 under a new project coded ADEL, instead of being renumbered. Dependencies (\"Week 2 waits for Week 1\") also survive the clone now, remapped to the new tasks — so a template's sequencing works as designed on the first hire and every hire after.",
   },

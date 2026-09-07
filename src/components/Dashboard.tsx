@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
-import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks, BarChart3, FileDown, Bookmark, X, AlertTriangle, ScrollText, BookOpen, ChevronDown, ChevronRight, Lock, ClipboardList, MoreHorizontal, Sparkles } from "lucide-react";
+import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks, BarChart3, FileDown, Bookmark, X, AlertTriangle, ScrollText, BookOpen, ChevronDown, ChevronRight, Lock, ClipboardList, MoreHorizontal, Sparkles, Calendar as CalendarIcon } from "lucide-react";
 import useSWR from "swr";
 import type { Task, Project, TeamMember, Contact, Status, AssigneeDisplay } from "@/types/models";
 import type { ImportPreview } from "@/types/import";
@@ -28,6 +28,7 @@ import PersonalTasksView from "./PersonalTasksView";
 import NotificationBell from "./NotificationBell";
 import AuditLogModal from "./AuditLogModal";
 import ChecklistTemplatesModal from "./ChecklistTemplatesModal";
+import WorkCalendarModal from "./WorkCalendarModal";
 import LogoutButton from "./LogoutButton";
 import GlobalSearchModal from "./GlobalSearchModal";
 import PushAutoSubscribe from "./PushAutoSubscribe";
@@ -93,6 +94,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   const [trashModalOpen, setTrashModalOpen] = useState(false);
   const [auditLogOpen, setAuditLogOpen] = useState(false);
   const [checklistTemplatesOpen, setChecklistTemplatesOpen] = useState(false);
+  const [workCalendarOpen, setWorkCalendarOpen] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
@@ -343,6 +345,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
               projectId: draft.projectId || null, assignees: draft.assignees,
               priority: draft.priority, status: draft.status,
               startDate: draft.startDate || null, dueDate: draft.dueDate || null,
+              durationDays: draft.durationDays.trim() ? Number(draft.durationDays) : null,
               // Only sent when the task is actually Done and the field holds a
               // value — otherwise omitted so the server's own auto-set (on
               // completion) / auto-clear (on reopen) logic takes over.
@@ -441,9 +444,9 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
 
   function downloadTemplate() {
     const sampleRows = [
-      { Code: "IDT-001", Title: "Kickoff meeting", Description: "Align on scope and timeline", Module: "", Tags: "onboarding", Comment: "", Project: "Fayendra", Assignee: "Eyad Badran", Priority: "High", Status: "To Do", "Start Date": "2026-08-01", "Due Date": "2026-08-03", Progress: 0, Milestone: "No", "Depends On": "", "Parent Code": "" },
-      { Code: "IDT-002", Title: "Go-live", Description: "", Module: "Billing", Tags: "", Comment: "", Project: "Fayendra", Assignee: "", Priority: "High", Status: "To Do", "Start Date": "", "Due Date": "2026-09-15", Progress: 0, Milestone: "Yes", "Depends On": "IDT-001", "Parent Code": "" },
-      { Code: "", Title: "Draft launch announcement", Description: "", Module: "", Tags: "", Comment: "", Project: "Fayendra", Assignee: "", Priority: "Medium", Status: "To Do", "Start Date": "", "Due Date": "2026-09-10", Progress: 0, Milestone: "No", "Depends On": "", "Parent Code": "IDT-002" },
+      { Code: "IDT-001", Title: "Kickoff meeting", Description: "Align on scope and timeline", Module: "", Tags: "onboarding", Comment: "", Project: "Fayendra", Assignee: "Eyad Badran", Priority: "High", Status: "To Do", "Start Date": "2026-08-02", Duration: 3, "Due Date": "", Progress: 0, Milestone: "No", "Depends On": "", "Parent Code": "" },
+      { Code: "IDT-002", Title: "Go-live", Description: "", Module: "Billing", Tags: "", Comment: "", Project: "Fayendra", Assignee: "", Priority: "High", Status: "To Do", "Start Date": "", Duration: "", "Due Date": "2026-09-15", Progress: 0, Milestone: "Yes", "Depends On": "IDT-001", "Parent Code": "" },
+      { Code: "", Title: "Draft launch announcement", Description: "", Module: "", Tags: "", Comment: "", Project: "Fayendra", Assignee: "", Priority: "Medium", Status: "To Do", "Start Date": "2026-09-06", Duration: 5, "Due Date": "", Progress: 0, Milestone: "No", "Depends On": "", "Parent Code": "IDT-002" },
     ];
     const ws = XLSX.utils.json_to_sheet(sampleRows);
     const wbOut = XLSX.utils.book_new();
@@ -478,6 +481,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
         Priority: PRIORITIES.find((p) => p.id === t.priority)?.label ?? t.priority,
         Status: STATUSES.find((s) => s.id === t.status)?.label ?? t.status,
         "Start Date": t.startDate ?? "",
+        Duration: t.durationDays ?? "",
         "Due Date": t.dueDate ?? "",
         Progress: t.progress,
         Milestone: t.isMilestone ? "Yes" : "No",
@@ -821,6 +825,12 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
                         <ClipboardList size={14} /> Checklist Templates
                       </button>
                     )}
+                    <button
+                      onClick={() => { setWorkCalendarOpen(true); setAdminMenuOpen(false); }}
+                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
+                    >
+                      <CalendarIcon size={14} /> Work Calendar
+                    </button>
                     {isSuperAdmin && (
                       <>
                         <div className="my-1 border-t border-brand-border" />
@@ -1304,6 +1314,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
       {whatsNewOpen && <WhatsNewModal onClose={() => setWhatsNewOpen(false)} />}
 
       {checklistTemplatesOpen && <ChecklistTemplatesModal onClose={() => setChecklistTemplatesOpen(false)} />}
+      {workCalendarOpen && <WorkCalendarModal onClose={() => setWorkCalendarOpen(false)} canEdit={isSuperAdmin} />}
 
       {globalSearchOpen && (
         <GlobalSearchModal onClose={() => setGlobalSearchOpen(false)} onOpenTask={openTaskById} />

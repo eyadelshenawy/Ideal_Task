@@ -19,6 +19,7 @@ export const previewTaskSchema = z.object({
   status: z.enum(["TODO", "READY", "INPROGRESS", "INTERNAL_TEST", "CUSTOMER_TEST", "DONE"]),
   startDate: z.string().nullable(),
   dueDate: z.string().nullable(),
+  durationDays: z.number().int().min(1).nullable(),
   progress: z.number().min(0).max(100),
   isMilestone: z.boolean(),
   dependsOnTempIds: z.array(z.string()),
