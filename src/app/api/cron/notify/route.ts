@@ -18,7 +18,7 @@ import { loadDefaultSlaConfig, loadAllProjectSlaOverrides, type SlaConfigDto } f
 // cron, which this codebase has already found unreliable on this platform.
 async function checkSlaRisks(now: Date): Promise<{ responseWarned: number; resolutionWarned: number }> {
   const trackedProjects = await prisma.project.findMany({
-    where: { slaTrackingEnabled: true, deletedAt: null },
+    where: { slaTrackingEnabled: true, deletedAt: null, isTemplate: false },
     select: { id: true },
   });
   const trackedProjectIds = trackedProjects.map((p) => p.id);
@@ -32,6 +32,7 @@ async function checkSlaRisks(now: Date): Promise<{ responseWarned: number; resol
         deletedAt: null,
         isPrivate: false,
         projectId: { in: trackedProjectIds },
+        project: { isTemplate: false },
         OR: [{ responseRiskNotifiedAt: null }, { resolutionRiskNotifiedAt: null }],
       },
       select: {
@@ -126,7 +127,13 @@ export async function GET(req: NextRequest) {
 
   const [tasks, superAdmins] = await Promise.all([
     prisma.task.findMany({
-      where: { deletedAt: null, isPrivate: false, status: { not: "DONE" }, dueDate: { not: null } },
+      where: {
+        deletedAt: null,
+        isPrivate: false,
+        status: { not: "DONE" },
+        dueDate: { not: null },
+        OR: [{ projectId: null }, { project: { isTemplate: false } }],
+      },
       include: {
         assignees: { select: { email: true } },
         project: {

@@ -36,7 +36,12 @@ export async function sendWeeklyReports(): Promise<{ sent: number }> {
     const where = visibleTasksWhere(user.id, isSuperAdmin, administeredProjectIds);
 
     const visibleTasks = await prisma.task.findMany({
-      where,
+      where: {
+        AND: [
+          where,
+          { OR: [{ projectId: null }, { project: { isTemplate: false } }] },
+        ],
+      },
       select: {
         code: true, title: true, status: true, dueDate: true, updatedAt: true,
         project: { select: { name: true } },
