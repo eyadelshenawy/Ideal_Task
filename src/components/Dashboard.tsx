@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
-import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks, BarChart3, FileDown, Bookmark, X, AlertTriangle, ScrollText, BookOpen, ChevronDown, ChevronRight, Lock, ClipboardList, MoreHorizontal, Sparkles, Calendar as CalendarIcon } from "lucide-react";
+import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks, BarChart3, FileDown, Bookmark, X, AlertTriangle, ScrollText, BookOpen, ChevronDown, ChevronRight, Lock, ClipboardList, MoreHorizontal, Sparkles, Calendar as CalendarIcon, SlidersHorizontal } from "lucide-react";
 import useSWR from "swr";
 import type { Task, Project, TeamMember, Contact, Status, AssigneeDisplay } from "@/types/models";
 import type { ImportPreview } from "@/types/import";
@@ -139,6 +139,10 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   const [hideDone, setHideDoneState] = useState(true);
   const hideDoneKey = `idealtasks:hideDone:${userId}`;
   const [quickFiltersOpen, setQuickFiltersOpen] = useState(false);
+  // Mobile only: everything after Search in the filter bar collapses behind
+  // this toggle so the dashboard doesn't eat half the phone with filters.
+  // sm+ layouts ignore this state entirely.
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [groupByOpen, setGroupByOpen] = useState(false);
   // List-view only: which fields to nest tasks under, in order. Empty = the
   // existing flat behavior, unchanged.
@@ -951,6 +955,18 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
               className="outline-none text-[12.5px] w-full sm:w-[110px]"
             />
           </div>
+          <button
+            onClick={() => setMobileFiltersOpen((v) => !v)}
+            className="flex sm:hidden items-center gap-1 rounded-lg px-2 py-1.5 text-xs border"
+            style={{
+              background: mobileFiltersOpen ? "#0A5A46" : "#fff",
+              color: mobileFiltersOpen ? "#fff" : "#5B6B64",
+              borderColor: mobileFiltersOpen ? "#0A5A46" : "#E1E7E4",
+            }}
+          >
+            <SlidersHorizontal size={13} /> Filters
+          </button>
+          <div className={`${mobileFiltersOpen ? "flex flex-wrap gap-1.5 w-full" : "hidden"} sm:contents`}>
           <select
             value={filters.assigneeId}
             onChange={(e) => setFilters((f) => ({ ...f, assigneeId: e.target.value }))}
@@ -1166,6 +1182,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
           >
             <Bookmark size={13} /> Save filter
           </button>
+          </div>
         </div>
 
         {savingFilterName !== null && (
