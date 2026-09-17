@@ -47,8 +47,8 @@ interface PersonalTaskModalProps {
 
 export default function PersonalTaskModal({ draft, setDraft, onClose, onSave, onDelete, error, currentUserId }: PersonalTaskModalProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(20,30,26,0.45)" }}>
-      <div className="bg-white rounded-2xl w-full max-w-[460px] max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(20,30,26,0.45)" }}>
+      <div className="bg-white rounded-none sm:rounded-2xl w-full max-w-none sm:max-w-[460px] h-full sm:h-auto max-h-none sm:max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-brand-border flex-shrink-0">
           <h2 className="flex items-center gap-1.5 font-bold text-[16px] text-brand-text">
             <Lock size={14} className="text-brand-sub" />

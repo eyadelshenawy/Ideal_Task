@@ -78,8 +78,8 @@ export default function ShareTaskDetailModal({ shareToken, taskId, onClose }: { 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(20,30,26,0.45)" }} onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-[480px] max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(20,30,26,0.45)" }} onClick={onClose}>
+      <div className="bg-white rounded-none sm:rounded-2xl w-full max-w-none sm:max-w-[480px] h-full sm:h-auto max-h-none sm:max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-brand-border flex-shrink-0">
           <h2 className="font-bold text-[15px] text-brand-text">{data?.code ?? "Task details"}</h2>
           <button onClick={onClose} className="text-brand-sub"><X size={18} /></button>

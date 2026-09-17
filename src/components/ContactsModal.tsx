@@ -72,8 +72,8 @@ export default function ContactsModal({ contacts, projects, onClose, onChanged }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(20,30,26,0.45)" }}>
-      <div className="bg-white rounded-2xl w-full max-w-[440px] max-h-[85vh] overflow-y-auto p-5">
+    <div className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(20,30,26,0.45)" }}>
+      <div className="bg-white rounded-none sm:rounded-2xl w-full max-w-none sm:max-w-[440px] h-full sm:h-auto max-h-none sm:max-h-[85vh] overflow-y-auto p-4 sm:p-5">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-bold text-[16px] text-brand-text">Manage Contacts</h2>
           <button onClick={onClose} className="text-brand-sub"><X size={18} /></button>

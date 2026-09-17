@@ -52,12 +52,12 @@ export default function GlobalSearchModal({ onClose, onOpenTask }: { onClose: ()
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-[10vh]"
+      className="fixed inset-0 z-50 flex items-start justify-center p-2 sm:p-4 pt-[2vh] sm:pt-[10vh]"
       style={{ background: "rgba(20,30,26,0.45)" }}
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl w-full max-w-[480px] max-h-[70vh] overflow-hidden flex flex-col"
+        className="bg-white rounded-xl sm:rounded-2xl w-full max-w-none sm:max-w-[480px] max-h-[90vh] sm:max-h-[70vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 px-4 py-3 border-b border-brand-border flex-shrink-0">

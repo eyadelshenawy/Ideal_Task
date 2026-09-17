@@ -233,8 +233,8 @@ export default function TaskModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(20,30,26,0.45)" }}>
-      <div className="bg-white rounded-2xl w-full max-w-[460px] max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(20,30,26,0.45)" }}>
+      <div className="bg-white rounded-none sm:rounded-2xl w-full max-w-none sm:max-w-[460px] h-full sm:h-auto max-h-none sm:max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-brand-border flex-shrink-0">
           <h2 className="font-bold text-[16px] text-brand-text">
             {draft.id ? (canFullyEdit ? "Edit Task" : "Update Status") : "New Task"}
@@ -282,8 +282,8 @@ export default function TaskModal({
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            <div className="flex gap-2">
-              <div className="w-[110px] flex-shrink-0">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="w-full sm:w-[110px] sm:flex-shrink-0">
                 <label className="text-xs font-semibold text-brand-sub">Code *</label>
                 <input
                   value={draft.code}
@@ -477,7 +477,7 @@ export default function TaskModal({
               This is a milestone (single-date marker, no duration)
             </label>
 
-            <div className={draft.isMilestone ? "" : "grid grid-cols-3 gap-3"}>
+            <div className={draft.isMilestone ? "" : "grid grid-cols-1 sm:grid-cols-3 gap-3"}>
               {!draft.isMilestone && (
                 <div>
                   <label className="text-xs font-semibold text-brand-sub">Start Date *</label>

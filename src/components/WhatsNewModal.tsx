@@ -93,8 +93,8 @@ const ENTRIES: { title: string; description: string }[] = [
 
 export default function WhatsNewModal({ onClose }: { onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(20,30,26,0.45)" }}>
-      <div className="bg-white rounded-2xl w-full max-w-[480px] max-h-[85vh] overflow-y-auto p-5">
+    <div className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(20,30,26,0.45)" }}>
+      <div className="bg-white rounded-none sm:rounded-2xl w-full max-w-none sm:max-w-[480px] h-full sm:h-auto max-h-none sm:max-h-[85vh] overflow-y-auto p-4 sm:p-5">
         <div className="flex items-center justify-between mb-3">
           <h2 className="flex items-center gap-1.5 font-bold text-[16px] text-brand-text">
             <Sparkles size={16} className="text-brand-dark" /> What&apos;s New

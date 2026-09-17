@@ -691,8 +691,8 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
 
   return (
     <div className="min-h-screen bg-brand-bg">
-      <div className="bg-brand-dark px-4 py-3 sticky top-0 z-30">
-        <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="bg-brand-dark px-3 sm:px-4 py-2 sm:py-3 sticky top-0 z-30">
+        <div className="flex items-center justify-between flex-wrap gap-2 sm:gap-3">
           <div className="flex items-center gap-2.5">
             <div className="relative w-[30px] h-[30px]">
               <div className="absolute top-0 left-0 w-5 h-5 rounded-md bg-white" />
@@ -708,48 +708,54 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             <div className="flex rounded-lg p-0.5" style={{ background: "rgba(255,255,255,0.12)" }}>
               <button
                 onClick={() => setView("board")}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-semibold"
+                title="Board"
+                className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold"
                 style={{ background: view === "board" ? "#fff" : "transparent", color: view === "board" ? "#0A5A46" : "#fff" }}
               >
-                <LayoutGrid size={13} /> Board
+                <LayoutGrid size={13} /> <span className="hidden sm:inline">Board</span>
               </button>
               <button
                 onClick={() => setView("list")}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-semibold"
+                title="List"
+                className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold"
                 style={{ background: view === "list" ? "#fff" : "transparent", color: view === "list" ? "#0A5A46" : "#fff" }}
               >
-                <ListIcon size={13} /> List
+                <ListIcon size={13} /> <span className="hidden sm:inline">List</span>
               </button>
               <button
                 onClick={() => setView("timeline")}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-semibold"
+                title="Timeline"
+                className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold"
                 style={{ background: view === "timeline" ? "#fff" : "transparent", color: view === "timeline" ? "#0A5A46" : "#fff" }}
               >
-                <CalendarDays size={13} /> Timeline
+                <CalendarDays size={13} /> <span className="hidden sm:inline">Timeline</span>
               </button>
               <button
                 onClick={() => setView("reports")}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-semibold"
+                title="Reports"
+                className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold"
                 style={{ background: view === "reports" ? "#fff" : "transparent", color: view === "reports" ? "#0A5A46" : "#fff" }}
               >
-                <BarChart3 size={13} /> Reports
+                <BarChart3 size={13} /> <span className="hidden sm:inline">Reports</span>
               </button>
               <button
                 onClick={() => setView("attention")}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-semibold"
+                title="Attention"
+                className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold"
                 style={{ background: view === "attention" ? "#fff" : "transparent", color: view === "attention" ? "#0A5A46" : "#fff" }}
               >
-                <AlertTriangle size={13} /> Attention
+                <AlertTriangle size={13} /> <span className="hidden sm:inline">Attention</span>
               </button>
               <button
                 onClick={() => setView("personal")}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-semibold"
+                title="My Tasks"
+                className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold"
                 style={{ background: view === "personal" ? "#fff" : "transparent", color: view === "personal" ? "#0A5A46" : "#fff" }}
               >
-                <Lock size={13} /> My Tasks
+                <Lock size={13} /> <span className="hidden sm:inline">My Tasks</span>
               </button>
             </div>
-            <span className="text-white text-xs">{userName}</span>
+            <span className="hidden md:inline text-white text-xs">{userName}</span>
             <button
               onClick={() => setGlobalSearchOpen(true)}
               title="Search (Ctrl+K)"
@@ -882,9 +888,10 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             {canCreateAnywhere && (
               <button
                 onClick={openNew}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-brand-light text-brand-dark"
+                title="New Task"
+                className="flex items-center gap-1 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold bg-brand-light text-brand-dark"
               >
-                <Plus size={14} /> New Task
+                <Plus size={14} /> <span className="hidden sm:inline">New Task</span>
               </button>
             )}
             <LogoutButton />
@@ -898,7 +905,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
         </div>
       )}
 
-      <div className="px-4 py-3">
+      <div className="px-3 sm:px-4 py-3">
         <PushPermissionBanner />
         {view === "reports" ? (
           <ReportsView tasks={taskList} projects={projectList} team={teamList} isSuperAdmin={isSuperAdmin} currentUserId={userId} onOpenTask={openTaskById} />
@@ -918,7 +925,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
           <PersonalTasksView currentUserId={userId} />
         ) : (
         <>
-        <div className="flex gap-2 mb-3 flex-wrap">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mb-3">
           <StatCard label="Total" value={stats.total} color="#0A5A46" />
           <StatCard label="In Progress" value={stats.inProgress} color="#82B478" />
           <StatCard
@@ -935,13 +942,13 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
         </div>
 
         <div className="flex items-center gap-2 mb-4 flex-wrap">
-          <div className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 bg-white border border-brand-border">
+          <div className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 bg-white border border-brand-border flex-1 min-w-[140px] sm:flex-none">
             <Search size={14} className="text-brand-sub" />
             <input
               value={filters.search}
               onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
               placeholder="Search..."
-              className="outline-none text-[12.5px] w-[110px]"
+              className="outline-none text-[12.5px] w-full sm:w-[110px]"
             />
           </div>
           <select
