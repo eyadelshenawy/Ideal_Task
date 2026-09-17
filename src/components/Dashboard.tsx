@@ -699,8 +699,8 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
               <div className="absolute bottom-0 right-0 w-5 h-5 rounded-md bg-brand-light" />
             </div>
             <div>
-              <div className="text-white font-bold text-[15px] leading-tight">IDEAL Tasks</div>
-              <div className="text-[#CFE3D8] text-[11px]">Team Task Manager</div>
+              <div className="text-white font-bold text-[14px] sm:text-[15px] leading-tight">IDEAL Tasks</div>
+              <div className="hidden sm:block text-[#CFE3D8] text-[11px]">Team Task Manager</div>
             </div>
           </div>
 
@@ -905,7 +905,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
         </div>
       )}
 
-      <div className="px-3 sm:px-4 py-3">
+      <div className="px-3 sm:px-4 py-2 sm:py-3">
         <PushPermissionBanner />
         {view === "reports" ? (
           <ReportsView tasks={taskList} projects={projectList} team={teamList} isSuperAdmin={isSuperAdmin} currentUserId={userId} onOpenTask={openTaskById} />
@@ -925,7 +925,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
           <PersonalTasksView currentUserId={userId} />
         ) : (
         <>
-        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mb-3">
+        <div className="grid grid-cols-5 sm:flex sm:flex-wrap gap-1.5 sm:gap-2 mb-2 sm:mb-3">
           <StatCard label="Total" value={stats.total} color="#0A5A46" />
           <StatCard label="In Progress" value={stats.inProgress} color="#82B478" />
           <StatCard
@@ -941,7 +941,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
           />
         </div>
 
-        <div className="flex items-center gap-2 mb-4 flex-wrap">
+        <div className="flex items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4 flex-wrap">
           <div className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 bg-white border border-brand-border flex-1 min-w-[140px] sm:flex-none">
             <Search size={14} className="text-brand-sub" />
             <input
@@ -1284,7 +1284,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
         )}
       </div>
 
-      <div className="px-4 py-4 text-[11px] text-brand-sub text-center">
+      <div className="px-3 sm:px-4 py-2 sm:py-4 text-[10px] sm:text-[11px] text-brand-sub text-center">
         © {new Date().getFullYear()} IDEAL for Digital Transformation (ايدل للتحول الرقمي). All rights reserved.
       </div>
 
