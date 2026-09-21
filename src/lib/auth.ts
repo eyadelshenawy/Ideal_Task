@@ -3,11 +3,18 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 import { logAudit } from "./audit";
+import { checkRateLimit } from "./rateLimit";
 
 // Brute-force lockout: after this many wrong passwords in a row, the account
 // is locked for LOCKOUT_MINUTES. Resets to 0 on any successful login.
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 2;
+
+// Per-IP throttle: cap login attempts from one source across accounts, so a
+// slow-drip attacker sweeping across many usernames still hits a wall even
+// though no single account crosses its own MAX_FAILED_ATTEMPTS.
+const LOGIN_IP_MAX = 20;
+const LOGIN_IP_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -24,8 +31,19 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) return null;
+
+        // Per-IP throttle across all accounts. Prefer x-real-ip from the
+        // trusted proxy; fall back to the last hop of x-forwarded-for.
+        const headers = (req?.headers ?? {}) as Record<string, string | undefined>;
+        const realIp = typeof headers["x-real-ip"] === "string" ? headers["x-real-ip"].trim() : "";
+        const xff = typeof headers["x-forwarded-for"] === "string" ? headers["x-forwarded-for"] : "";
+        const xffLast = xff.split(",").map((p) => p.trim()).filter(Boolean).pop() ?? "";
+        const ip = realIp || xffLast || "unknown";
+        if (checkRateLimit(`login:${ip}`, LOGIN_IP_MAX, LOGIN_IP_WINDOW_MS)) {
+          throw new Error("Too many login attempts. Please wait 15 minutes and try again.");
+        }
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email.toLowerCase().trim() },

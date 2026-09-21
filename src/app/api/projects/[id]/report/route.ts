@@ -29,8 +29,11 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  // isPrivate is excluded even though requireProjectAccess already gates
+  // this to project admins — a private task's whole point is that it never
+  // rolls up into any operational counts anywhere.
   const tasks = await prisma.task.findMany({
-    where: { projectId: project.id, deletedAt: null },
+    where: { projectId: project.id, deletedAt: null, isPrivate: false },
     select: { id: true, priority: true, status: true, dueDate: true, createdAt: true, completedAt: true, updatedAt: true },
   });
 

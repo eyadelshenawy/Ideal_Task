@@ -138,7 +138,6 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   // per-person (not a global default flip) via localStorage.
   const [hideDone, setHideDoneState] = useState(true);
   const hideDoneKey = `idealtasks:hideDone:${userId}`;
-  const [quickFiltersOpen, setQuickFiltersOpen] = useState(false);
   // Mobile only: everything after Search in the filter bar collapses behind
   // this toggle so the dashboard doesn't eat half the phone with filters.
   // sm+ layouts ignore this state entirely.
@@ -762,7 +761,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             <span className="hidden md:inline text-white text-xs">{userName}</span>
             <button
               onClick={() => setGlobalSearchOpen(true)}
-              title="Search (Ctrl+K)"
+              title="Search"
               className="p-2 rounded-lg text-white"
               style={{ background: "rgba(255,255,255,0.12)" }}
             >
@@ -1048,50 +1047,18 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
           >
             Hide Done
           </button>
-          <div className="relative">
-            <button
-              onClick={() => setQuickFiltersOpen((v) => !v)}
-              className="rounded-lg px-2 py-1.5 text-xs bg-white border border-brand-border text-brand-text"
-            >
-              Quick filters
-            </button>
-            {quickFiltersOpen && (
-              <div className="absolute left-0 top-[calc(100%+4px)] z-20 w-[170px] rounded-lg bg-white border border-brand-border shadow-lg p-2">
-                <label className="flex items-center gap-2 text-xs py-1 text-brand-text cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={filters.assigneeId === userId}
-                    onChange={() => setFilters((f) => ({ ...f, assigneeId: f.assigneeId === userId ? "all" : userId }))}
-                  />
-                  My tasks
-                </label>
-                <label className="flex items-center gap-2 text-xs py-1 text-brand-text cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={filters.overdueOnly}
-                    onChange={() => setFilters((f) => ({ ...f, overdueOnly: !f.overdueOnly }))}
-                  />
-                  Overdue
-                </label>
-                <label className="flex items-center gap-2 text-xs py-1 text-brand-text cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={filters.priority === "HIGH"}
-                    onChange={() => setFilters((f) => ({ ...f, priority: f.priority === "HIGH" ? "all" : "HIGH" }))}
-                  />
-                  High priority
-                </label>
-                <label className="flex items-center gap-2 text-xs py-1 text-brand-text cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={filters.dueThisWeek}
-                    onChange={() => setFilters((f) => ({ ...f, dueThisWeek: !f.dueThisWeek }))}
-                  />
-                  Due this week
-                </label>
-              </div>
-            )}
-          </div>
+          <button
+            onClick={() => setFilters((f) => ({ ...f, dueThisWeek: !f.dueThisWeek }))}
+            title="Show only tasks due within the next 7 days"
+            className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs border"
+            style={{
+              background: filters.dueThisWeek ? "#0A5A46" : "#fff",
+              color: filters.dueThisWeek ? "#fff" : "#5B6B64",
+              borderColor: filters.dueThisWeek ? "#0A5A46" : "#E1E7E4",
+            }}
+          >
+            Due this week
+          </button>
           {view === "list" && (
             <div className="relative">
               <button

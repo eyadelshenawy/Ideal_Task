@@ -39,8 +39,18 @@ export async function PATCH(req: NextRequest) {
     ? (await prisma.tag.findFirst({ where: { name: { equals: removeTag, mode: "insensitive" } }, select: { id: true } }))
     : null;
 
+  // Never read a task the caller can't see: a private task belongs to its
+  // creator only, and the id-guess pattern was leaking its projectId /
+  // assignees back to non-owners before the per-task canManage check ran.
   const tasks = await prisma.task.findMany({
-    where: { id: { in: taskIds }, deletedAt: null },
+    where: {
+      id: { in: taskIds },
+      deletedAt: null,
+      OR: [
+        { isPrivate: false },
+        { isPrivate: true, createdById: session.user.id },
+      ],
+    },
     include: { assignees: { select: { id: true } }, contactAssignees: { select: { id: true } } },
   });
 

@@ -37,10 +37,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const body = await req.json().catch(() => null);
 
   // Anyone without full-edit rights on this task's current project may only
-  // move its status and adjust progress — everything else (title, dates,
-  // assignees, priority, project, dependencies, milestone flag) requires
-  // Super Admin or a project-admin grant on the task's project.
+  // move its status and adjust progress, and only if they're actually
+  // assigned to the task — same rule the bulk endpoint enforces. Without
+  // this an id-guessing member could flip any task's status.
+  const isAssignee = existing.assignees.some((a) => a.id === session.user.id);
   if (!canFullyEdit) {
+    if (!isAssignee) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
     const parsed = taskStatusUpdateSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json({ error: "You can only update status and progress on this task" }, { status: 403 });

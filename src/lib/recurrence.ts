@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity";
 import { nextTaskCode } from "@/lib/taskCode";
 import { nextChildCode, syncAncestorChain } from "@/lib/taskHierarchy";
+import { loadSchedulingCalendar, resolveTaskDates, isWorkingDay, toDateOnly } from "@/lib/scheduling";
+import { dateStrToUTC } from "@/lib/serverDates";
 import type { RecurrenceFreq, Task } from "@prisma/client";
 
 export function computeNextDate(date: Date, freq: RecurrenceFreq): Date {
@@ -27,10 +29,35 @@ type RecurringTask = Task & {
 export async function createNextOccurrence(task: RecurringTask): Promise<void> {
   if (!task.recurrenceFreq || !task.dueDate) return;
 
-  const nextDue = computeNextDate(task.dueDate, task.recurrenceFreq);
-  if (task.recurrenceEndDate && nextDue > task.recurrenceEndDate) return;
+  const naiveNextDue = computeNextDate(task.dueDate, task.recurrenceFreq);
+  if (task.recurrenceEndDate && naiveNextDue > task.recurrenceEndDate) return;
 
-  const nextStart = task.startDate ? computeNextDate(task.startDate, task.recurrenceFreq) : null;
+  const naiveNextStart = task.startDate ? computeNextDate(task.startDate, task.recurrenceFreq) : null;
+
+  // Rerun the coherent-triple math against the work calendar so a weekly
+  // recurrence whose next start would land on a Friday/holiday shifts to
+  // the next working day, and the due date is recomputed from the
+  // preserved Duration (not the raw calendar-day math above).
+  const cal = await loadSchedulingCalendar();
+  let nextStart: Date | null = naiveNextStart;
+  let nextDue: Date = naiveNextDue;
+  if (naiveNextStart) {
+    const naiveStartStr = toDateOnly(naiveNextStart);
+    // Nudge start forward until it hits a working day so the next occurrence
+    // doesn't open on the org's weekend.
+    let cursor = naiveStartStr;
+    while (!isWorkingDay(cursor, cal)) {
+      cursor = toDateOnly(new Date(new Date(`${cursor}T00:00:00.000Z`).getTime() + 86400000));
+    }
+    const resolved = resolveTaskDates(
+      { startDate: cursor, dueDate: null, durationDays: task.durationDays ?? null },
+      cal,
+      false,
+    );
+    if (resolved.startDate) nextStart = dateStrToUTC(resolved.startDate);
+    if (resolved.dueDate) nextDue = dateStrToUTC(resolved.dueDate) ?? naiveNextDue;
+  }
+  if (task.recurrenceEndDate && nextDue > task.recurrenceEndDate) return;
 
   // Codes are unique, so the new occurrence needs a fresh one of its own —
   // reusing the same code (the original behavior here) would just fail the
@@ -74,10 +101,12 @@ export async function createNextOccurrence(task: RecurringTask): Promise<void> {
   // The new occurrence is a sibling of the completed one under the same
   // parent; its later Due extends the parent's rolled-up span. Without this
   // sync the parent keeps the old range and looks "done" when there's
-  // actually an open, future occurrence under it. Fire-and-forget: this is
-  // best-effort — a rare failure shouldn't leave the new task uncreated.
+  // actually an open, future occurrence under it. Awaited so callers that
+  // read the parent immediately after (e.g. the PATCH response payload)
+  // see the rolled-up state — every other syncAncestorChain call in the
+  // codebase awaits, this now matches.
   if (next.parentId) {
-    syncAncestorChain(prisma, next.parentId).catch((err) =>
+    await syncAncestorChain(prisma, next.parentId).catch((err) =>
       console.error("recurrence syncAncestorChain failed:", err),
     );
   }

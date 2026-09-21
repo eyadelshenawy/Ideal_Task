@@ -15,7 +15,15 @@ export async function GET(req: NextRequest) {
   }
 
   const access = await getUserAccess(session);
-  const taskScope = visibleTasksWhere(session.user.id, access.isSuperAdmin, access.administeredProjectIds);
+  const baseScope = visibleTasksWhere(session.user.id, access.isSuperAdmin, access.administeredProjectIds);
+  // Template-project tasks are never operational — same rule the main task
+  // list and cron notifications enforce; global search skips them too.
+  const taskScope = {
+    AND: [
+      baseScope,
+      { OR: [{ projectId: null }, { project: { isTemplate: false } }] },
+    ],
+  };
 
   const [tasks, comments, attachments] = await Promise.all([
     prisma.task.findMany({

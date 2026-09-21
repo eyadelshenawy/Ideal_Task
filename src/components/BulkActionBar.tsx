@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X, Loader2, Check, MoreHorizontal } from "lucide-react";
+import { X, Loader2, MoreHorizontal } from "lucide-react";
 import type { Project, Status, TeamMember } from "@/types/models";
 import { STATUSES } from "@/lib/taskHelpers";
 
@@ -123,15 +123,6 @@ export default function BulkActionBar({
           {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
       )}
-
-      <button
-        disabled={busy}
-        onClick={() => run({ status: "DONE" })}
-        className="rounded-md px-2.5 py-1 text-xs font-semibold bg-white/15"
-        title="Mark selected as Done"
-      >
-        <Check size={12} className="inline mr-1" />Mark Done
-      </button>
 
       {canManageAny && (
       <div ref={moreRef} className="relative">

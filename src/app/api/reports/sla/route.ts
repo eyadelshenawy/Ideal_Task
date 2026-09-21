@@ -13,7 +13,14 @@ export async function GET() {
   const access = await getUserAccess(session);
   const taskIds = (
     await prisma.task.findMany({
-      where: visibleTasksWhere(session.user.id, access.isSuperAdmin, access.administeredProjectIds),
+      where: {
+        AND: [
+          visibleTasksWhere(session.user.id, access.isSuperAdmin, access.administeredProjectIds),
+          // SLA tracking is meaningless for template projects — same
+          // exclusion the main task list uses.
+          { OR: [{ projectId: null }, { project: { isTemplate: false } }] },
+        ],
+      },
       select: { id: true },
     })
   ).map((t) => t.id);

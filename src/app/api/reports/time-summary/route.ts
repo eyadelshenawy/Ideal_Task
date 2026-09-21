@@ -16,7 +16,15 @@ export async function GET(req: NextRequest) {
   }
 
   const access = await getUserAccess(session);
-  const taskWhere = visibleTasksWhere(session.user.id, access.isSuperAdmin, access.administeredProjectIds);
+  const baseTaskWhere = visibleTasksWhere(session.user.id, access.isSuperAdmin, access.administeredProjectIds);
+  // Hours logged against template-project tasks aren't real work — same
+  // exclusion the main task list uses so per-person totals stay clean.
+  const taskWhere = {
+    AND: [
+      baseTaskWhere,
+      { OR: [{ projectId: null }, { project: { isTemplate: false } }] },
+    ],
+  };
 
   const grouped = await prisma.timeEntry.groupBy({
     by: ["userId"],

@@ -3,8 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireTaskAccess } from "@/lib/permissions";
 import { uploadToR2, r2Configured } from "@/lib/r2";
 import { logActivity } from "@/lib/activity";
-
-const MAX_SIZE = 25 * 1024 * 1024; // 25MB — comfortably under R2's free-tier per-request limits.
+import { ALLOWED_MIME_TYPES, MAX_FILE_SIZE, MAX_FILE_MB, sanitizeUploadFilename } from "@/lib/uploadLimits";
 
 function serialize(a: {
   id: string;
@@ -52,28 +51,32 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (!file || !(file instanceof File)) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
-  if (file.size > MAX_SIZE) {
-    return NextResponse.json({ error: "File is too large (max 25MB)" }, { status: 400 });
+  if (file.size > MAX_FILE_SIZE) {
+    return NextResponse.json({ error: `File is too large (max ${MAX_FILE_MB}MB)` }, { status: 400 });
+  }
+  if (!ALLOWED_MIME_TYPES.has(file.type)) {
+    return NextResponse.json({ error: "That file type isn't allowed" }, { status: 400 });
   }
 
+  const safeName = sanitizeUploadFilename(file.name);
   const buffer = Buffer.from(await file.arrayBuffer());
-  const key = `tasks/${task.id}/${Date.now()}-${file.name}`;
+  const key = `tasks/${task.id}/${Date.now()}-${safeName}`;
 
-  await uploadToR2(key, buffer, file.type || "application/octet-stream");
+  await uploadToR2(key, buffer, file.type);
 
   const attachment = await prisma.attachment.create({
     data: {
       taskId: task.id,
-      fileName: file.name,
+      fileName: safeName,
       fileKey: key,
       fileSize: file.size,
-      mimeType: file.type || "application/octet-stream",
+      mimeType: file.type,
       uploadedById: session.user.id,
     },
     include: { uploadedBy: { select: { name: true } } },
   });
 
-  await logActivity(task.id, session.user.id, `Attached "${file.name}"`);
+  await logActivity(task.id, session.user.id, `Attached "${safeName}"`);
 
   return NextResponse.json(serialize(attachment), { status: 201 });
 }

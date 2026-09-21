@@ -5,7 +5,7 @@ import { requireSuperAdmin } from "@/lib/permissions";
 import { nextTaskCode } from "@/lib/taskCode";
 import { nextChildCode, syncAncestorChain } from "@/lib/taskHierarchy";
 import { logAudit } from "@/lib/audit";
-import { addWorkingDays, countWorkingDaysInclusive, loadSchedulingCalendar, toDateOnly } from "@/lib/scheduling";
+import { addWorkingDays, countWorkingDaysInclusive, loadSchedulingCalendar, resolveTaskDates, toDateOnly } from "@/lib/scheduling";
 
 // Clones every task in a project into a brand-new one — the "template" use
 // case: build the shape once (e.g. Explore/Realize/Deploy/Run phases, or an
@@ -77,10 +77,20 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }
     return addWorkingDays(newAnchorStr, workingDayOffset + 1, cal);
   }
+  // When the source task has a stored Duration we let the same coherent-triple
+  // helper the PATCH / bulk / import paths use compute the new end — one
+  // source of truth for "Start + Duration → Due" across the app. When it
+  // doesn't (older rows), fall back to shifting the source's end date by
+  // the same anchor offset.
   function shiftEndFromStart(shiftedStart: string | null, duration: number | null, sourceEnd: Date | null): string | null {
     if (!shiftedStart) return null;
     if (duration && duration > 0) {
-      return addWorkingDays(shiftedStart, duration, cal);
+      const resolved = resolveTaskDates(
+        { startDate: shiftedStart, dueDate: null, durationDays: duration },
+        cal,
+        false,
+      );
+      return resolved.dueDate;
     }
     return shift(sourceEnd);
   }
