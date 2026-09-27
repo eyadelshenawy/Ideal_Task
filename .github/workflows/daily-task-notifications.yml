@@ -2,8 +2,12 @@ name: Daily task notifications
 
 on:
   schedule:
-    # 05:00 UTC = 08:00 Cairo time
-    - cron: "0 5 * * *"
+    # Sent at 09:00 Cairo time all year. GitHub cron runs in UTC and Cairo
+    # is UTC+3 in summer / UTC+2 in winter, so both candidate times are
+    # scheduled and the step below lets only the one matching today's
+    # offset through.
+    - cron: "0 6 * * *" # 09:00 Cairo in summer (UTC+3)
+    - cron: "0 7 * * *" # 09:00 Cairo in winter (UTC+2)
   workflow_dispatch: {}
 
 jobs:
@@ -11,7 +15,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Call the notifications endpoint
+        env:
+          TRIGGER: ${{ github.event.schedule }}
         run: |
+          # Decide by which cron fired, not by the current clock, so a
+          # delayed GitHub trigger can never send the emails twice.
+          if [ -n "$TRIGGER" ]; then
+            OFFSET=$(TZ=Africa/Cairo date +%z)
+            if [ "$OFFSET" = "+0300" ]; then WANT="0 6 * * *"; else WANT="0 7 * * *"; fi
+            if [ "$TRIGGER" != "$WANT" ]; then
+              echo "Skipping: this trigger ($TRIGGER) isn't 09:00 Cairo today (offset $OFFSET)."
+              exit 0
+            fi
+          fi
           curl --fail --max-time 120 \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "${{ secrets.APP_URL }}/api/cron/notify"

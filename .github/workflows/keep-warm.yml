@@ -1,19 +1,22 @@
 name: Keep Render instance warm
 
 # Render's free tier spins the service down after ~15 min idle, adding a
-# 50s+ cold-start delay to whoever opens the app next. Pinging every 5
-# minutes around the clock keeps it warm at all times — this repo is public,
-# so GitHub Actions minutes are unlimited/free regardless of how often this
-# runs, so there's no reason to restrict it to working hours only (an
-# earlier version of this workflow did, and someone opening the app outside
-# that window would still hit a cold start).
-# GitHub's scheduled-workflow trigger isn't guaranteed to fire exactly on
-# time — it can slip by several minutes under load — so a 5-minute cadence
-# (rather than 10) leaves less room for a slip to exceed Render's 15-min
-# idle window and cause a cold start anyway.
+# 30-60s cold-start delay to whoever opens the app next. Keeping it warm
+# around the clock used ~720 of the workspace's 750 free instance-hours a
+# month, starving the other services on the same Render account — so it is
+# kept warm during working hours only (Sun-Thu, 08:45-18:00 Cairo). Outside
+# that window the app sleeps and wakes on the first visit.
+#
+# GitHub cron runs in UTC and Cairo switches between UTC+3 (summer) and
+# UTC+2 (winter). The window below (05:45-15:59 UTC) covers 08:45-18:00 Cairo
+# in both, so nothing needs editing when DST changes:
+#   summer: awake ~08:45-19:00   winter: awake ~07:45-18:00
+# A 5-minute cadence leaves room for GitHub's scheduled-trigger delays
+# without exceeding Render's 15-min idle window.
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "45,50,55 5 * * 0-4" # Sun-Thu, 05:45-05:55 UTC
+    - cron: "*/5 6-15 * * 0-4" # Sun-Thu, 06:00-15:55 UTC
   workflow_dispatch: {}
 
 jobs:
