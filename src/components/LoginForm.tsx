@@ -11,6 +11,9 @@ export default function LoginForm() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [totpCode, setTotpCode] = useState("");
+  const [trustDevice, setTrustDevice] = useState(false);
+  const [mfaStep, setMfaStep] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -18,16 +21,35 @@ export default function LoginForm() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const res = await signIn("credentials", { email, password, redirect: false });
+    const res = await signIn("credentials", {
+      email,
+      password,
+      totpCode: mfaStep ? totpCode : "",
+      redirect: false,
+    });
     setLoading(false);
 
     if (!res || res.error) {
-      // A thrown Error inside authorize() (the lockout case) surfaces its
-      // message here verbatim; a plain `return null` (wrong password) always
-      // comes through as the generic "CredentialsSignin" code.
+      // "MFA_REQUIRED" is our signal from authorize() that the password was
+      // right but we still need an Authenticator code — flip the UI, don't
+      // show it as an error.
+      if (res?.error === "MFA_REQUIRED") {
+        setMfaStep(true);
+        setError("");
+        return;
+      }
       setError(res?.error && res.error !== "CredentialsSignin" ? res.error : "Incorrect email or password.");
       return;
     }
+
+    if (mfaStep && trustDevice) {
+      // The session cookie now exists; call the trust endpoint from the
+      // signed-in state so the server knows which user to attach it to.
+      try {
+        await fetch("/api/me/mfa/trust-device", { method: "POST" });
+      } catch {}
+    }
+
     router.push("/");
     router.refresh();
   }
@@ -53,40 +75,80 @@ export default function LoginForm() {
         )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          <div>
-            <label className="text-xs font-semibold text-brand-sub">Email</label>
-            <input
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full mt-1 rounded-lg border border-brand-border px-3 py-2 text-sm outline-none"
-              placeholder="you@company.com"
-            />
-          </div>
-          <div>
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-brand-sub">Password</label>
-              <a href="/forgot-password" className="text-xs text-brand-dark font-medium">Forgot password?</a>
-            </div>
-            <input
-              type="password"
-              required
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full mt-1 rounded-lg border border-brand-border px-3 py-2 text-sm outline-none"
-              placeholder="••••••••"
-            />
-          </div>
+          {!mfaStep ? (
+            <>
+              <div>
+                <label className="text-xs font-semibold text-brand-sub">Email</label>
+                <input
+                  type="email"
+                  required
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full mt-1 rounded-lg border border-brand-border px-3 py-2 text-sm outline-none"
+                  placeholder="you@company.com"
+                />
+              </div>
+              <div>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-brand-sub">Password</label>
+                  <a href="/forgot-password" className="text-xs text-brand-dark font-medium">Forgot password?</a>
+                </div>
+                <input
+                  type="password"
+                  required
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full mt-1 rounded-lg border border-brand-border px-3 py-2 text-sm outline-none"
+                  placeholder="••••••••"
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-xs text-brand-sub">
+                Enter the 6-digit code from your Authenticator app for <b>{email}</b>.
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-brand-sub">Authenticator code</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="\d{6}"
+                  maxLength={6}
+                  required
+                  autoFocus
+                  value={totpCode}
+                  onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ""))}
+                  className="w-full mt-1 rounded-lg border border-brand-border px-3 py-2 text-center tracking-widest font-mono text-lg outline-none"
+                  placeholder="123456"
+                />
+              </div>
+              <label className="flex items-center gap-2 text-xs text-brand-sub">
+                <input
+                  type="checkbox"
+                  checked={trustDevice}
+                  onChange={(e) => setTrustDevice(e.target.checked)}
+                />
+                Trust this device for 30 days
+              </label>
+              <button
+                type="button"
+                onClick={() => { setMfaStep(false); setTotpCode(""); setError(""); }}
+                className="text-xs text-brand-sub underline self-start"
+              >
+                ← Back
+              </button>
+            </>
+          )}
           {error && <div className="text-xs text-red-600">{error}</div>}
           <button
             type="submit"
             disabled={loading}
             className="mt-2 rounded-lg bg-brand-dark text-white py-2.5 text-sm font-semibold disabled:opacity-60"
           >
-            {loading ? "Signing in…" : "Log in"}
+            {loading ? "Signing in…" : mfaStep ? "Verify" : "Log in"}
           </button>
         </form>
 

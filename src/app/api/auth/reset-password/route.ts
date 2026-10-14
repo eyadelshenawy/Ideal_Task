@@ -3,6 +3,8 @@ import { createHash } from "crypto";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { checkPasswordStrength, loadSecurityConfig } from "@/lib/securityConfig";
+import { logAudit } from "@/lib/audit";
 
 const bodySchema = z.object({
   token: z.string().min(1),
@@ -22,6 +24,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "This reset link is invalid or has expired" }, { status: 400 });
   }
 
+  const strength = checkPasswordStrength(password, await loadSecurityConfig());
+  if (!strength.ok) {
+    return NextResponse.json({ error: strength.errors.join(" ") }, { status: 400 });
+  }
+
   const passwordHash = await bcrypt.hash(password, 10);
   await prisma.user.update({
     where: { id: user.id },
@@ -32,8 +39,10 @@ export async function POST(req: NextRequest) {
       resetTokenExpires: null,
       failedLoginAttempts: 0,
       lockedUntil: null,
+      passwordChangedAt: new Date(),
     },
   });
+  logAudit(user.id, "Reset password via email link");
 
   return NextResponse.json({ ok: true });
 }

@@ -75,6 +75,7 @@ export default function ChangePasswordPage() {
               onChange={(e) => setNewPassword(e.target.value)}
               className="w-full mt-1 rounded-lg border border-brand-border px-3 py-2 text-sm outline-none"
             />
+            <div className="text-[11px] text-brand-sub mt-1">At least 8 characters, with an uppercase letter, a number and a symbol.</div>
           </div>
           <div>
             <label className="text-xs font-semibold text-brand-sub">Confirm new password</label>

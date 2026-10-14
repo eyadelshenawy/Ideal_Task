@@ -3,6 +3,8 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/permissions";
+import { checkPasswordStrength, loadSecurityConfig } from "@/lib/securityConfig";
+import { logAudit } from "@/lib/audit";
 
 const bodySchema = z.object({
   currentPassword: z.string().min(1),
@@ -29,11 +31,20 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Current password is incorrect" }, { status: 400 });
   }
 
+  const strength = checkPasswordStrength(newPassword, await loadSecurityConfig());
+  if (!strength.ok) {
+    return NextResponse.json({ error: strength.errors.join(" ") }, { status: 400 });
+  }
+  if (await bcrypt.compare(newPassword, user.passwordHash)) {
+    return NextResponse.json({ error: "New password must be different from the current one." }, { status: 400 });
+  }
+
   const passwordHash = await bcrypt.hash(newPassword, 10);
   await prisma.user.update({
     where: { id: user.id },
-    data: { passwordHash, mustChangePassword: false },
+    data: { passwordHash, mustChangePassword: false, passwordChangedAt: new Date() },
   });
+  logAudit(user.id, "Changed own password");
 
   return NextResponse.json({ ok: true });
 }

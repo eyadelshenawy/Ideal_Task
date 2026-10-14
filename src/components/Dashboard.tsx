@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
-import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks, BarChart3, FileDown, Bookmark, X, AlertTriangle, ScrollText, BookOpen, ChevronDown, ChevronRight, Lock, ClipboardList, MoreHorizontal, Sparkles, Calendar as CalendarIcon, SlidersHorizontal } from "lucide-react";
+import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks, BarChart3, FileDown, Bookmark, X, AlertTriangle, ScrollText, BookOpen, ChevronDown, ChevronRight, Lock, ClipboardList, MoreHorizontal, Sparkles, Calendar as CalendarIcon, SlidersHorizontal, Shield, ShieldCheck } from "lucide-react";
 import useSWR from "swr";
 import type { Task, Project, TeamMember, Contact, Status, AssigneeDisplay } from "@/types/models";
 import type { ImportPreview } from "@/types/import";
@@ -28,6 +28,9 @@ import NeedsAttentionView from "./NeedsAttentionView";
 import PersonalTasksView from "./PersonalTasksView";
 import NotificationBell from "./NotificationBell";
 import AuditLogModal from "./AuditLogModal";
+import MfaSettingsModal from "./MfaSettingsModal";
+import SecurityPolicyModal from "./SecurityPolicyModal";
+import IdleTimeoutWatcher from "./IdleTimeoutWatcher";
 import ChecklistTemplatesModal from "./ChecklistTemplatesModal";
 import WorkCalendarModal from "./WorkCalendarModal";
 import LogoutButton from "./LogoutButton";
@@ -48,6 +51,10 @@ interface DashboardProps {
   isSuperAdmin: boolean;
   /** Project ids this user holds a per-project admin grant on. */
   administeredProjectIds: string[];
+  /** Whether this user has MFA enabled right now — used as the initial state for the Two-factor modal. */
+  mfaInitiallyEnabled: boolean;
+  /** Session idle timeout in minutes (SecurityConfig.sessionIdleTimeoutMinutes). */
+  idleTimeoutMinutes: number;
 }
 
 interface Filters {
@@ -69,7 +76,7 @@ const defaultFilters: Filters = {
 
 const GROUP_PAGE_SIZE = 30;
 
-export default function Dashboard({ userId, userName, isSuperAdmin, administeredProjectIds }: DashboardProps) {
+export default function Dashboard({ userId, userName, isSuperAdmin, administeredProjectIds, mfaInitiallyEnabled, idleTimeoutMinutes }: DashboardProps) {
   const { data: tasks, mutate: mutateTasks } = useSWR<Task[]>("/api/tasks", fetcher);
   const { data: team, mutate: mutateTeam } = useSWR<TeamMember[]>("/api/team", fetcher);
   const { data: projects, mutate: mutateProjects } = useSWR<Project[]>("/api/projects", fetcher);
@@ -94,6 +101,8 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   const [whatsNewOpen, setWhatsNewOpen] = useState(false);
   const [trashModalOpen, setTrashModalOpen] = useState(false);
   const [auditLogOpen, setAuditLogOpen] = useState(false);
+  const [mfaModalOpen, setMfaModalOpen] = useState(false);
+  const [securityPolicyOpen, setSecurityPolicyOpen] = useState(false);
   const [checklistTemplatesOpen, setChecklistTemplatesOpen] = useState(false);
   const [workCalendarOpen, setWorkCalendarOpen] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
@@ -768,6 +777,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
               <Search size={15} />
             </button>
             <PushAutoSubscribe />
+            <IdleTimeoutWatcher idleMinutes={idleTimeoutMinutes} />
             <NotificationBell onOpenTask={openTaskById} />
             <button
               onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
@@ -844,6 +854,20 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
                         <ScrollText size={14} /> Audit Log
                       </button>
                     )}
+                    {isSuperAdmin && (
+                      <button
+                        onClick={() => { setSecurityPolicyOpen(true); setAdminMenuOpen(false); }}
+                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
+                      >
+                        <ShieldCheck size={14} /> Security Policy
+                      </button>
+                    )}
+                    <button
+                      onClick={() => { setMfaModalOpen(true); setAdminMenuOpen(false); }}
+                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
+                    >
+                      <Shield size={14} /> Two-factor (MFA)
+                    </button>
                     {isSuperAdmin && (
                       <button
                         onClick={() => { setChecklistTemplatesOpen(true); setAdminMenuOpen(false); }}
@@ -1320,6 +1344,13 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
       )}
 
       {auditLogOpen && <AuditLogModal onClose={() => setAuditLogOpen(false)} />}
+      {mfaModalOpen && (
+        <MfaSettingsModal
+          initialTotpEnabled={mfaInitiallyEnabled}
+          onClose={() => setMfaModalOpen(false)}
+        />
+      )}
+      {securityPolicyOpen && <SecurityPolicyModal onClose={() => setSecurityPolicyOpen(false)} />}
 
       {whatsNewOpen && <WhatsNewModal onClose={() => setWhatsNewOpen(false)} />}
 
