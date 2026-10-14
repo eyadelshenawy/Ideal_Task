@@ -33,6 +33,24 @@ enum Status {
   DONE
 }
 
+// ITIL-style ticket classification. TASK is the default for project/
+// implementation work that isn't a support ticket.
+enum TicketType {
+  TASK
+  INCIDENT
+  SERVICE_REQUEST
+  CHANGE_REQUEST
+  PROBLEM
+}
+
+// Shared scale for Impact and Urgency; the pair maps to a Priority via
+// src/lib/priorityMatrix.ts.
+enum MatrixLevel {
+  HIGH
+  MEDIUM
+  LOW
+}
+
 enum TaskEventType {
   COMMENT
   ACTIVITY
@@ -178,15 +196,20 @@ model SlaConfig {
 // the Egyptian/Gulf pattern (Fri+Sat off) but the whole table is a
 // setting, not a constant — every consumer reads it live.
 model WorkWeekConfig {
-  id        String   @id @default("singleton")
-  sun       Boolean  @default(true)
-  mon       Boolean  @default(true)
-  tue       Boolean  @default(true)
-  wed       Boolean  @default(true)
-  thu       Boolean  @default(true)
-  fri       Boolean  @default(false)
-  sat       Boolean  @default(false)
-  updatedAt DateTime @updatedAt
+  id               String   @id @default("singleton")
+  sun              Boolean  @default(true)
+  mon              Boolean  @default(true)
+  tue              Boolean  @default(true)
+  wed              Boolean  @default(true)
+  thu              Boolean  @default(true)
+  fri              Boolean  @default(false)
+  sat              Boolean  @default(false)
+  // Working hours as minutes from local midnight, in timeZone. Used by
+  // projects whose SLA runs on business hours.
+  workStartMinutes Int      @default(540)
+  workEndMinutes   Int      @default(1020)
+  timeZone         String   @default("Africa/Cairo")
+  updatedAt        DateTime @updatedAt
 }
 
 // A specific calendar day that counts as non-working regardless of the
@@ -238,6 +261,10 @@ model Project {
   // dragging them into SLA percentages would be misleading. Turn this on
   // per-project for the ones that are actually support contracts.
   slaTrackingEnabled Boolean @default(false)
+
+  // When true, this project's SLA clock only runs during the org's working
+  // hours (WorkWeekConfig + holidays); false means a 24/7 clock.
+  slaBusinessHours Boolean @default(false)
 
   // Marks a project as a template — a shape kept around to clone from,
   // never worked on directly. Templates are hidden from the main Dashboard
@@ -363,6 +390,15 @@ model Task {
   priority Priority @default(MEDIUM)
   status   Status   @default(TODO)
 
+  type    TicketType   @default(TASK)
+  impact  MatrixLevel?
+  urgency MatrixLevel?
+
+  categoryId    String?
+  category      Category? @relation("TaskCategory", fields: [categoryId], references: [id], onDelete: SetNull)
+  subcategoryId String?
+  subcategory   Category? @relation("TaskSubcategory", fields: [subcategoryId], references: [id], onDelete: SetNull)
+
   startDate    DateTime?
   dueDate      DateTime?
   // Working-days duration between startDate and dueDate (inclusive of both),
@@ -441,6 +477,25 @@ model Task {
   @@index([projectId])
   @@index([status])
   @@index([deletedAt])
+  @@index([parentId])
+  @@index([type])
+  @@index([categoryId])
+}
+
+// Org-wide ticket categories, managed by a Super Admin. A row with a
+// parentId is a subcategory of that parent (one level only).
+model Category {
+  id        String     @id @default(cuid())
+  name      String
+  parentId  String?
+  parent    Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Category[] @relation("CategoryTree")
+  sortOrder Int        @default(0)
+  createdAt DateTime   @default(now())
+
+  tasksAsCategory    Task[] @relation("TaskCategory")
+  tasksAsSubcategory Task[] @relation("TaskSubcategory")
+
   @@index([parentId])
 }
 

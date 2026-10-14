@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/permissions";
-import { loadDefaultSlaConfig, loadAllProjectSlaOverrides } from "@/lib/slaConfig";
+import { loadDefaultSlaConfig, loadAllProjectSlaOverrides, loadBusinessCalendar } from "@/lib/slaConfig";
 
-/** Everything Reports needs to compute per-task SLA in one round trip: the shared default plus every project's override. */
+/** Everything the client needs to compute per-task SLA in one round trip: the shared default, every project's override, and the working-hours calendar. */
 export async function GET() {
   const { error } = await requireSession();
   if (error) return error;
 
-  const [defaultConfig, overrides] = await Promise.all([loadDefaultSlaConfig(), loadAllProjectSlaOverrides()]);
-  return NextResponse.json({ default: defaultConfig, overrides });
+  const [defaultConfig, overrides, calendar] = await Promise.all([loadDefaultSlaConfig(), loadAllProjectSlaOverrides(), loadBusinessCalendar()]);
+  return NextResponse.json({ default: defaultConfig, overrides, calendar });
 }

@@ -210,6 +210,7 @@ export async function POST(req: NextRequest) {
             // additions (single-create or a later import) don't collide.
             childCodeSeq: childCodeSeqDelta.get(ownRealId) ?? 0,
             priority: t.priority,
+            type: t.type,
             status: t.status,
             startDate: dateStrToUTC(dates.startDate),
             dueDate: dateStrToUTC(dates.dueDate),

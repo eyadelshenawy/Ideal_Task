@@ -5,8 +5,8 @@ import { utcToDateStr } from "@/lib/serverDates";
 import { dueSoonEmailHtml, overdueEmailHtml, slaRiskEmailHtml } from "@/lib/notifications";
 import { sendWeeklyReports } from "@/lib/weeklyReport";
 import { notify } from "@/lib/inAppNotify";
-import { responseSlaState, resolutionSlaState } from "@/lib/sla";
-import { loadDefaultSlaConfig, loadAllProjectSlaOverrides, type SlaConfigDto } from "@/lib/slaConfig";
+import { responseSlaState, resolutionSlaState, responseDeadline, resolutionDeadline } from "@/lib/sla";
+import { loadDefaultSlaConfig, loadAllProjectSlaOverrides, loadBusinessCalendar, clockFor, type SlaConfigDto } from "@/lib/slaConfig";
 
 // This check runs once a day, so it can only reliably catch risk windows at
 // least ~1 day wide — i.e. resolution deadlines (days-scale) and response
@@ -19,14 +19,16 @@ import { loadDefaultSlaConfig, loadAllProjectSlaOverrides, type SlaConfigDto } f
 async function checkSlaRisks(now: Date): Promise<{ responseWarned: number; resolutionWarned: number }> {
   const trackedProjects = await prisma.project.findMany({
     where: { slaTrackingEnabled: true, deletedAt: null, isTemplate: false },
-    select: { id: true },
+    select: { id: true, slaBusinessHours: true },
   });
   const trackedProjectIds = trackedProjects.map((p) => p.id);
+  const businessHoursProjectIds = new Set(trackedProjects.filter((p) => p.slaBusinessHours).map((p) => p.id));
   if (trackedProjectIds.length === 0) return { responseWarned: 0, resolutionWarned: 0 };
 
-  const [defaultConfig, overrides, tasks] = await Promise.all([
+  const [defaultConfig, overrides, calendar, tasks] = await Promise.all([
     loadDefaultSlaConfig(),
     loadAllProjectSlaOverrides(),
+    loadBusinessCalendar(),
     prisma.task.findMany({
       where: {
         deletedAt: null,
@@ -65,17 +67,19 @@ async function checkSlaRisks(now: Date): Promise<{ responseWarned: number; resol
     const config = configFor(task.projectId);
     if (config.cutoffDate && task.createdAt.toISOString().slice(0, 10) < config.cutoffDate) continue;
 
-    const target = config.targets[task.priority];
+    const clock = clockFor(businessHoursProjectIds.has(task.projectId), calendar);
     const createdAtIso = task.createdAt.toISOString();
     const recipients = task.assignees.map((a) => a.email).filter(Boolean);
     const summary = { title: task.title, projectName: task.project?.name ?? null, dueDate: null, priority: task.priority };
 
     if (!task.responseRiskNotifiedAt) {
-      const state = responseSlaState(task.priority, createdAtIso, firstCommentAt.get(task.id) ?? null, now, config.targets);
+      const state = responseSlaState(task.priority, createdAtIso, firstCommentAt.get(task.id) ?? null, now, config.targets, clock);
       if (state === "pending") {
-        const deadline = task.createdAt.getTime() + target.responseHours * 3600000;
+        // "At risk" = inside the last quarter of the window, measured in wall-clock time.
+        const deadline = responseDeadline(task.priority, task.createdAt, config.targets, clock).getTime();
         const hoursRemaining = (deadline - now.getTime()) / 3600000;
-        if (hoursRemaining > 0 && hoursRemaining <= target.responseHours * 0.25) {
+        const windowHours = (deadline - task.createdAt.getTime()) / 3600000;
+        if (hoursRemaining > 0 && hoursRemaining <= windowHours * 0.25) {
           const timeLeft = hoursRemaining >= 1 ? `${Math.round(hoursRemaining)}h` : `${Math.max(1, Math.round(hoursRemaining * 60))}m`;
           if (recipients.length > 0) {
             await sendEmail({ to: recipients, subject: `SLA at risk: "${task.title}"`, html: slaRiskEmailHtml(summary, "response", timeLeft) });
@@ -88,11 +92,12 @@ async function checkSlaRisks(now: Date): Promise<{ responseWarned: number; resol
     }
 
     if (!task.resolutionRiskNotifiedAt) {
-      const state = resolutionSlaState(task.priority, createdAtIso, task.completedAt ? task.completedAt.toISOString() : null, now, config.targets);
+      const state = resolutionSlaState(task.priority, createdAtIso, task.completedAt ? task.completedAt.toISOString() : null, now, config.targets, clock);
       if (state === "pending") {
-        const deadline = task.createdAt.getTime() + target.resolutionDays * 86400000;
+        const deadline = resolutionDeadline(task.priority, task.createdAt, config.targets, clock).getTime();
         const daysRemaining = (deadline - now.getTime()) / 86400000;
-        if (daysRemaining > 0 && daysRemaining <= target.resolutionDays * 0.25) {
+        const windowDays = (deadline - task.createdAt.getTime()) / 86400000;
+        if (daysRemaining > 0 && daysRemaining <= windowDays * 0.25) {
           const timeLeft = daysRemaining >= 1 ? `${Math.round(daysRemaining)}d` : `${Math.max(1, Math.round(daysRemaining * 24))}h`;
           if (recipients.length > 0) {
             await sendEmail({ to: recipients, subject: `SLA at risk: "${task.title}"`, html: slaRiskEmailHtml(summary, "resolution", timeLeft) });

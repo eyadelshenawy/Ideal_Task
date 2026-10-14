@@ -4,8 +4,8 @@ import { useMemo, useState } from "react";
 import useSWR from "swr";
 import type { Task, Project, TeamMember } from "@/types/models";
 import { todayStr, addDays, PRIORITIES } from "@/lib/taskHelpers";
-import { responseSlaState, resolutionSlaState, type SlaTargets } from "@/lib/sla";
 import type { SlaConfigDto } from "@/lib/slaConfig";
+import { computeTaskSla, type SlaAll } from "@/lib/taskSla";
 import StatCard from "./ui/StatCard";
 import ProgressBar from "./ui/ProgressBar";
 import Chip from "./ui/Chip";
@@ -39,7 +39,7 @@ export default function ReportsView({ tasks, projects, team, isSuperAdmin, curre
   const today = todayStr();
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
   const { data: firstCommentAt } = useSWR<Record<string, string>>("/api/reports/sla", fetcher);
-  const { data: slaAll } = useSWR<{ default: SlaConfigDto; overrides: Record<string, SlaConfigDto> }>("/api/settings/sla/all", fetcher);
+  const { data: slaAll } = useSWR<SlaAll>("/api/settings/sla/all", fetcher);
 
   const sla = useMemo(() => {
     if (!firstCommentAt || !slaAll) return null;
@@ -53,13 +53,10 @@ export default function ReportsView({ tasks, projects, team, isSuperAdmin, curre
       return !cutoff || t.createdAt.slice(0, 10) >= cutoff;
     });
 
-    const rows = inScope.map((t) => {
-      const targets: SlaTargets = configFor(t.projectId!).targets;
-      return {
-        task: t,
-        response: responseSlaState(t.priority, t.createdAt, firstCommentAt[t.id] ?? null, now, targets),
-        resolution: resolutionSlaState(t.priority, t.createdAt, t.completedAt, now, targets),
-      };
+    const projectById = new Map(projects.map((p) => [p.id, p]));
+    const rows = inScope.flatMap((t) => {
+      const r = computeTaskSla(t, projectById.get(t.projectId!), slaAll, firstCommentAt[t.id] ?? null, now);
+      return r ? [{ task: t, response: r.response, resolution: r.resolution }] : [];
     });
     const decided = (state: "response" | "resolution") => rows.filter((r) => r[state] !== "pending");
     const rate = (state: "response" | "resolution") => {

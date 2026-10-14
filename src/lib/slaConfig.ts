@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { utcToDateStr } from "@/lib/serverDates";
-import { DEFAULT_SLA_TARGETS, type SlaTargets } from "@/lib/sla";
+import { DEFAULT_SLA_TARGETS, CALENDAR_CLOCK, type SlaTargets, type SlaClock } from "@/lib/sla";
+import type { BusinessCalendar } from "@/lib/businessTime";
 
 export const SLA_DEFAULT_SENTINEL = "__default__";
 
@@ -41,4 +42,24 @@ export async function loadDefaultSlaConfig(): Promise<SlaConfigDto> {
 export async function loadAllProjectSlaOverrides(): Promise<Record<string, SlaConfigDto>> {
   const rows = await prisma.slaConfig.findMany({ where: { projectId: { not: SLA_DEFAULT_SENTINEL } } });
   return Object.fromEntries(rows.map((r) => [r.projectId, toDto(r)]));
+}
+
+export async function loadBusinessCalendar(): Promise<BusinessCalendar> {
+  const [config, holidays] = await Promise.all([
+    prisma.workWeekConfig.findUnique({ where: { id: "singleton" } }),
+    prisma.holiday.findMany({ select: { date: true } }),
+  ]);
+  return {
+    workDays: config
+      ? [config.sun, config.mon, config.tue, config.wed, config.thu, config.fri, config.sat]
+      : [true, true, true, true, true, false, false],
+    holidays: holidays.map((h) => h.date.toISOString().slice(0, 10)),
+    startMinutes: config?.workStartMinutes ?? 540,
+    endMinutes: config?.workEndMinutes ?? 1020,
+    timeZone: config?.timeZone ?? "Africa/Cairo",
+  };
+}
+
+export function clockFor(slaBusinessHours: boolean, calendar: BusinessCalendar): SlaClock {
+  return slaBusinessHours ? { calendar } : CALENDAR_CLOCK;
 }

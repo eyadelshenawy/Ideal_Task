@@ -7,7 +7,25 @@ import type { WorkWeekConfig, Holiday } from "@/types/models";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-const DAYS: { key: keyof WorkWeekConfig; label: string }[] = [
+type DayKey = "sun" | "mon" | "tue" | "wed" | "thu" | "fri" | "sat";
+
+const DEFAULT_CONFIG: WorkWeekConfig = {
+  sun: true, mon: true, tue: true, wed: true, thu: true, fri: false, sat: false,
+  workStartMinutes: 540, workEndMinutes: 1020, timeZone: "Africa/Cairo",
+};
+
+const TIME_ZONES = ["Africa/Cairo", "Asia/Riyadh", "Asia/Dubai", "Asia/Kuwait", "Asia/Qatar", "Asia/Bahrain", "Asia/Muscat", "Europe/London", "UTC"];
+
+function toTimeInput(minutes: number): string {
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
+
+function fromTimeInput(value: string): number {
+  const [h, m] = value.split(":").map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+const DAYS: { key: DayKey; label: string }[] = [
   { key: "sun", label: "Sun" },
   { key: "mon", label: "Mon" },
   { key: "tue", label: "Tue" },
@@ -40,10 +58,15 @@ export default function WorkCalendarModal({
 
   const workWeek = draft ?? config ?? null;
 
-  function toggleDay(key: keyof WorkWeekConfig) {
+  function toggleDay(key: DayKey) {
     if (!canEdit) return;
-    const base = workWeek ?? { sun: true, mon: true, tue: true, wed: true, thu: true, fri: false, sat: false };
+    const base = workWeek ?? DEFAULT_CONFIG;
     setDraft({ ...base, [key]: !base[key] });
+  }
+
+  function setHours(patch: Partial<WorkWeekConfig>) {
+    if (!canEdit) return;
+    setDraft({ ...(workWeek ?? DEFAULT_CONFIG), ...patch });
   }
 
   async function saveWorkWeek() {
@@ -142,6 +165,37 @@ export default function WorkCalendarModal({
                 );
               })}
             </div>
+            <div className="text-[11px] font-bold text-brand-sub uppercase tracking-wide mt-3 mb-1.5">Working hours</div>
+            <div className="flex items-center gap-1.5 flex-wrap text-[11.5px] text-brand-text">
+              <input
+                type="time"
+                disabled={!canEdit}
+                value={toTimeInput((workWeek ?? DEFAULT_CONFIG).workStartMinutes)}
+                onChange={(e) => setHours({ workStartMinutes: fromTimeInput(e.target.value) })}
+                className="rounded-lg border border-brand-border px-2 py-1 text-xs outline-none"
+              />
+              <span>to</span>
+              <input
+                type="time"
+                disabled={!canEdit}
+                value={toTimeInput((workWeek ?? DEFAULT_CONFIG).workEndMinutes)}
+                onChange={(e) => setHours({ workEndMinutes: fromTimeInput(e.target.value) })}
+                className="rounded-lg border border-brand-border px-2 py-1 text-xs outline-none"
+              />
+              <select
+                disabled={!canEdit}
+                value={(workWeek ?? DEFAULT_CONFIG).timeZone}
+                onChange={(e) => setHours({ timeZone: e.target.value })}
+                className="rounded-lg border border-brand-border px-2 py-1 text-xs outline-none bg-white"
+              >
+                {Array.from(new Set([...TIME_ZONES, (workWeek ?? DEFAULT_CONFIG).timeZone])).map((tz) => (
+                  <option key={tz} value={tz}>{tz}</option>
+                ))}
+              </select>
+            </div>
+            <div className="text-[11px] text-brand-sub mt-1">
+              Used by projects whose SLA runs on working hours only (Manage Projects → SLA).
+            </div>
             {canEdit && draft && (
               <div className="flex gap-2 mt-2">
                 <button
@@ -150,7 +204,7 @@ export default function WorkCalendarModal({
                   className="rounded-lg px-3 py-1 text-[11.5px] font-semibold bg-brand-dark text-white disabled:opacity-50"
                 >
                   {saving ? <Loader2 size={12} className="animate-spin inline mr-1" /> : null}
-                  Save work week
+                  Save work week & hours
                 </button>
                 <button
                   onClick={() => setDraft(null)}

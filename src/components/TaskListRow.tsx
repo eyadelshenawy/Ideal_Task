@@ -6,6 +6,9 @@ import type { Task, Project, AssigneeDisplay, Status } from "@/types/models";
 import { PRIORITIES, STATUSES, dueBadge, toneStyle, isBlocked, splitModules } from "@/lib/taskHelpers";
 import AvatarStack from "./ui/AvatarStack";
 import Chip from "./ui/Chip";
+import SlaChip from "./SlaChip";
+import TicketTypeChip from "./TicketTypeChip";
+import type { TaskSla } from "@/lib/taskSla";
 import ProgressBar from "./ui/ProgressBar";
 
 interface TaskListRowProps {
@@ -31,13 +34,17 @@ interface TaskListRowProps {
   density?: "comfortable" | "compact";
   /** Human-readable "starts before predecessor finishes" label — chip is only shown when set. */
   dependencyWarning?: string | null;
+  /** SLA status when the task is in an SLA-tracked project. */
+  sla?: TaskSla | null;
+  /** "Category › Subcategory" label, if set. */
+  categoryName?: string | null;
 }
 
 export default function TaskListRow({
   task, assignees, project, allTasks, canManage, onEdit, onDelete, onDuplicate, onChangeStatus,
   selectMode, selected, onToggleSelect,
   depth = 0, hasChildren = false, collapsed = false, onToggleCollapse, doneChildCount = 0, totalChildCount = 0,
-  density = "comfortable", dependencyWarning,
+  density = "comfortable", dependencyWarning, sla, categoryName,
 }: TaskListRowProps) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingDuplicate, setConfirmingDuplicate] = useState(false);
@@ -75,11 +82,13 @@ export default function TaskListRow({
           <AvatarStack assignees={assignees} />
           {task.isMilestone && <Diamond size={12} className="text-brand-dark" />}
           {task.code && <span className="font-mono text-[11px] text-brand-sub">{task.code}</span>}
+          <TicketTypeChip type={task.type} />
           <span className="font-semibold text-[13.5px] text-brand-text">{task.title}</span>
           {project && <Chip small style={{ background: "#EEF2F0", color: "#5B6B64" }}>{project.name}</Chip>}
           {modules.map((m) => (
             <Chip key={m} small style={{ background: "#E4EEF7", color: "#2A5C82" }}>{m}</Chip>
           ))}
+          {categoryName && <Chip small style={{ background: "#F3EFE6", color: "#6B5A2E" }}>{categoryName}</Chip>}
           {task.tags.map((tag) => (
             <Chip key={tag} small style={{ background: "#EDE7F5", color: "#5B4A8A" }}>{tag}</Chip>
           ))}
@@ -109,6 +118,7 @@ export default function TaskListRow({
           >
             {STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
           </select>
+          {sla && task.status !== "DONE" && <SlaChip sla={sla} />}
           {badge && <Chip small style={toneStyle(badge.tone)}>{badge.label}</Chip>}
           {dependencyWarning && (
             <span title={dependencyWarning}>

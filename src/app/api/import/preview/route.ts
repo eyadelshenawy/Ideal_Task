@@ -123,6 +123,7 @@ export async function POST(req: NextRequest) {
       newProjectName,
       assigneeId,
       priority: t.priority,
+      type: t.type,
       status: t.status,
       startDate: t.startDate || null,
       dueDate: t.dueDate || null,

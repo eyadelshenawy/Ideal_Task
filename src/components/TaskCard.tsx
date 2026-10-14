@@ -6,6 +6,9 @@ import type { Task, Project, AssigneeDisplay } from "@/types/models";
 import { PRIORITIES, STATUSES, dueBadge, toneStyle, isBlocked, splitModules } from "@/lib/taskHelpers";
 import AvatarStack from "./ui/AvatarStack";
 import Chip from "./ui/Chip";
+import SlaChip from "./SlaChip";
+import TicketTypeChip from "./TicketTypeChip";
+import type { TaskSla } from "@/lib/taskSla";
 import ProgressBar from "./ui/ProgressBar";
 
 interface TaskCardProps {
@@ -28,11 +31,15 @@ interface TaskCardProps {
   onDragStart?: (id: string) => void;
   /** Human-readable "starts before predecessor finishes" label — chip is only shown when set. */
   dependencyWarning?: string | null;
+  /** SLA status when the task is in an SLA-tracked project. */
+  sla?: TaskSla | null;
+  /** "Category › Subcategory" label, if set. */
+  categoryName?: string | null;
 }
 
 export default function TaskCard({
   task, assignees, project, allTasks, canManage, onEdit, onDelete, onMove, onDuplicate,
-  selectMode, selected, onToggleSelect, draggable, onDragStart, dependencyWarning,
+  selectMode, selected, onToggleSelect, draggable, onDragStart, dependencyWarning, sla, categoryName,
 }: TaskCardProps) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingDuplicate, setConfirmingDuplicate] = useState(false);
@@ -99,10 +106,13 @@ export default function TaskCard({
       </div>
 
       <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+        <TicketTypeChip type={task.type} />
+        {sla && task.status !== "DONE" && <SlaChip sla={sla} />}
         {project && <Chip small style={{ background: "#EEF2F0", color: "#5B6B64" }}>{project.name}</Chip>}
         {modules.map((m) => (
           <Chip key={m} small style={{ background: "#E4EEF7", color: "#2A5C82" }}>{m}</Chip>
         ))}
+        {categoryName && <Chip small style={{ background: "#F3EFE6", color: "#6B5A2E" }}>{categoryName}</Chip>}
         {task.tags.map((tag) => (
           <Chip key={tag} small style={{ background: "#EDE7F5", color: "#5B4A8A" }}>{tag}</Chip>
         ))}

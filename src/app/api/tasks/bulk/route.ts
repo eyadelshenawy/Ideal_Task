@@ -4,6 +4,7 @@ import { requireSession, getUserAccess } from "@/lib/permissions";
 import { taskBulkUpdateSchema, taskBulkDeleteSchema, assigneesToSet } from "@/lib/validation/task";
 import { notifyAssignment } from "@/lib/notifications";
 import { logActivity, describeTaskChanges, loadNameLookups } from "@/lib/activity";
+import { checkCategoryPair } from "@/lib/categories";
 import { createNextOccurrence } from "@/lib/recurrence";
 import { getDescendantIds, syncAncestorChain } from "@/lib/taskHierarchy";
 import { resolveTags } from "@/lib/tags";
@@ -22,7 +23,11 @@ export async function PATCH(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request" }, { status: 400 });
   }
-  const { taskIds, status, assignees, projectId, priority, startDate, dueDate, durationDays, progress, module, addTag, removeTag } = parsed.data;
+  const { taskIds, status, assignees, projectId, priority, type, categoryId, startDate, dueDate, durationDays, progress, module, addTag, removeTag } = parsed.data;
+  if (categoryId) {
+    const categoryError = await checkCategoryPair(categoryId, null);
+    if (categoryError) return NextResponse.json({ error: categoryError }, { status: 400 });
+  }
   const access = await getUserAccess(session);
 
   // Loaded once per batch so every row reconciles Start/Due/Duration against
@@ -61,7 +66,7 @@ export async function PATCH(req: NextRequest) {
   // Super Admin / a project-admin grant holder. Any of the other fields
   // being touched requires manage rights on the task's project.
   const touchesOnlyStatusOrProgress =
-    assignees === undefined && projectId === undefined && priority === undefined &&
+    assignees === undefined && projectId === undefined && priority === undefined && type === undefined && categoryId === undefined &&
     startDate === undefined && dueDate === undefined && durationDays === undefined &&
     module === undefined && addTag === undefined && removeTag === undefined;
 
@@ -139,6 +144,9 @@ export async function PATCH(req: NextRequest) {
         ...(assignees !== undefined ? assigneesToSet(assignees) : {}),
         ...(projectId !== undefined ? { projectId: projectId || null } : {}),
         ...(priority !== undefined ? { priority } : {}),
+        ...(type !== undefined ? { type } : {}),
+        // A new category invalidates whatever subcategory the task had.
+        ...(categoryId !== undefined ? { categoryId, subcategoryId: null } : {}),
         ...bulkDateData,
         ...(module !== undefined ? { module: module || null } : {}),
         ...(addTagRecord ? { tags: { connect: [{ id: addTagRecord.id }] } } : {}),
@@ -171,12 +179,12 @@ export async function PATCH(req: NextRequest) {
 
     (async () => {
       const beforeSnapshot = {
-        title: task.title, status: task.status, priority: task.priority, projectId: task.projectId,
+        title: task.title, status: task.status, priority: task.priority, type: task.type, projectId: task.projectId,
         dueDate: task.dueDate, startDate: task.startDate, isMilestone: task.isMilestone,
         assigneeIds: task.assignees.map((a) => a.id), contactAssigneeIds: task.contactAssignees.map((c) => c.id),
       };
       const afterSnapshot = {
-        title: updatedTask.title, status: updatedTask.status, priority: updatedTask.priority, projectId: updatedTask.projectId,
+        title: updatedTask.title, status: updatedTask.status, priority: updatedTask.priority, type: updatedTask.type, projectId: updatedTask.projectId,
         dueDate: updatedTask.dueDate, startDate: updatedTask.startDate, isMilestone: updatedTask.isMilestone,
         assigneeIds: updatedTask.assignees.map((a) => a.id), contactAssigneeIds: updatedTask.contactAssignees.map((c) => c.id),
       };

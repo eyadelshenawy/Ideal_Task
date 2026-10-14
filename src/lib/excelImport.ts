@@ -2,7 +2,8 @@
 // runs server-side (not in the browser) so it shares one source of truth with the
 // DB-resolution step in /api/import/preview, which needs server access anyway.
 
-import type { Priority, Status } from "@/types/models";
+import type { Priority, Status, TicketType } from "@/types/models";
+import { TICKET_TYPES } from "@/lib/ticketMeta";
 import { PRIORITIES, STATUSES } from "./taskHelpers";
 
 function normalizeKeyRow(row: Record<string, unknown>): Record<string, unknown> {
@@ -49,6 +50,12 @@ function matchPriority(s: unknown): Priority {
   return found ? found.id : "MEDIUM";
 }
 
+function matchType(s: unknown): TicketType {
+  const v = String(s || "").trim().toLowerCase();
+  const found = TICKET_TYPES.find((t) => t.label.toLowerCase() === v || t.value.toLowerCase() === v || t.short.toLowerCase() === v);
+  return found ? found.value : "TASK";
+}
+
 function matchBool(s: unknown): boolean {
   const v = String(s || "").trim().toLowerCase();
   return v === "yes" || v === "y" || v === "true" || v === "1";
@@ -65,6 +72,7 @@ export interface RawParsedRow {
   projectName: string;
   assigneeName: string;
   priority: Priority;
+  type: TicketType;
   status: Status;
   startDate: string;
   dueDate: string;
@@ -94,6 +102,7 @@ export function parseSheetRows(rows: Record<string, unknown>[]): { parsed: RawPa
     const projectRaw = pick(nrow, ["project", "client", "project/client", "project / client"]);
     const assigneeRaw = pick(nrow, ["assignee", "owner", "assigned to"]);
     const priorityRaw = pick(nrow, ["priority"]);
+    const typeRaw = pick(nrow, ["type", "ticket type"]);
     const statusRaw = pick(nrow, ["status"]);
     const startRaw = nrow["start date"] ?? nrow["start"];
     const dueRaw = nrow["due date"] ?? nrow["due"] ?? nrow["end date"] ?? nrow["end"] ?? nrow["deadline"];
@@ -114,6 +123,7 @@ export function parseSheetRows(rows: Record<string, unknown>[]): { parsed: RawPa
       projectName: projectRaw.trim(),
       assigneeName: assigneeRaw.trim(),
       priority: matchPriority(priorityRaw),
+      type: matchType(typeRaw),
       status: matchStatus(statusRaw),
       startDate: excelValueToDateStr(startRaw),
       dueDate: excelValueToDateStr(dueRaw),

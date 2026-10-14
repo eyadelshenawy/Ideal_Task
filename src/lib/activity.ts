@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { utcToDateStr } from "@/lib/serverDates";
 import { STATUSES, PRIORITIES } from "@/lib/taskHelpers";
+import { TICKET_TYPES } from "@/lib/ticketMeta";
 
 export async function logActivity(taskId: string, actorId: string | null, message: string) {
   await prisma.taskEvent.create({ data: { taskId, authorId: actorId, type: "ACTIVITY", message } });
@@ -30,6 +31,7 @@ interface TaskSnapshot {
   isMilestone: boolean;
   assigneeIds: string[];
   contactAssigneeIds: string[];
+  type?: string;
 }
 
 interface Lookups {
@@ -51,6 +53,10 @@ export function describeTaskChanges(before: TaskSnapshot, after: TaskSnapshot, l
   if (before.title !== after.title) lines.push(`Title changed to "${after.title}"`);
   if (before.status !== after.status) lines.push(`Status changed from ${statusLabel(before.status)} to ${statusLabel(after.status)}`);
   if (before.priority !== after.priority) lines.push(`Priority changed from ${priorityLabel(before.priority)} to ${priorityLabel(after.priority)}`);
+  if (before.type !== undefined && after.type !== undefined && before.type !== after.type) {
+    const label = (t: string) => TICKET_TYPES.find((x) => x.value === t)?.label ?? t;
+    lines.push(`Type changed from ${label(before.type)} to ${label(after.type)}`);
+  }
 
   if (before.projectId !== after.projectId) {
     const from = before.projectId ? lookups.projectNames.get(before.projectId) ?? "Unknown project" : "No project";
