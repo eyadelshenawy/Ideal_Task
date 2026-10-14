@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireSession, getUserAccess } from "@/lib/permissions";
 import { serializeTask, taskInclude } from "@/lib/serializers/task";
 import { getDescendantIds, syncAncestorChain } from "@/lib/taskHierarchy";
+import { logAudit } from "@/lib/audit";
 
 // Restore rights mirror delete rights: Super Admin for anything, or a
 // Project-Admin grant on the task's project. Any of its subtasks still
@@ -33,5 +34,10 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
   if (existing.parentId) {
     await syncAncestorChain(prisma, existing.parentId);
   }
+
+  const label = task.code ? `${task.code} — ${task.title}` : task.title;
+  const extra = descendantIds.length > 0 ? ` (+ ${descendantIds.length} subtask${descendantIds.length === 1 ? "" : "s"})` : "";
+  logAudit(session.user.id, `Restored task "${label}" from Trash${extra}`);
+
   return NextResponse.json(serializeTask(task));
 }

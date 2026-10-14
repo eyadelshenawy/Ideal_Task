@@ -67,11 +67,23 @@ model User {
   resetTokenHash    String?   @unique
   resetTokenExpires DateTime?
 
-  tasksAssigned Task[] @relation("TaskAssignees")
-  tasksCreated  Task[] @relation("CreatedTasks")
-  taskEvents    TaskEvent[]
-  notifications Notification[]
-  auditLogs     AuditLog[]
+  // Password expiry: when the current password was last set. Used to force a
+  // change after SecurityConfig.passwordExpiryDays.
+  passwordChangedAt DateTime?
+
+  // TOTP (two-factor): totpSecret is the base32 shared secret; totpEnabled
+  // guards whether the login flow asks for a code. Both are only set once the
+  // user has confirmed a code from their Authenticator app.
+  totpSecret  String?
+  totpEnabled Boolean @default(false)
+
+  trustedDevices TrustedDevice[]
+
+  tasksAssigned       Task[]         @relation("TaskAssignees")
+  tasksCreated        Task[]         @relation("CreatedTasks")
+  taskEvents          TaskEvent[]
+  notifications       Notification[]
+  auditLogs           AuditLog[]
   attachmentsUploaded Attachment[]
   timeEntries         TimeEntry[]
 
@@ -81,6 +93,36 @@ model User {
 
   pushSubscriptions PushSubscription[]
   holidaysCreated   Holiday[]
+}
+
+// A browser/device the user has verified with TOTP and asked us to trust
+// for the "remember me for 30 days" option. tokenHash is sha256 of the
+// cookie value we hand the browser, so the raw token never sits in the DB.
+model TrustedDevice {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  label     String?
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// Org-wide security policy singleton (id = "singleton"). Editable by a
+// Super Admin; readers fall back to the defaults here when the row doesn't
+// exist yet so a fresh install never breaks.
+model SecurityConfig {
+  id                        String   @id @default("singleton")
+  sessionIdleTimeoutMinutes Int      @default(15)
+  passwordExpiryDays        Int      @default(90)
+  passwordMinLength         Int      @default(8)
+  passwordRequireUppercase  Boolean  @default(true)
+  passwordRequireNumber     Boolean  @default(true)
+  passwordRequireSymbol     Boolean  @default(true)
+  updatedAt                 DateTime @updatedAt
 }
 
 // One row per browser/device a user has opted into Web Push on. A user can
@@ -110,14 +152,14 @@ model SlaConfig {
   id        String @id @default(cuid())
   projectId String @unique
 
-  criticalResponseHours    Int @default(4)
-  criticalResolutionDays   Int @default(2)
-  highResponseHours        Int @default(24)
-  highResolutionDays       Int @default(4)
-  mediumResponseHours      Int @default(48)
-  mediumResolutionDays     Int @default(7)
-  lowResponseHours         Int @default(72)
-  lowResolutionDays        Int @default(10)
+  criticalResponseHours  Int @default(4)
+  criticalResolutionDays Int @default(2)
+  highResponseHours      Int @default(24)
+  highResolutionDays     Int @default(4)
+  mediumResponseHours    Int @default(48)
+  mediumResolutionDays   Int @default(7)
+  lowResponseHours       Int @default(72)
+  lowResolutionDays      Int @default(10)
 
   // Tasks created before this date are excluded from SLA calculations
   // entirely — without this, importing/pre-existing backlog tasks that
@@ -136,14 +178,14 @@ model SlaConfig {
 // the Egyptian/Gulf pattern (Fri+Sat off) but the whole table is a
 // setting, not a constant — every consumer reads it live.
 model WorkWeekConfig {
-  id  String @id @default("singleton")
-  sun Boolean @default(true)
-  mon Boolean @default(true)
-  tue Boolean @default(true)
-  wed Boolean @default(true)
-  thu Boolean @default(true)
-  fri Boolean @default(false)
-  sat Boolean @default(false)
+  id        String   @id @default("singleton")
+  sun       Boolean  @default(true)
+  mon       Boolean  @default(true)
+  tue       Boolean  @default(true)
+  wed       Boolean  @default(true)
+  thu       Boolean  @default(true)
+  fri       Boolean  @default(false)
+  sat       Boolean  @default(false)
   updatedAt DateTime @updatedAt
 }
 
@@ -152,31 +194,31 @@ model WorkWeekConfig {
 // scheduling calculation. Named for the audit trail and for the tooltip
 // shown alongside any warning ("Start on 2026-06-15 (Eid al-Adha)").
 model Holiday {
-  id        String   @id @default(cuid())
-  name      String
-  date      DateTime @unique
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  name        String
+  date        DateTime @unique
+  createdAt   DateTime @default(now())
   createdById String?
-  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
   @@index([date])
 }
 
 model Project {
-  id        String    @id @default(cuid())
-  name      String
+  id          String    @id @default(cuid())
+  name        String
   // Short prefix used to auto-generate task codes for this project, e.g.
   // "APEX" -> "APEX-0001", "APEX-0002". taskCodeSeq is the running counter;
   // it advances on every task created for this project (import included),
   // but the resulting code is just a suggestion the task form pre-fills —
   // users can still edit it per task (e.g. "APEX-FI-0001" for a department).
-  code        String @unique
-  taskCodeSeq Int    @default(0)
-  createdAt DateTime  @default(now())
+  code        String    @unique
+  taskCodeSeq Int       @default(0)
+  createdAt   DateTime  @default(now())
   // Soft-delete: set when moved to Trash. Tasks referencing this project are
   // left untouched while it sits in Trash — only permanently unassigned (via
   // Task.projectId's onDelete: SetNull) if the project is purged for good.
-  deletedAt DateTime?
+  deletedAt   DateTime?
 
   // A long random token that, if set, makes /share/[shareToken] a public,
   // read-only status page for this project — no login required. Null means
@@ -307,7 +349,7 @@ model Task {
   isPrivate Boolean @default(false)
   // Free-text software/work module this task belongs to (e.g. "Billing",
   // "Auth"). Not required — purely informational, filled in when relevant.
-  module      String?
+  module    String?
 
   projectId String?
   project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
@@ -321,8 +363,8 @@ model Task {
   priority Priority @default(MEDIUM)
   status   Status   @default(TODO)
 
-  startDate DateTime?
-  dueDate   DateTime?
+  startDate    DateTime?
+  dueDate      DateTime?
   // Working-days duration between startDate and dueDate (inclusive of both),
   // skipping the org's non-working days and holiday dates. Kept as a stored
   // field so the picker can round-trip between (start, duration) and
@@ -330,7 +372,7 @@ model Task {
   // for legacy tasks with dates but no explicit duration. Auto-recomputed by
   // the API whenever startDate or dueDate change — see src/lib/scheduling.ts.
   durationDays Int?
-  progress  Int       @default(0)
+  progress     Int       @default(0)
 
   // When this task actually finished — auto-set to today whenever status
   // moves to DONE (and cleared if reopened), but editable by hand so a user
@@ -354,8 +396,8 @@ model Task {
   // Recurrence: when set, completing this task auto-creates the next
   // occurrence (same project/assignees/priority), due one interval later.
   // Null recurrenceFreq means "not a recurring task".
-  recurrenceFreq     RecurrenceFreq?
-  recurrenceEndDate  DateTime?
+  recurrenceFreq    RecurrenceFreq?
+  recurrenceEndDate DateTime?
 
   isMilestone Boolean @default(false)
 
@@ -390,10 +432,10 @@ model Task {
   // Soft-delete: set when moved to Trash instead of being deleted outright.
   deletedAt DateTime?
 
-  events TaskEvent[]
-  checklistItems ChecklistItem[]
-  attachments Attachment[]
-  timeEntries TimeEntry[]
+  events            TaskEvent[]
+  checklistItems    ChecklistItem[]
+  attachments       Attachment[]
+  timeEntries       TimeEntry[]
   customFieldValues TaskCustomFieldValue[]
 
   @@index([projectId])
@@ -511,10 +553,10 @@ model Attachment {
 // A single chronological entry on a task — either a user-written comment or
 // a system-generated activity line (status/assignee/project/date changes).
 model TaskEvent {
-  id     String        @id @default(cuid())
-  taskId String
-  task   Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  type   TaskEventType
+  id      String        @id @default(cuid())
+  taskId  String
+  task    Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  type    TaskEventType
   // Comment text (verbatim) or a human-readable activity description.
   message String
 

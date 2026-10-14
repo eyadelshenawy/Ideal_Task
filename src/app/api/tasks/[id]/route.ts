@@ -6,6 +6,7 @@ import { serializeTask, taskInclude } from "@/lib/serializers/task";
 import { dateStrToUTC } from "@/lib/serverDates";
 import { notifyAssignment } from "@/lib/notifications";
 import { logActivity, describeTaskChanges, loadNameLookups } from "@/lib/activity";
+import { logAudit } from "@/lib/audit";
 import { createNextOccurrence } from "@/lib/recurrence";
 import { resolveTags } from "@/lib/tags";
 import { codeMatchesProject } from "@/lib/taskCode";
@@ -307,7 +308,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   const { session, error } = await requireSession();
   if (error) return error;
 
-  const existing = await prisma.task.findUnique({ where: { id: params.id }, select: { projectId: true, parentId: true, isPrivate: true, createdById: true } });
+  const existing = await prisma.task.findUnique({ where: { id: params.id }, select: { code: true, title: true, projectId: true, parentId: true, isPrivate: true, createdById: true } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   if (existing.isPrivate) {
@@ -330,5 +331,10 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   if (existing.parentId) {
     await syncAncestorChain(prisma, existing.parentId);
   }
+
+  const label = existing.code ? `${existing.code} — ${existing.title}` : existing.title;
+  const extra = descendantIds.length > 0 ? ` (+ ${descendantIds.length} subtask${descendantIds.length === 1 ? "" : "s"})` : "";
+  logAudit(session.user.id, `Moved task "${label}" to Trash${extra}`);
+
   return NextResponse.json({ ok: true });
 }

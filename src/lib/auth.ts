@@ -4,6 +4,9 @@ import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 import { logAudit } from "./audit";
 import { checkRateLimit } from "./rateLimit";
+import { verifyTotpCode } from "./totp";
+import { isDeviceTrusted, TRUSTED_DEVICE_COOKIE } from "./trustedDevice";
+import { loadSecurityConfig, passwordExpired } from "./securityConfig";
 
 // Brute-force lockout: after this many wrong passwords in a row, the account
 // is locked for LOCKOUT_MINUTES. Resets to 0 on any successful login.
@@ -15,6 +18,20 @@ const LOCKOUT_MINUTES = 2;
 // though no single account crosses its own MAX_FAILED_ATTEMPTS.
 const LOGIN_IP_MAX = 20;
 const LOGIN_IP_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+
+// Thrown and caught in the authorize flow to tell the login page the password
+// was right but we still need a TOTP code before we hand out a session.
+export const MFA_REQUIRED_MESSAGE = "MFA_REQUIRED";
+
+function readTrustedDeviceCookie(headers: Record<string, string | undefined>): string | undefined {
+  const raw = headers["cookie"];
+  if (!raw) return undefined;
+  for (const chunk of raw.split(";")) {
+    const [k, ...v] = chunk.trim().split("=");
+    if (k === TRUSTED_DEVICE_COOKIE) return v.join("=");
+  }
+  return undefined;
+}
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -30,6 +47,7 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
+        totpCode: { label: "Authenticator code", type: "text" },
       },
       async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) return null;
@@ -68,6 +86,33 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
+        // Password is good; now the MFA gate (only if the user has set up TOTP).
+        if (user.totpEnabled && user.totpSecret) {
+          const trustedCookie = readTrustedDeviceCookie(headers);
+          const trusted = await isDeviceTrusted(user.id, trustedCookie);
+          if (!trusted) {
+            const code = (credentials.totpCode ?? "").trim();
+            if (!code) {
+              // Signal to the login UI: show the TOTP step, don't lock out.
+              throw new Error(MFA_REQUIRED_MESSAGE);
+            }
+            const codeOk = verifyTotpCode(user.totpSecret, code);
+            if (!codeOk) {
+              // Wrong codes share the password lockout counter, so a leaked
+              // password can't be paired with unlimited code guesses.
+              const attempts = user.failedLoginAttempts + 1;
+              const lockingOut = attempts >= MAX_FAILED_ATTEMPTS;
+              await prisma.user.update({
+                where: { id: user.id },
+                data: lockingOut
+                  ? { failedLoginAttempts: 0, lockedUntil: new Date(Date.now() + LOCKOUT_MINUTES * 60000) }
+                  : { failedLoginAttempts: attempts },
+              });
+              throw new Error("Invalid Authenticator code. Please try again.");
+            }
+          }
+        }
+
         if (user.failedLoginAttempts > 0 || user.lockedUntil) {
           await prisma.user.update({
             where: { id: user.id },
@@ -75,12 +120,21 @@ export const authOptions: NextAuthOptions = {
           });
         }
 
+        // Password-expiry check — don't block the sign-in itself; set the
+        // mustChangePassword flag so the middleware forces /change-password.
+        const cfg = await loadSecurityConfig();
+        const expired = passwordExpired(user.passwordChangedAt, cfg.passwordExpiryDays);
+        const mustChange = user.mustChangePassword || expired;
+        if (expired && !user.mustChangePassword) {
+          await prisma.user.update({ where: { id: user.id }, data: { mustChangePassword: true } });
+        }
+
         return {
           id: user.id,
           name: user.name,
           email: user.email,
           role: user.role,
-          mustChangePassword: user.mustChangePassword,
+          mustChangePassword: mustChange,
         };
       },
     }),
