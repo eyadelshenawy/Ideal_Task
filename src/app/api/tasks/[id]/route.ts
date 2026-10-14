@@ -8,6 +8,7 @@ import { notifyAssignment } from "@/lib/notifications";
 import { logActivity, describeTaskChanges, loadNameLookups } from "@/lib/activity";
 import { logAudit } from "@/lib/audit";
 import { checkCategoryPair } from "@/lib/categories";
+import { maybeSendSurvey } from "@/lib/csat";
 import { createNextOccurrence } from "@/lib/recurrence";
 import { resolveTags } from "@/lib/tags";
 import { codeMatchesProject } from "@/lib/taskCode";
@@ -71,6 +72,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       });
       if (nextStatus === "DONE" && existing.status !== "DONE" && task.recurrenceFreq) {
         createNextOccurrence(task).catch((err) => console.error("createNextOccurrence failed:", err));
+      }
+      if (nextStatus === "DONE" && existing.status !== "DONE") {
+        maybeSendSurvey(task.id).catch((err) => console.error("maybeSendSurvey failed:", err));
       }
       if (nextStatus !== existing.status && task.parentId) {
         await syncAncestorChain(prisma, task.parentId);
@@ -263,6 +267,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     if (nextStatus === "DONE" && existing.status !== "DONE" && task.recurrenceFreq) {
       createNextOccurrence(task).catch((err) => console.error("createNextOccurrence failed:", err));
+    }
+    if (nextStatus === "DONE" && existing.status !== "DONE") {
+      maybeSendSurvey(task.id).catch((err) => console.error("maybeSendSurvey failed:", err));
     }
 
     // Any change that affects the parent's rollup fires syncAncestorChain:

@@ -23,6 +23,14 @@ interface ReportsViewProps {
   onOpenTask: (taskId: string) => void;
 }
 
+interface CsatSummary {
+  sent: number;
+  responded: number;
+  average: number | null;
+  projects: { projectName: string; sent: number; responded: number; average: number | null }[];
+  recent: { taskId: string; code: string | null; title: string; rating: number; comment: string | null }[];
+}
+
 function isOverdue(task: Task, today: string): boolean {
   return !!task.dueDate && task.dueDate < today && task.status !== "DONE";
 }
@@ -40,6 +48,7 @@ export default function ReportsView({ tasks, projects, team, isSuperAdmin, curre
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
   const { data: firstCommentAt } = useSWR<Record<string, string>>("/api/reports/sla", fetcher);
   const { data: slaAll } = useSWR<SlaAll>("/api/settings/sla/all", fetcher);
+  const { data: csat } = useSWR<CsatSummary>("/api/reports/csat", fetcher);
 
   const sla = useMemo(() => {
     if (!firstCommentAt || !slaAll) return null;
@@ -283,6 +292,50 @@ export default function ReportsView({ tasks, projects, team, isSuperAdmin, curre
                   <Chip small style={{ background: "#EEF2F0", color: "#5B6B64" }}>{PRIORITIES.find((p) => p.id === task.priority)?.label}</Chip>
                   {response === "breached" && <Chip small style={{ background: "#FBE7E5", color: "#9A3530" }}>Response overdue</Chip>}
                   {resolution === "breached" && <Chip small style={{ background: "#FBE7E5", color: "#9A3530" }}>Resolution overdue</Chip>}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      <div>
+        <div className="text-xs font-bold text-brand-sub uppercase tracking-wide mb-2">Customer satisfaction</div>
+        {!csat ? (
+          <div className="text-sm text-brand-sub py-6 text-center">Loading…</div>
+        ) : csat.sent === 0 ? (
+          <div className="text-sm text-brand-sub py-6 text-center">
+            No surveys sent yet. One is emailed to the customer when a customer ticket in an SLA-tracked project is marked Done.
+          </div>
+        ) : (
+          <>
+            <div className="flex gap-2 flex-wrap mb-2">
+              <StatCard label="Average rating" value={csat.average === null ? "—" : `${csat.average} / 5`} color="#0A5A46" />
+              <StatCard label="Responses" value={`${csat.responded} of ${csat.sent}`} color="#3D6EA6" />
+            </div>
+            {csat.projects.length > 1 && (
+              <div className="flex flex-col gap-1 mb-2">
+                {csat.projects.map((p) => (
+                  <div key={p.projectName} className="flex items-center justify-between text-[12px] bg-white border border-brand-border rounded-lg px-3 py-1.5">
+                    <span className="text-brand-text">{p.projectName}</span>
+                    <span className="text-brand-sub">{p.average === null ? "No answers yet" : `${p.average} / 5`} · {p.responded}/{p.sent}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex flex-col gap-1.5">
+              {csat.recent.map((r) => (
+                <button
+                  key={r.taskId}
+                  onClick={() => onOpenTask(r.taskId)}
+                  className="text-left bg-white border border-brand-border rounded-[10px] px-3 py-2 hover:bg-brand-bg"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-[12px] font-semibold" style={{ color: "#0A5A46" }}>{"★".repeat(r.rating)}<span style={{ color: "#C9D1CD" }}>{"★".repeat(5 - r.rating)}</span></span>
+                    {r.code && <span className="font-mono text-[11px] text-brand-sub">{r.code}</span>}
+                    <span className="text-[12.5px] text-brand-text">{r.title}</span>
+                  </div>
+                  {r.comment && <div className="text-[11.5px] text-brand-sub mt-0.5">&ldquo;{r.comment}&rdquo;</div>}
                 </button>
               ))}
             </div>

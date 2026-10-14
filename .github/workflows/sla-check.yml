@@ -1,0 +1,19 @@
+name: SLA deadline check
+
+on:
+  schedule:
+    # Every 15 minutes, Sun-Thu, 05:00-15:45 UTC — covers Cairo working
+    # hours in both summer (UTC+3) and winter (UTC+2). The app's own
+    # *RiskNotifiedAt stamps stop a warning being sent twice.
+    - cron: "*/15 5-15 * * 0-4"
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call the SLA check endpoint
+        run: |
+          curl --fail --max-time 120 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/sla-check"

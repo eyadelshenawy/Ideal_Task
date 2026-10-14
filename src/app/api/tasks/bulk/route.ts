@@ -6,6 +6,7 @@ import { notifyAssignment } from "@/lib/notifications";
 import { logActivity, describeTaskChanges, loadNameLookups } from "@/lib/activity";
 import { checkCategoryPair } from "@/lib/categories";
 import { createNextOccurrence } from "@/lib/recurrence";
+import { maybeSendSurvey } from "@/lib/csat";
 import { getDescendantIds, syncAncestorChain } from "@/lib/taskHierarchy";
 import { resolveTags } from "@/lib/tags";
 import { dateStrToUTC } from "@/lib/serverDates";
@@ -158,6 +159,9 @@ export async function PATCH(req: NextRequest) {
 
     if (status === "DONE" && task.status !== "DONE" && updatedTask.recurrenceFreq) {
       createNextOccurrence(updatedTask).catch((err) => console.error("createNextOccurrence failed:", err));
+    }
+    if (status === "DONE" && task.status !== "DONE") {
+      maybeSendSurvey(updatedTask.id).catch((err) => console.error("maybeSendSurvey failed:", err));
     }
 
     // Roll up to the parent whenever status OR any date-related field
