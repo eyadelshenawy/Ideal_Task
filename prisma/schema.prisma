@@ -473,6 +473,7 @@ model Task {
   attachments       Attachment[]
   timeEntries       TimeEntry[]
   customFieldValues TaskCustomFieldValue[]
+  survey            SatisfactionSurvey?
 
   @@index([projectId])
   @@index([status])
@@ -480,6 +481,23 @@ model Task {
   @@index([parentId])
   @@index([type])
   @@index([categoryId])
+}
+
+// Customer satisfaction survey: one per ticket, emailed to the customer
+// contact the first time the ticket is marked Done. `token` is the random
+// key in the rating link (never a database id), same idea as trackingToken.
+model SatisfactionSurvey {
+  id          String    @id @default(cuid())
+  taskId      String    @unique
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  token       String    @unique
+  email       String
+  sentAt      DateTime  @default(now())
+  rating      Int?
+  comment     String?
+  respondedAt DateTime?
+
+  @@index([respondedAt])
 }
 
 // Org-wide ticket categories, managed by a Super Admin. A row with a
