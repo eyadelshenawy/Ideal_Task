@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
-import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks, BarChart3, FileDown, Bookmark, X, AlertTriangle, ScrollText, BookOpen, ChevronDown, ChevronRight, Lock, ClipboardList, MoreHorizontal, Sparkles, Calendar as CalendarIcon, SlidersHorizontal, Shield, ShieldCheck } from "lucide-react";
+import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks, BarChart3, FileDown, Bookmark, X, AlertTriangle, ScrollText, BookOpen, ChevronDown, ChevronRight, Lock, ClipboardList, MoreHorizontal, Sparkles, Calendar as CalendarIcon, SlidersHorizontal, Shield, ShieldCheck, FolderTree } from "lucide-react";
 import useSWR from "swr";
-import type { Task, Project, TeamMember, Contact, Status, AssigneeDisplay } from "@/types/models";
+import type { Task, Project, TeamMember, Contact, Status, AssigneeDisplay, Category } from "@/types/models";
 import type { ImportPreview } from "@/types/import";
 import {
   colorForIndex, STATUSES, PRIORITIES, todayStr, sortTasks, toTreeRows, splitModules, isDueThisWeek,
@@ -31,6 +31,9 @@ import AuditLogModal from "./AuditLogModal";
 import MfaSettingsModal from "./MfaSettingsModal";
 import SecurityPolicyModal from "./SecurityPolicyModal";
 import IdleTimeoutWatcher from "./IdleTimeoutWatcher";
+import CategoriesModal from "./CategoriesModal";
+import { computeTaskSla, type SlaAll, type TaskSla } from "@/lib/taskSla";
+import { TICKET_TYPES } from "@/lib/ticketMeta";
 import ChecklistTemplatesModal from "./ChecklistTemplatesModal";
 import WorkCalendarModal from "./WorkCalendarModal";
 import LogoutButton from "./LogoutButton";
@@ -62,6 +65,10 @@ interface Filters {
   assigneeId: string;
   priority: string;
   projectId: string;
+  /** "all" or a TicketType. */
+  type: string;
+  /** "all" or a top-level category id. */
+  categoryId: string;
   /** Empty = all modules. A task matches if ANY of its own (comma-separated) modules is in this list. */
   moduleIds: string[];
   overdueOnly: boolean;
@@ -70,7 +77,7 @@ interface Filters {
 }
 
 const defaultFilters: Filters = {
-  search: "", assigneeId: "all", priority: "all", projectId: "all", moduleIds: [],
+  search: "", assigneeId: "all", priority: "all", projectId: "all", type: "all", categoryId: "all", moduleIds: [],
   overdueOnly: false, milestonesOnly: false, dueThisWeek: false,
 };
 
@@ -81,6 +88,15 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   const { data: team, mutate: mutateTeam } = useSWR<TeamMember[]>("/api/team", fetcher);
   const { data: projects, mutate: mutateProjects } = useSWR<Project[]>("/api/projects", fetcher);
   const { data: contacts, mutate: mutateContacts } = useSWR<Contact[]>("/api/contacts", fetcher);
+  const { data: categories, mutate: mutateCategories } = useSWR<Category[]>("/api/categories", fetcher);
+  const { data: slaAll } = useSWR<SlaAll>("/api/settings/sla/all", fetcher);
+  const { data: firstCommentAt } = useSWR<Record<string, string>>("/api/reports/sla", fetcher, { refreshInterval: 120000 });
+  // Re-render SLA countdowns once a minute.
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowTick(Date.now()), 60000);
+    return () => clearInterval(id);
+  }, []);
 
   // List is the default landing view — it's the one with Group by, pagination,
   // and Compact view, so it scales to a large project better than Board,
@@ -103,6 +119,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   const [auditLogOpen, setAuditLogOpen] = useState(false);
   const [mfaModalOpen, setMfaModalOpen] = useState(false);
   const [securityPolicyOpen, setSecurityPolicyOpen] = useState(false);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [checklistTemplatesOpen, setChecklistTemplatesOpen] = useState(false);
   const [workCalendarOpen, setWorkCalendarOpen] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
@@ -187,6 +204,28 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
 
   const colorMap = Object.fromEntries(teamList.map((m, i) => [m.id, colorForIndex(i)]));
 
+  const categoryList = categories ?? [];
+  function categoryLabel(task: Task): string | null {
+    if (!task.categoryId) return null;
+    const cat = categoryList.find((c) => c.id === task.categoryId);
+    if (!cat) return null;
+    const sub = task.subcategoryId ? categoryList.find((c) => c.id === task.subcategoryId) : undefined;
+    return sub ? `${cat.name} › ${sub.name}` : cat.name;
+  }
+
+  const slaByTaskId = useMemo(() => {
+    const map = new Map<string, TaskSla>();
+    if (!slaAll || !firstCommentAt) return map;
+    const now = new Date(nowTick);
+    const projectById = new Map(projectList.map((p) => [p.id, p]));
+    for (const t of taskList) {
+      if (!t.projectId) continue;
+      const r = computeTaskSla(t, projectById.get(t.projectId), slaAll, firstCommentAt[t.id] ?? null, now);
+      if (r) map.set(t.id, r);
+    }
+    return map;
+  }, [taskList, projectList, slaAll, firstCommentAt, nowTick]);
+
   function canManage(task: Task): boolean {
     return isSuperAdmin || (task.projectId !== null && administeredProjectIds.includes(task.projectId));
   }
@@ -217,6 +256,8 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
     if (filters.assigneeId !== "all" && !t.assigneeIds.includes(filters.assigneeId)) return false;
     if (filters.priority !== "all" && t.priority !== filters.priority) return false;
     if (filters.projectId !== "all" && t.projectId !== filters.projectId) return false;
+    if (filters.type !== "all" && t.type !== filters.type) return false;
+    if (filters.categoryId !== "all" && t.categoryId !== filters.categoryId) return false;
     if (filters.moduleIds.length > 0 && !splitModules(t.module).some((m) => filters.moduleIds.includes(m))) return false;
     if (filters.search) {
       const q = filters.search.trim().toLowerCase();
@@ -355,13 +396,20 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
         return;
       }
     }
+    const ticketFields = {
+      type: draft.type,
+      impact: draft.impact || null,
+      urgency: draft.urgency || null,
+      categoryId: draft.categoryId || null,
+      subcategoryId: draft.subcategoryId || null,
+    };
     try {
       if (draft.id) {
         const payload = fullEdit
           ? {
               code: draft.code, title: draft.title, description: draft.description, module: draft.module,
               projectId: draft.projectId || null, assignees: draft.assignees,
-              priority: draft.priority, status: draft.status,
+              priority: draft.priority, status: draft.status, ...ticketFields,
               startDate: draft.startDate || null, dueDate: draft.dueDate || null,
               durationDays: draft.durationDays.trim() ? Number(draft.durationDays) : null,
               // Only sent when the task is actually Done and the field holds a
@@ -378,7 +426,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
         await api.createTask({
           code: draft.code, title: draft.title, description: draft.description, module: draft.module,
           projectId: draft.projectId || null, assignees: draft.assignees,
-          priority: draft.priority, status: draft.status,
+          priority: draft.priority, status: draft.status, ...ticketFields,
           startDate: draft.startDate || null, dueDate: draft.dueDate || null,
           ...(draft.status === "DONE" && draft.completedAt ? { completedAt: draft.completedAt } : {}),
           progress: draft.progress, isMilestone: draft.isMilestone, dependsOn: draft.dependsOn,
@@ -462,9 +510,9 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
 
   function downloadTemplate() {
     const sampleRows = [
-      { Code: "IDT-001", Title: "Kickoff meeting", Description: "Align on scope and timeline", Module: "", Tags: "onboarding", Comment: "", Project: "Fayendra", Assignee: "Eyad Badran", Priority: "High", Status: "To Do", "Start Date": "2026-08-02", Duration: 3, "Due Date": "", Progress: 0, Milestone: "No", "Depends On": "", "Parent Code": "" },
-      { Code: "IDT-002", Title: "Go-live", Description: "", Module: "Billing", Tags: "", Comment: "", Project: "Fayendra", Assignee: "", Priority: "High", Status: "To Do", "Start Date": "", Duration: "", "Due Date": "2026-09-15", Progress: 0, Milestone: "Yes", "Depends On": "IDT-001", "Parent Code": "" },
-      { Code: "", Title: "Draft launch announcement", Description: "", Module: "", Tags: "", Comment: "", Project: "Fayendra", Assignee: "", Priority: "Medium", Status: "To Do", "Start Date": "2026-09-06", Duration: 5, "Due Date": "", Progress: 0, Milestone: "No", "Depends On": "", "Parent Code": "IDT-002" },
+      { Code: "IDT-001", Title: "Kickoff meeting", Description: "Align on scope and timeline", Module: "", Tags: "onboarding", Comment: "", Project: "Fayendra", Assignee: "Eyad Badran", Type: "Task", Priority: "High", Status: "To Do", "Start Date": "2026-08-02", Duration: 3, "Due Date": "", Progress: 0, Milestone: "No", "Depends On": "", "Parent Code": "" },
+      { Code: "IDT-002", Title: "Go-live", Description: "", Module: "Billing", Tags: "", Comment: "", Project: "Fayendra", Assignee: "", Type: "Task", Priority: "High", Status: "To Do", "Start Date": "", Duration: "", "Due Date": "2026-09-15", Progress: 0, Milestone: "Yes", "Depends On": "IDT-001", "Parent Code": "" },
+      { Code: "", Title: "Draft launch announcement", Description: "", Module: "", Tags: "", Comment: "", Project: "Fayendra", Assignee: "", Type: "Service Request", Priority: "Medium", Status: "To Do", "Start Date": "2026-09-06", Duration: 5, "Due Date": "", Progress: 0, Milestone: "No", "Depends On": "", "Parent Code": "IDT-002" },
     ];
     const ws = XLSX.utils.json_to_sheet(sampleRows);
     const wbOut = XLSX.utils.book_new();
@@ -496,7 +544,11 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
         Tags: t.tags.join(", "),
         Project: projectList.find((p) => p.id === t.projectId)?.name ?? "",
         Assignees: getAssigneeDisplays(t).map((a) => a.name).join(", "),
+        Type: TICKET_TYPES.find((x) => x.value === t.type)?.label ?? t.type,
+        Impact: t.impact ? t.impact.charAt(0) + t.impact.slice(1).toLowerCase() : "",
+        Urgency: t.urgency ? t.urgency.charAt(0) + t.urgency.slice(1).toLowerCase() : "",
         Priority: PRIORITIES.find((p) => p.id === t.priority)?.label ?? t.priority,
+        Category: categoryLabel(t) ?? "",
         Status: STATUSES.find((s) => s.id === t.status)?.label ?? t.status,
         "Start Date": t.startDate ?? "",
         Duration: t.durationDays ?? "",
@@ -639,6 +691,8 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
         totalChildCount={totalChildCount}
         density={density}
         dependencyWarning={describeDependencyWarning(task.id, taskList, dependencyWarnings)}
+        sla={slaByTaskId.get(task.id) ?? null}
+        categoryName={categoryLabel(task)}
       />
     );
   }
@@ -856,6 +910,14 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
                     )}
                     {isSuperAdmin && (
                       <button
+                        onClick={() => { setCategoriesOpen(true); setAdminMenuOpen(false); }}
+                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
+                      >
+                        <FolderTree size={14} /> Ticket Categories
+                      </button>
+                    )}
+                    {isSuperAdmin && (
+                      <button
                         onClick={() => { setSecurityPolicyOpen(true); setAdminMenuOpen(false); }}
                         className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
                       >
@@ -1014,6 +1076,24 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             <option value="all">All Projects</option>
             {projectList.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
+          <select
+            value={filters.type}
+            onChange={(e) => setFilters((f) => ({ ...f, type: e.target.value }))}
+            className="rounded-lg px-2 py-1.5 text-xs bg-white border border-brand-border"
+          >
+            <option value="all">All Types</option>
+            {TICKET_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
+          {categoryList.some((c) => !c.parentId) && (
+            <select
+              value={filters.categoryId}
+              onChange={(e) => setFilters((f) => ({ ...f, categoryId: e.target.value }))}
+              className="rounded-lg px-2 py-1.5 text-xs bg-white border border-brand-border"
+            >
+              <option value="all">All Categories</option>
+              {categoryList.filter((c) => !c.parentId).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          )}
           <div className="relative">
             <button
               onClick={() => setModuleFilterOpen((v) => !v)}
@@ -1268,6 +1348,8 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
                         draggable={!selectMode}
                         onDragStart={setDraggedTaskId}
                         dependencyWarning={describeDependencyWarning(task.id, taskList, dependencyWarnings)}
+                        sla={slaByTaskId.get(task.id) ?? null}
+                        categoryName={categoryLabel(task)}
                       />
                     ))}
                   </div>
@@ -1313,6 +1395,8 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
           onCreateContact={createContact}
           onDuplicate={editingCanFullyEdit ? duplicateTask : undefined}
           onAddSubtask={addSubtask}
+          categories={categoryList}
+          sla={draft.id ? slaByTaskId.get(draft.id) ?? null : null}
         />
       )}
 
@@ -1351,6 +1435,13 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
         />
       )}
       {securityPolicyOpen && <SecurityPolicyModal onClose={() => setSecurityPolicyOpen(false)} />}
+      {categoriesOpen && (
+        <CategoriesModal
+          categories={categoryList}
+          onChanged={() => { mutateCategories(); mutateTasks(); }}
+          onClose={() => setCategoriesOpen(false)}
+        />
+      )}
 
       {whatsNewOpen && <WhatsNewModal onClose={() => setWhatsNewOpen(false)} />}
 

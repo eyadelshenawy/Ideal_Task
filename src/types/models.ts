@@ -2,6 +2,16 @@ export type Role = "SUPER_ADMIN" | "MEMBER";
 export type Priority = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
 export type Status = "TODO" | "READY" | "INPROGRESS" | "INTERNAL_TEST" | "CUSTOMER_TEST" | "DONE";
 export type RecurrenceFreq = "DAILY" | "WEEKLY" | "MONTHLY";
+export type TicketType = "TASK" | "INCIDENT" | "SERVICE_REQUEST" | "CHANGE_REQUEST" | "PROBLEM";
+export type MatrixLevel = "HIGH" | "MEDIUM" | "LOW";
+
+/** Org-wide ticket category; parentId set means it's a subcategory. */
+export interface Category {
+  id: string;
+  name: string;
+  parentId: string | null;
+  sortOrder: number;
+}
 
 export interface TeamMember {
   id: string;
@@ -24,6 +34,8 @@ export interface Project {
   intakeToken: string | null;
   /** Off by default — only support/ticket-style projects should count toward SLA percentages. */
   slaTrackingEnabled: boolean;
+  /** SLA clock runs only in working hours (true) or 24/7 (false). */
+  slaBusinessHours: boolean;
   /** True means this project is a template kept for cloning; hidden from the main dashboard and its task lists. */
   isTemplate: boolean;
   /**
@@ -44,6 +56,11 @@ export interface WorkWeekConfig {
   thu: boolean;
   fri: boolean;
   sat: boolean;
+  /** Working hours as minutes from local midnight. */
+  workStartMinutes: number;
+  workEndMinutes: number;
+  /** IANA time zone the working hours are expressed in. */
+  timeZone: string;
 }
 
 /** An admin-managed calendar day that counts as non-working regardless of weekday. */
@@ -86,6 +103,11 @@ export interface Task {
   contactAssigneeIds: string[];
   priority: Priority;
   status: Status;
+  type: TicketType;
+  impact: MatrixLevel | null;
+  urgency: MatrixLevel | null;
+  categoryId: string | null;
+  subcategoryId: string | null;
   startDate: string | null; // "YYYY-MM-DD"
   dueDate: string | null; // "YYYY-MM-DD"
   /** Working-days between start and due (inclusive), skipping the org's weekends + holidays. Auto-kept in sync with dates. */

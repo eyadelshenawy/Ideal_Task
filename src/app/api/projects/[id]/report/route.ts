@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireProjectAccess } from "@/lib/permissions";
 import { responseSlaState, resolutionSlaState } from "@/lib/sla";
-import { loadSlaConfig, loadDefaultSlaConfig } from "@/lib/slaConfig";
+import { loadSlaConfig, loadDefaultSlaConfig, loadBusinessCalendar, clockFor } from "@/lib/slaConfig";
 import { dateStrToUTC } from "@/lib/serverDates";
 
 // A one-page, print-ready snapshot of a project for sending to a client —
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   const project = await prisma.project.findUnique({
     where: { id: params.id },
-    select: { id: true, name: true, code: true, deletedAt: true, slaTrackingEnabled: true },
+    select: { id: true, name: true, code: true, deletedAt: true, slaTrackingEnabled: true, slaBusinessHours: true },
   });
   if (!project || project.deletedAt) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -63,6 +63,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   if (project.slaTrackingEnabled) {
     const config = (await loadSlaConfig(project.id)) ?? (await loadDefaultSlaConfig());
+    const clock = clockFor(project.slaBusinessHours, await loadBusinessCalendar());
     const inScope = config.cutoffDate
       ? tasks.filter((t) => t.createdAt.toISOString().slice(0, 10) >= config.cutoffDate!)
       : tasks;
@@ -83,8 +84,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const resolution = { ...tally };
     for (const t of inScope) {
       const createdAtIso = t.createdAt.toISOString();
-      response[responseSlaState(t.priority, createdAtIso, firstCommentAt.get(t.id) ?? null, now, config.targets)]++;
-      resolution[resolutionSlaState(t.priority, createdAtIso, t.completedAt ? t.completedAt.toISOString() : null, now, config.targets)]++;
+      response[responseSlaState(t.priority, createdAtIso, firstCommentAt.get(t.id) ?? null, now, config.targets, clock)]++;
+      resolution[resolutionSlaState(t.priority, createdAtIso, t.completedAt ? t.completedAt.toISOString() : null, now, config.targets, clock)]++;
     }
     sla = { response, resolution };
   }

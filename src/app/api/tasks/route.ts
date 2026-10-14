@@ -12,6 +12,7 @@ import { visibleTasksWhere } from "@/lib/taskVisibility";
 import { codeMatchesProject } from "@/lib/taskCode";
 import { codeMatchesParent, syncAncestorChain } from "@/lib/taskHierarchy";
 import { loadSchedulingCalendar, resolveTaskDates } from "@/lib/scheduling";
+import { checkCategoryPair } from "@/lib/categories";
 
 export async function GET() {
   const { session, error } = await requireSession();
@@ -78,6 +79,9 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  const categoryError = await checkCategoryPair(data.categoryId, data.subcategoryId);
+  if (categoryError) return NextResponse.json({ error: categoryError }, { status: 400 });
+
   const tags = await resolveTags(data.tags);
 
   // Reconcile Start/Due/Duration at creation the same way an edit does —
@@ -103,6 +107,11 @@ export async function POST(req: NextRequest) {
         tags: { connect: tags.map((t) => ({ id: t.id })) },
         priority: data.priority,
         status: data.status,
+        type: data.type,
+        impact: data.impact,
+        urgency: data.urgency,
+        categoryId: data.categoryId,
+        subcategoryId: data.subcategoryId,
         startDate: dateStrToUTC(resolvedDates.startDate),
         dueDate: dateStrToUTC(resolvedDates.dueDate),
         durationDays: resolvedDates.durationDays,

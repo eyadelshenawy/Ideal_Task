@@ -17,6 +17,9 @@ type AssigneeEntry = z.infer<typeof assigneeEntrySchema>;
 // Full task shape — shared fields for both create (strict, below) and
 // full-edit (as a lenient .partial(), so editing an older task that predates
 // a mandatory-field rule doesn't get blocked).
+export const ticketTypeEnum = z.enum(["TASK", "INCIDENT", "SERVICE_REQUEST", "CHANGE_REQUEST", "PROBLEM"]);
+export const matrixLevelEnum = z.enum(["HIGH", "MEDIUM", "LOW"]);
+
 const taskFields = z.object({
   code: z.string().trim().default(""),
   title: z.string().trim().min(1, "Title is required"),
@@ -26,6 +29,11 @@ const taskFields = z.object({
   assignees: assigneesSchema.default([]),
   priority: z.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW"]).default("MEDIUM"),
   status: z.enum(["TODO", "READY", "INPROGRESS", "INTERNAL_TEST", "CUSTOMER_TEST", "DONE"]).default("TODO"),
+  type: ticketTypeEnum.default("TASK"),
+  impact: matrixLevelEnum.nullable().default(null),
+  urgency: matrixLevelEnum.nullable().default(null),
+  categoryId: z.string().nullable().default(null),
+  subcategoryId: z.string().nullable().default(null),
   startDate: dateOnly.default(null),
   dueDate: dateOnly.default(null),
   durationDays: z.number().int().min(1).nullable().default(null),
@@ -97,6 +105,8 @@ export const taskBulkUpdateSchema = z.object({
   assignees: assigneesSchema.optional(),
   projectId: z.string().nullable().optional(),
   priority: z.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW"]).optional(),
+  type: ticketTypeEnum.optional(),
+  categoryId: z.string().nullable().optional(),
   // `null` explicitly clears the field; omit to leave untouched.
   startDate: dateOnly.optional(),
   dueDate: dateOnly.optional(),

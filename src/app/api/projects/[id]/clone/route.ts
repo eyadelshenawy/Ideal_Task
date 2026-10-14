@@ -97,7 +97,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   try {
     const newProject = await prisma.project.create({
-      data: { name: parsed.data.name, code: parsed.data.code, slaTrackingEnabled: sourceProject.slaTrackingEnabled },
+      data: { name: parsed.data.name, code: parsed.data.code, slaTrackingEnabled: sourceProject.slaTrackingEnabled, slaBusinessHours: sourceProject.slaBusinessHours },
     });
 
     // Carry the source project's per-project SLA overrides onto the new
@@ -164,6 +164,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           projectId: newProject.id,
           parentId: newParentId,
           priority: t.priority,
+          type: t.type,
+          impact: t.impact,
+          urgency: t.urgency,
+          categoryId: t.categoryId,
+          subcategoryId: t.subcategoryId,
           status: "TODO",
           progress: 0,
           startDate: (() => {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { priorityFromMatrix } from "@/lib/ticketMeta";
 import { nextTaskCode } from "@/lib/taskCode";
 import { logActivity } from "@/lib/activity";
 import { notify } from "@/lib/inAppNotify";
@@ -29,7 +30,12 @@ const submitSchema = z.object({
   description: z.string().trim().min(1).max(2000),
   contactName: z.string().trim().min(1).max(120),
   contactEmail: z.string().trim().email().max(200),
+  // Older cached copies of the form still send priority directly; newer ones
+  // send impact + urgency and the priority comes from the matrix.
   priority: z.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW"]).default("MEDIUM"),
+  type: z.enum(["INCIDENT", "SERVICE_REQUEST"]).default("SERVICE_REQUEST"),
+  impact: z.enum(["HIGH", "MEDIUM", "LOW"]).optional(),
+  urgency: z.enum(["HIGH", "MEDIUM", "LOW"]).optional(),
   // Honeypot — a real visitor never sees or fills this field. Deliberately
   // unconstrained (no max(0)) so a bot that fills it still passes schema
   // validation and reaches the check below, which fakes a success response
@@ -49,6 +55,9 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     contactName: form.get("contactName"),
     contactEmail: form.get("contactEmail"),
     priority: form.get("priority") || undefined,
+    type: form.get("type") || undefined,
+    impact: form.get("impact") || undefined,
+    urgency: form.get("urgency") || undefined,
     website: form.get("website") || undefined,
   });
   if (!parsed.success) {
@@ -81,7 +90,8 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     return NextResponse.json({ error: "This link is no longer valid" }, { status: 404 });
   }
 
-  const { title, description, contactName, contactEmail, priority } = parsed.data;
+  const { title, description, contactName, contactEmail, type, impact, urgency } = parsed.data;
+  const priority = priorityFromMatrix(impact ?? null, urgency ?? null) ?? parsed.data.priority;
 
   // Scoped to this project — the same name submitting a ticket to a
   // different project becomes a separate Contact, matching the rule that a
@@ -105,6 +115,9 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
       projectId: project.id,
       status: "TODO",
       priority,
+      type,
+      impact: impact ?? null,
+      urgency: urgency ?? null,
       contactAssignees: { connect: [{ id: contact.id }] },
       trackingToken,
     },

@@ -317,6 +317,15 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
     onChanged(); mutateAll();
   }
 
+  async function toggleSlaBusinessHours(id: string, enabled: boolean) {
+    await fetch(`/api/projects/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slaBusinessHours: enabled }),
+    });
+    onChanged(); mutateAll();
+  }
+
   async function toggleTemplate(id: string, isTemplate: boolean) {
     await fetch(`/api/projects/${id}`, {
       method: "PATCH",
@@ -514,6 +523,16 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
                     />
                     Track SLA (support/ticket projects only)
                   </label>
+                  {p.slaTrackingEnabled && (
+                    <label className="flex items-center gap-1 text-[11px] text-brand-sub" title="Off = the SLA clock runs 24/7. On = it only runs during the working hours in Work Calendar.">
+                      <input
+                        type="checkbox"
+                        checked={p.slaBusinessHours}
+                        onChange={(e) => toggleSlaBusinessHours(p.id, e.target.checked)}
+                      />
+                      Working hours only
+                    </label>
+                  )}
                   {p.slaTrackingEnabled && (
                     <button
                       onClick={() => setSlaOpenId(slaOpenId === p.id ? null : p.id)}

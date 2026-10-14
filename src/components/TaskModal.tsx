@@ -2,8 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
-import type { Task, Project, TeamMember, Contact, Priority, Status, RecurrenceFreq } from "@/types/models";
+import type { Task, Project, TeamMember, Contact, Priority, Status, RecurrenceFreq, TicketType, MatrixLevel, Category } from "@/types/models";
 import { PRIORITIES, STATUSES, descendantIds, splitModules } from "@/lib/taskHelpers";
+import { TICKET_TYPES, MATRIX_LEVELS, priorityFromMatrix } from "@/lib/ticketMeta";
+import type { TaskSla } from "@/lib/taskSla";
+import SlaStatusPanel from "./SlaStatusPanel";
 import TaskActivityPanel from "./TaskActivityPanel";
 import TaskChecklistPanel from "./TaskChecklistPanel";
 import TaskAttachmentsPanel from "./TaskAttachmentsPanel";
@@ -22,6 +25,11 @@ export interface TaskDraft {
   assignees: AssigneeEntry[];
   priority: Priority;
   status: Status;
+  type: TicketType;
+  impact: MatrixLevel | "";
+  urgency: MatrixLevel | "";
+  categoryId: string;
+  subcategoryId: string;
   startDate: string;
   dueDate: string;
   completedAt: string;
@@ -38,7 +46,8 @@ export interface TaskDraft {
 export function blankDraft(): TaskDraft {
   return {
     code: "", title: "", description: "", module: "", projectId: "", assignees: [],
-    priority: "MEDIUM", status: "TODO", startDate: "", dueDate: "", completedAt: "",
+    priority: "MEDIUM", status: "TODO", type: "TASK", impact: "", urgency: "", categoryId: "", subcategoryId: "",
+    startDate: "", dueDate: "", completedAt: "",
     progress: 0, isMilestone: false, dependsOn: [],
     recurrenceFreq: "", recurrenceEndDate: "", tags: [], parentId: "", durationDays: "",
   };
@@ -58,6 +67,11 @@ export function draftFromTask(task: Task): TaskDraft {
     ],
     priority: task.priority,
     status: task.status,
+    type: task.type,
+    impact: task.impact ?? "",
+    urgency: task.urgency ?? "",
+    categoryId: task.categoryId ?? "",
+    subcategoryId: task.subcategoryId ?? "",
     startDate: task.startDate ?? "",
     dueDate: task.dueDate ?? "",
     completedAt: task.completedAt ?? "",
@@ -90,11 +104,27 @@ interface TaskModalProps {
   onCreateContact: (name: string, projectId: string | null) => Promise<Contact | null>;
   onDuplicate?: (taskId: string, projectId?: string) => void;
   onAddSubtask?: (parent: Task) => void;
+  categories: Category[];
+  /** SLA status of the task being edited; null/undefined when it isn't SLA-tracked. */
+  sla?: TaskSla | null;
 }
 
 export default function TaskModal({
   draft, setDraft, onClose, onSave, error, team, projects, contacts, allTasks, canFullyEdit, isSuperAdmin, currentUserId, onCreateContact, onDuplicate, onAddSubtask,
+  categories, sla,
 }: TaskModalProps) {
+  const topCategories = categories.filter((c) => !c.parentId);
+  const subcategories = categories.filter((c) => c.parentId && c.parentId === draft.categoryId);
+
+  // Picking both Impact and Urgency fills Priority from the matrix; the
+  // Priority dropdown stays editable for a manual override.
+  function setMatrix(patch: { impact?: MatrixLevel | ""; urgency?: MatrixLevel | "" }) {
+    const impact = patch.impact !== undefined ? patch.impact : draft.impact;
+    const urgency = patch.urgency !== undefined ? patch.urgency : draft.urgency;
+    const fromMatrix = priorityFromMatrix(impact || null, urgency || null);
+    setDraft({ ...draft, impact, urgency, ...(fromMatrix ? { priority: fromMatrix } : {}) });
+  }
+  const matrixPriority = priorityFromMatrix(draft.impact || null, draft.urgency || null);
   const [duplicateProjectId, setDuplicateProjectId] = useState("");
   const [addingContact, setAddingContact] = useState(false);
   const [newContactName, setNewContactName] = useState("");
@@ -253,6 +283,7 @@ export default function TaskModal({
               </div>
               {draft.description && <div className="text-xs text-brand-sub mt-1">{draft.description}</div>}
             </div>
+            {sla && <SlaStatusPanel sla={sla} />}
             <div>
               <label className="text-xs font-semibold text-brand-sub">Status</label>
               <select
@@ -366,15 +397,85 @@ export default function TaskModal({
               )}
             </div>
 
-            <div>
-              <label className="text-xs font-semibold text-brand-sub">Priority *</label>
-              <select
-                value={draft.priority}
-                onChange={(e) => setDraft({ ...draft, priority: e.target.value as Priority })}
-                className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
-              >
-                {PRIORITIES.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-              </select>
+            {sla && <SlaStatusPanel sla={sla} />}
+
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex-1">
+                <label className="text-xs font-semibold text-brand-sub">Type</label>
+                <select
+                  value={draft.type}
+                  onChange={(e) => setDraft({ ...draft, type: e.target.value as TicketType })}
+                  className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
+                >
+                  {TICKET_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+              </div>
+              <div className="flex-1">
+                <label className="text-xs font-semibold text-brand-sub">Category</label>
+                <select
+                  value={draft.categoryId}
+                  onChange={(e) => setDraft({ ...draft, categoryId: e.target.value, subcategoryId: "" })}
+                  className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
+                >
+                  <option value="">—</option>
+                  {topCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              {subcategories.length > 0 && (
+                <div className="flex-1">
+                  <label className="text-xs font-semibold text-brand-sub">Subcategory</label>
+                  <select
+                    value={draft.subcategoryId}
+                    onChange={(e) => setDraft({ ...draft, subcategoryId: e.target.value })}
+                    className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
+                  >
+                    <option value="">—</option>
+                    {subcategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex-1">
+                <label className="text-xs font-semibold text-brand-sub">Impact</label>
+                <select
+                  value={draft.impact}
+                  onChange={(e) => setMatrix({ impact: e.target.value as MatrixLevel | "" })}
+                  className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
+                >
+                  <option value="">—</option>
+                  {MATRIX_LEVELS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+                </select>
+              </div>
+              <div className="flex-1">
+                <label className="text-xs font-semibold text-brand-sub">Urgency</label>
+                <select
+                  value={draft.urgency}
+                  onChange={(e) => setMatrix({ urgency: e.target.value as MatrixLevel | "" })}
+                  className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
+                >
+                  <option value="">—</option>
+                  {MATRIX_LEVELS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+                </select>
+              </div>
+              <div className="flex-1">
+                <label className="text-xs font-semibold text-brand-sub">Priority *</label>
+                <select
+                  value={draft.priority}
+                  onChange={(e) => setDraft({ ...draft, priority: e.target.value as Priority })}
+                  className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
+                >
+                  {PRIORITIES.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="text-[11px] text-brand-sub -mt-2">
+              {matrixPriority
+                ? matrixPriority === draft.priority
+                  ? "Priority set from Impact × Urgency."
+                  : `Matrix suggests ${PRIORITIES.find((p) => p.id === matrixPriority)?.label} — priority was changed by hand.`
+                : "Pick Impact and Urgency to set the priority automatically."}
             </div>
 
             <div>

@@ -1,4 +1,4 @@
-import type { Priority, Status } from "./models";
+import type { Priority, Status, TicketType } from "./models";
 
 export interface ImportPreviewTask {
   tempId: string;
@@ -12,6 +12,7 @@ export interface ImportPreviewTask {
   newProjectName: string | null;
   assigneeId: string | null;
   priority: Priority;
+  type: TicketType;
   status: Status;
   startDate: string | null;
   dueDate: string | null;

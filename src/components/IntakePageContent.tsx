@@ -4,6 +4,8 @@ import { useState } from "react";
 import useSWR from "swr";
 import { Loader2, CheckCircle2, Paperclip, Copy } from "lucide-react";
 import { MAX_FILE_MB, FILE_INPUT_ACCEPT } from "@/lib/uploadLimits";
+import { MATRIX_LEVELS, IMPACT_HINTS, URGENCY_HINTS } from "@/lib/ticketMeta";
+import type { MatrixLevel } from "@/types/models";
 
 interface IntakeMeta {
   projectName: string;
@@ -21,7 +23,9 @@ export default function IntakePageContent({ token }: { token: string }) {
   const [description, setDescription] = useState("");
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
-  const [priority, setPriority] = useState("MEDIUM");
+  const [type, setType] = useState<"INCIDENT" | "SERVICE_REQUEST">("INCIDENT");
+  const [impact, setImpact] = useState<MatrixLevel>("LOW");
+  const [urgency, setUrgency] = useState<MatrixLevel>("MEDIUM");
   const [website, setWebsite] = useState(""); // honeypot
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState("");
@@ -50,7 +54,9 @@ export default function IntakePageContent({ token }: { token: string }) {
       form.set("description", description.trim());
       form.set("contactName", contactName.trim());
       form.set("contactEmail", contactEmail.trim());
-      form.set("priority", priority);
+      form.set("type", type);
+      form.set("impact", impact);
+      form.set("urgency", urgency);
       form.set("website", website);
       if (file) form.set("file", file);
 
@@ -146,16 +152,43 @@ export default function IntakePageContent({ token }: { token: string }) {
           />
         </div>
         <div>
-          <label className="text-xs font-semibold text-brand-sub">Priority</label>
+          <label className="text-xs font-semibold text-brand-sub">What do you need?</label>
+          <div className="flex gap-2 mt-1">
+            {([["INCIDENT", "Something isn't working"], ["SERVICE_REQUEST", "I need something"]] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setType(value)}
+                className="flex-1 rounded-lg border px-3 py-2 text-sm"
+                style={{
+                  background: type === value ? "#0A5A46" : "#fff",
+                  color: type === value ? "#fff" : "#1E2B26",
+                  borderColor: type === value ? "#0A5A46" : "#E5E7E3",
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-brand-sub">Who is affected?</label>
           <select
-            value={priority}
-            onChange={(e) => setPriority(e.target.value)}
+            value={impact}
+            onChange={(e) => setImpact(e.target.value as MatrixLevel)}
             className="w-full mt-1 rounded-lg border border-brand-border px-3 py-2 text-sm outline-none bg-white"
           >
-            <option value="CRITICAL">Critical</option>
-            <option value="HIGH">High</option>
-            <option value="MEDIUM">Medium</option>
-            <option value="LOW">Low</option>
+            {MATRIX_LEVELS.map((l) => <option key={l.value} value={l.value}>{IMPACT_HINTS[l.value]}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-brand-sub">How urgent is it?</label>
+          <select
+            value={urgency}
+            onChange={(e) => setUrgency(e.target.value as MatrixLevel)}
+            className="w-full mt-1 rounded-lg border border-brand-border px-3 py-2 text-sm outline-none bg-white"
+          >
+            {MATRIX_LEVELS.map((l) => <option key={l.value} value={l.value}>{URGENCY_HINTS[l.value]}</option>)}
           </select>
         </div>
         <div>

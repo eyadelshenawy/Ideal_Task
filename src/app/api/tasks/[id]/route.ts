@@ -7,6 +7,7 @@ import { dateStrToUTC } from "@/lib/serverDates";
 import { notifyAssignment } from "@/lib/notifications";
 import { logActivity, describeTaskChanges, loadNameLookups } from "@/lib/activity";
 import { logAudit } from "@/lib/audit";
+import { checkCategoryPair } from "@/lib/categories";
 import { createNextOccurrence } from "@/lib/recurrence";
 import { resolveTags } from "@/lib/tags";
 import { codeMatchesProject } from "@/lib/taskCode";
@@ -179,6 +180,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
   }
 
+  if (data.categoryId !== undefined || data.subcategoryId !== undefined) {
+    const categoryError = await checkCategoryPair(
+      data.categoryId !== undefined ? data.categoryId : existing.categoryId,
+      data.subcategoryId !== undefined ? data.subcategoryId : existing.subcategoryId,
+    );
+    if (categoryError) return NextResponse.json({ error: categoryError }, { status: 400 });
+  }
+
   const tags = data.tags !== undefined ? await resolveTags(data.tags) : null;
 
   // Reconcile Start / Due / Duration into a coherent triple whenever any of
@@ -228,6 +237,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         ...(data.parentId !== undefined ? { parentId: data.parentId } : {}),
         ...(data.assignees !== undefined ? assigneesToSet(data.assignees) : {}),
         ...(data.priority !== undefined ? { priority: data.priority } : {}),
+        ...(data.type !== undefined ? { type: data.type } : {}),
+        ...(data.impact !== undefined ? { impact: data.impact } : {}),
+        ...(data.urgency !== undefined ? { urgency: data.urgency } : {}),
+        ...(data.categoryId !== undefined ? { categoryId: data.categoryId } : {}),
+        ...(data.subcategoryId !== undefined ? { subcategoryId: data.subcategoryId } : {}),
         status: nextStatus,
         ...(resolvedDates
           ? {
@@ -273,12 +287,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     (async () => {
       const beforeSnapshot = {
-        title: existing.title, status: existing.status, priority: existing.priority, projectId: existing.projectId,
+        title: existing.title, status: existing.status, priority: existing.priority, type: existing.type, projectId: existing.projectId,
         dueDate: existing.dueDate, startDate: existing.startDate, isMilestone: existing.isMilestone,
         assigneeIds: existing.assignees.map((a) => a.id), contactAssigneeIds: existing.contactAssignees.map((c) => c.id),
       };
       const afterSnapshot = {
-        title: task.title, status: task.status, priority: task.priority, projectId: task.projectId,
+        title: task.title, status: task.status, priority: task.priority, type: task.type, projectId: task.projectId,
         dueDate: task.dueDate, startDate: task.startDate, isMilestone: task.isMilestone,
         assigneeIds: task.assignees.map((a) => a.id), contactAssigneeIds: task.contactAssignees.map((c) => c.id),
       };
