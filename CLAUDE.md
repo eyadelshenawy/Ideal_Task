@@ -1,9 +1,11 @@
 # Working rules for this repository
 
-IDEAL Tasks is an **internal** tool for IDEAL for Digital Transformation. It
-is not sold to customers. Do not propose or build features aimed at selling
-it (multi-tenant set-up, customer portals, billing, complex org structures)
-unless the owner asks.
+IDEAL Tasks is currently used **internally** at IDEAL for Digital
+Transformation. Keep it simple and fit for how the team works today: no
+approval chains, escalation hierarchies, auto-assignment, complex org
+structures or other process overhead the team doesn't need. Selling the app
+may come later; features that would only matter then are added at that
+point, when the owner asks.
 
 ## 1. Approval before change — mandatory
 
