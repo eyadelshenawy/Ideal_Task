@@ -6,6 +6,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Audit Log filters, categories in Excel import, security updates",
+    description: "The Audit Log now has a search box, a person filter and a date range, and shows how many entries match. Excel import reads Category and Subcategory columns (matched by name against Ticket Categories; unknown names are reported in the preview and left empty), and Excel export now writes them as two separate columns so an export can be imported straight back. Behind the scenes the app moved to the latest Next.js 15 release to close known security holes, the unused image-processing endpoint is switched off, and the old Excel library with unfixed vulnerabilities was replaced — .xlsx and .csv files are supported; older .xls files need saving as .xlsx first.",
+  },
+  {
     title: "Customer satisfaction rating + faster SLA warnings",
     description: "When a customer ticket in an SLA-tracked project is marked Done for the first time, the customer gets one email asking them to rate how it was handled from 1 to 5 stars — one click records the answer, and they can add a comment. The rating appears in the ticket's activity, assignees get a notification, and Reports has a new Customer satisfaction section with the average score, response rate, per-project averages and the latest comments. Separately, SLA warnings (\"only a quarter of the time left\") are now checked every 15 minutes during working hours instead of once a day, so short deadlines such as a 4-hour Critical response get warned in time.",
   },

@@ -23,7 +23,8 @@ function serialize(a: {
   };
 }
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { error } = await requireTaskAccess(params.id);
   if (error) return error;
 
@@ -35,7 +36,8 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   return NextResponse.json(attachments.map(serialize));
 }
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { session, error } = await requireTaskAccess(params.id);
   if (error) return error;
 

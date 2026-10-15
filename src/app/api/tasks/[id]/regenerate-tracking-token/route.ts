@@ -7,7 +7,8 @@ import { logActivity } from "@/lib/activity";
 // Super Admin only. Invalidates the old customer-facing tracking link
 // (used when a link has been forwarded/leaked and needs revoking) and
 // issues a fresh one. The old token stops resolving immediately.
-export async function POST(_req: Request, { params }: { params: { id: string } }) {
+export async function POST(_req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { session, error } = await requireSuperAdmin();
   if (error) return error;
 

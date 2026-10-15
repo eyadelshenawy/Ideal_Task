@@ -6,7 +6,8 @@ import IntakePageContent from "@/components/IntakePageContent";
 // "/", the login page) with one scoped to this specific project's form, so
 // "Add to Home Screen" / desktop "Install" gives the customer an icon that
 // opens straight to their ticket form.
-export async function generateMetadata({ params }: { params: { token: string } }): Promise<Metadata> {
+export async function generateMetadata(props: { params: Promise<{ token: string }> }): Promise<Metadata> {
+  const params = await props.params;
   const project = await prisma.project.findUnique({
     where: { intakeToken: params.token },
     select: { name: true, deletedAt: true },
@@ -19,6 +20,7 @@ export async function generateMetadata({ params }: { params: { token: string } }
   };
 }
 
-export default function IntakePage({ params }: { params: { token: string } }) {
+export default async function IntakePage(props: { params: Promise<{ token: string }> }) {
+  const params = await props.params;
   return <IntakePageContent token={params.token} />;
 }

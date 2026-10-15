@@ -18,7 +18,8 @@ async function load(token: string) {
   });
 }
 
-export async function GET(_req: NextRequest, { params }: { params: { token: string } }) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ token: string }> }) {
+  const params = await props.params;
   const s = await load(params.token);
   if (!s) return NextResponse.json({ error: "This link is no longer valid" }, { status: 404 });
   return NextResponse.json({
@@ -35,7 +36,8 @@ const bodySchema = z.object({
   comment: z.string().trim().max(1000).optional(),
 });
 
-export async function POST(req: NextRequest, { params }: { params: { token: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ token: string }> }) {
+  const params = await props.params;
   const ip = (req.headers.get("x-forwarded-for") ?? "").split(",").pop()?.trim() || "unknown";
   if (checkRateLimit(`rate:${ip}`, 30, 15 * 60 * 1000)) {
     return NextResponse.json({ error: "Too many requests — please try again later" }, { status: 429 });

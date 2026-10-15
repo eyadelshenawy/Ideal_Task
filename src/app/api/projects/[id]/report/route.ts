@@ -17,7 +17,8 @@ import { dateStrToUTC } from "@/lib/serverDates";
 // against. An optional ?from=&to= adds a period section on top of that
 // (created/completed within the range), the same idea as the Reports tab's
 // "Last 7 Days" but with a range the caller picks.
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { error } = await requireProjectAccess(params.id);
   if (error) return error;
 

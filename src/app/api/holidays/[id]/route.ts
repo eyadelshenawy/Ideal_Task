@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { requireSuperAdmin } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { session, error } = await requireSuperAdmin();
   if (error) return error;
   const row = await prisma.holiday.findUnique({ where: { id: params.id } });

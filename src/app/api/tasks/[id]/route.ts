@@ -16,7 +16,8 @@ import { wouldCreateCycle } from "@/lib/taskDependencies";
 import { codeMatchesParent, wouldCreateHierarchyCycle, syncAncestorChain, getDescendantIds } from "@/lib/taskHierarchy";
 import { loadSchedulingCalendar, resolveTaskDates, toDateOnly } from "@/lib/scheduling";
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { session, error } = await requireSession();
   if (error) return error;
 
@@ -325,7 +326,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 // Soft-delete: moves the task to Trash instead of removing it outright.
 // Any subtasks (at any depth) move to Trash along with it.
 // See /api/tasks/[id]/restore to undo, and /api/trash to list/empty.
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { session, error } = await requireSession();
   if (error) return error;
 

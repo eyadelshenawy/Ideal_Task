@@ -6,7 +6,11 @@ import { checkRateLimit, ipFromRequest } from "@/lib/rateLimit";
 // Public, unauthenticated — the tracking token is the gate. Only ever
 // returns a time-limited download URL, and only for an attachment that
 // actually belongs to the task this specific token points at.
-export async function GET(req: NextRequest, { params }: { params: { token: string; attachmentId: string } }) {
+export async function GET(
+  req: NextRequest,
+  props: { params: Promise<{ token: string; attachmentId: string }> }
+) {
+  const params = await props.params;
   if (checkRateLimit(`track-dl:${ipFromRequest(req)}`, 30, 60 * 60 * 1000)) {
     return NextResponse.json({ error: "Too many requests — please try again later" }, { status: 429 });
   }

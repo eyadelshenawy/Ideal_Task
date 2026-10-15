@@ -73,6 +73,8 @@ export interface RawParsedRow {
   assigneeName: string;
   priority: Priority;
   type: TicketType;
+  categoryName: string;
+  subcategoryName: string;
   status: Status;
   startDate: string;
   dueDate: string;
@@ -103,6 +105,8 @@ export function parseSheetRows(rows: Record<string, unknown>[]): { parsed: RawPa
     const assigneeRaw = pick(nrow, ["assignee", "owner", "assigned to"]);
     const priorityRaw = pick(nrow, ["priority"]);
     const typeRaw = pick(nrow, ["type", "ticket type"]);
+    const categoryRaw = pick(nrow, ["category"]);
+    const subcategoryRaw = pick(nrow, ["subcategory", "sub category", "sub-category"]);
     const statusRaw = pick(nrow, ["status"]);
     const startRaw = nrow["start date"] ?? nrow["start"];
     const dueRaw = nrow["due date"] ?? nrow["due"] ?? nrow["end date"] ?? nrow["end"] ?? nrow["deadline"];
@@ -124,6 +128,9 @@ export function parseSheetRows(rows: Record<string, unknown>[]): { parsed: RawPa
       assigneeName: assigneeRaw.trim(),
       priority: matchPriority(priorityRaw),
       type: matchType(typeRaw),
+      // Older exports wrote "Category › Subcategory" in one column.
+      categoryName: categoryRaw.split("›")[0].trim(),
+      subcategoryName: (subcategoryRaw || categoryRaw.split("›")[1] || "").trim(),
       status: matchStatus(statusRaw),
       startDate: excelValueToDateStr(startRaw),
       dueDate: excelValueToDateStr(dueRaw),

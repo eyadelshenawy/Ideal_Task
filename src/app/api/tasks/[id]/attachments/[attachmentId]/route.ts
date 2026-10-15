@@ -4,7 +4,11 @@ import { requireTaskAccess, getUserAccess } from "@/lib/permissions";
 import { getR2DownloadUrl, deleteFromR2 } from "@/lib/r2";
 import { logActivity } from "@/lib/activity";
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string; attachmentId: string } }) {
+export async function GET(
+  _req: NextRequest,
+  props: { params: Promise<{ id: string; attachmentId: string }> }
+) {
+  const params = await props.params;
   const { error } = await requireTaskAccess(params.id);
   if (error) return error;
 
@@ -17,7 +21,11 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string;
   return NextResponse.json({ url });
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string; attachmentId: string } }) {
+export async function DELETE(
+  _req: NextRequest,
+  props: { params: Promise<{ id: string; attachmentId: string }> }
+) {
+  const params = await props.params;
   const { session, error } = await requireTaskAccess(params.id);
   if (error) return error;
 

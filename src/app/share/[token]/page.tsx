@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import SharePageContent from "@/components/SharePageContent";
 
-export async function generateMetadata({ params }: { params: { token: string } }): Promise<Metadata> {
+export async function generateMetadata(props: { params: Promise<{ token: string }> }): Promise<Metadata> {
+  const params = await props.params;
   const project = await prisma.project.findUnique({
     where: { shareToken: params.token },
     select: { name: true, deletedAt: true },
@@ -15,6 +16,7 @@ export async function generateMetadata({ params }: { params: { token: string } }
   };
 }
 
-export default function SharePage({ params }: { params: { token: string } }) {
+export default async function SharePage(props: { params: Promise<{ token: string }> }) {
+  const params = await props.params;
   return <SharePageContent token={params.token} />;
 }

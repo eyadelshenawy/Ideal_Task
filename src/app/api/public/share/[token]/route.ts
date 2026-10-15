@@ -7,7 +7,8 @@ import { prisma } from "@/lib/prisma";
 // No internal team member names ever appear at either level. Private
 // personal tasks can never appear here since they're never attached to a
 // project.
-export async function GET(_req: Request, { params }: { params: { token: string } }) {
+export async function GET(_req: Request, props: { params: Promise<{ token: string }> }) {
+  const params = await props.params;
   const project = await prisma.project.findUnique({
     where: { shareToken: params.token },
     select: { name: true, code: true, deletedAt: true },

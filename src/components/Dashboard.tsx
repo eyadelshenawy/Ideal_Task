@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import * as XLSX from "xlsx";
 import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks, BarChart3, FileDown, Bookmark, X, AlertTriangle, ScrollText, BookOpen, ChevronDown, ChevronRight, Lock, ClipboardList, MoreHorizontal, Sparkles, Calendar as CalendarIcon, SlidersHorizontal, Shield, ShieldCheck, FolderTree } from "lucide-react";
 import useSWR from "swr";
 import type { Task, Project, TeamMember, Contact, Status, AssigneeDisplay, Category } from "@/types/models";
@@ -32,6 +31,7 @@ import MfaSettingsModal from "./MfaSettingsModal";
 import SecurityPolicyModal from "./SecurityPolicyModal";
 import IdleTimeoutWatcher from "./IdleTimeoutWatcher";
 import CategoriesModal from "./CategoriesModal";
+import { readSpreadsheetRows } from "@/lib/excelRead";
 import { computeTaskSla, type SlaAll, type TaskSla } from "@/lib/taskSla";
 import { TICKET_TYPES } from "@/lib/ticketMeta";
 import ChecklistTemplatesModal from "./ChecklistTemplatesModal";
@@ -508,17 +508,20 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
     }
   }
 
-  function downloadTemplate() {
+  async function downloadTemplate() {
     const sampleRows = [
-      { Code: "IDT-001", Title: "Kickoff meeting", Description: "Align on scope and timeline", Module: "", Tags: "onboarding", Comment: "", Project: "Fayendra", Assignee: "Eyad Badran", Type: "Task", Priority: "High", Status: "To Do", "Start Date": "2026-08-02", Duration: 3, "Due Date": "", Progress: 0, Milestone: "No", "Depends On": "", "Parent Code": "" },
-      { Code: "IDT-002", Title: "Go-live", Description: "", Module: "Billing", Tags: "", Comment: "", Project: "Fayendra", Assignee: "", Type: "Task", Priority: "High", Status: "To Do", "Start Date": "", Duration: "", "Due Date": "2026-09-15", Progress: 0, Milestone: "Yes", "Depends On": "IDT-001", "Parent Code": "" },
-      { Code: "", Title: "Draft launch announcement", Description: "", Module: "", Tags: "", Comment: "", Project: "Fayendra", Assignee: "", Type: "Service Request", Priority: "Medium", Status: "To Do", "Start Date": "2026-09-06", Duration: 5, "Due Date": "", Progress: 0, Milestone: "No", "Depends On": "", "Parent Code": "IDT-002" },
+      { Code: "IDT-001", Title: "Kickoff meeting", Description: "Align on scope and timeline", Module: "", Tags: "onboarding", Comment: "", Project: "Fayendra", Assignee: "Eyad Badran", Type: "Task", Category: "", Subcategory: "", Priority: "High", Status: "To Do", "Start Date": "2026-08-02", Duration: 3, "Due Date": "", Progress: 0, Milestone: "No", "Depends On": "", "Parent Code": "" },
+      { Code: "IDT-002", Title: "Go-live", Description: "", Module: "Billing", Tags: "", Comment: "", Project: "Fayendra", Assignee: "", Type: "Task", Category: "", Subcategory: "", Priority: "High", Status: "To Do", "Start Date": "", Duration: "", "Due Date": "2026-09-15", Progress: 0, Milestone: "Yes", "Depends On": "IDT-001", "Parent Code": "" },
+      { Code: "", Title: "Draft launch announcement", Description: "", Module: "", Tags: "", Comment: "", Project: "Fayendra", Assignee: "", Type: "Service Request", Category: "Configuration", Subcategory: "", Priority: "Medium", Status: "To Do", "Start Date": "2026-09-06", Duration: 5, "Due Date": "", Progress: 0, Milestone: "No", "Depends On": "", "Parent Code": "IDT-002" },
     ];
-    const ws = XLSX.utils.json_to_sheet(sampleRows);
-    const wbOut = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wbOut, ws, "Tasks");
-    const wbout = XLSX.write(wbOut, { bookType: "xlsx", type: "array" });
-    const blob = new Blob([wbout], { type: "application/octet-stream" });
+    const ExcelJS = (await import("exceljs")).default;
+    const wbOut = new ExcelJS.Workbook();
+    const ws = wbOut.addWorksheet("Tasks");
+    const headers = Object.keys(sampleRows[0]);
+    ws.columns = headers.map((h) => ({ header: h, key: h, width: h === "Description" ? 32 : 16 }));
+    ws.addRows(sampleRows);
+    ws.getRow(1).font = { bold: true };
+    const blob = new Blob([await wbOut.xlsx.writeBuffer()], { type: "application/octet-stream" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -548,7 +551,8 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
         Impact: t.impact ? t.impact.charAt(0) + t.impact.slice(1).toLowerCase() : "",
         Urgency: t.urgency ? t.urgency.charAt(0) + t.urgency.slice(1).toLowerCase() : "",
         Priority: PRIORITIES.find((p) => p.id === t.priority)?.label ?? t.priority,
-        Category: categoryLabel(t) ?? "",
+        Category: (t.categoryId && categoryList.find((c) => c.id === t.categoryId)?.name) || "",
+        Subcategory: (t.subcategoryId && categoryList.find((c) => c.id === t.subcategoryId)?.name) || "",
         Status: STATUSES.find((s) => s.id === t.status)?.label ?? t.status,
         "Start Date": t.startDate ?? "",
         Duration: t.durationDays ?? "",
@@ -612,10 +616,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
     if (!file) return;
     setImportError("");
     try {
-      const buf = await file.arrayBuffer();
-      const wb = XLSX.read(buf, { type: "array" });
-      const sheet = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(sheet, { defval: "", raw: true });
+      const rows = await readSpreadsheetRows(file);
       const res = await fetch("/api/import/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -624,8 +625,8 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
       if (!res.ok) throw new Error("bad response");
       const preview: ImportPreview = await res.json();
       setImportPreview(preview);
-    } catch {
-      setImportError("Couldn't read this file — please use the downloaded template format.");
+    } catch (err) {
+      setImportError(err instanceof Error && err.message.startsWith("Unsupported") ? err.message : "Couldn't read this file — please use the downloaded template format.");
     }
     e.target.value = "";
   }
@@ -972,7 +973,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
                 )}
               </div>
             {isSuperAdmin && (
-              <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} className="hidden" />
+              <input ref={fileInputRef} type="file" accept=".xlsx,.csv" onChange={handleFile} className="hidden" />
             )}
             {canCreateAnywhere && (
               <button

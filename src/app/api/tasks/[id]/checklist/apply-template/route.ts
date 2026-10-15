@@ -5,7 +5,8 @@ import { requireTaskAccess } from "@/lib/permissions";
 
 const applySchema = z.object({ templateId: z.string().min(1) });
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { error } = await requireTaskAccess(params.id);
   if (error) return error;
 

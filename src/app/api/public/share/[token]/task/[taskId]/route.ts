@@ -12,7 +12,11 @@ import { matchAttachmentLines } from "@/lib/attachmentMatcher";
 // Attachments are filtered the same way — only files referenced by a
 // customer-thread message (via its "📎 name" line) are exposed. Anything
 // the team uploaded through the internal attachments panel stays hidden.
-export async function GET(_req: Request, { params }: { params: { token: string; taskId: string } }) {
+export async function GET(
+  _req: Request,
+  props: { params: Promise<{ token: string; taskId: string }> }
+) {
+  const params = await props.params;
   const project = await prisma.project.findUnique({
     where: { shareToken: params.token },
     select: { id: true, deletedAt: true },

@@ -6,7 +6,8 @@ import { logAudit } from "@/lib/audit";
 
 const renameSchema = z.object({ name: z.string().trim().min(1, "Name is required").max(60) });
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { session, error } = await requireSuperAdmin();
   if (error) return error;
 
@@ -33,7 +34,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 // Tickets using a deleted category keep everything else; their category
 // (and subcategory) just becomes empty. Deleting a parent removes its
 // subcategories too.
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { session, error } = await requireSuperAdmin();
   if (error) return error;
 
