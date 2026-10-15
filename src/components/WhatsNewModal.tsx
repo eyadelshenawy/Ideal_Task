@@ -6,6 +6,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Excel template no longer triggers a module warning",
+    description: "The sample rows in Download Excel Template used a made-up module name (\"Billing\") that isn't in the Modules list, so importing the template unchanged showed a warning. The sample now leaves Module empty.",
+  },
+  {
     title: "User Guide brought up to date",
     description: "The User Guide (⋯ menu → User Guide) now covers everything added recently — two-factor sign-in, automatic sign-out and password rules, ticket types and the Impact × Urgency matrix, categories, the SLA countdown, customer satisfaction ratings, multi-select filters, and the new Lists, Ticket Categories, Work Calendar and Security Policy screens — with fresh screenshots throughout.",
   },

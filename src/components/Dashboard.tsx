@@ -529,7 +529,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   async function downloadTemplate() {
     const sampleRows = [
       { Code: "IDT-001", Title: "Kickoff meeting", Description: "Align on scope and timeline", Module: "", Tags: "onboarding", Comment: "", Project: "Fayendra", Assignee: "Eyad Badran", Type: "Task", Category: "", Subcategory: "", Priority: "High", Status: "To Do", "Start Date": "2026-08-02", Duration: 3, "Due Date": "", Progress: 0, Milestone: "No", "Depends On": "", "Parent Code": "" },
-      { Code: "IDT-002", Title: "Go-live", Description: "", Module: "Billing", Tags: "", Comment: "", Project: "Fayendra", Assignee: "", Type: "Task", Category: "", Subcategory: "", Priority: "High", Status: "To Do", "Start Date": "", Duration: "", "Due Date": "2026-09-15", Progress: 0, Milestone: "Yes", "Depends On": "IDT-001", "Parent Code": "" },
+      { Code: "IDT-002", Title: "Go-live", Description: "", Module: "", Tags: "", Comment: "", Project: "Fayendra", Assignee: "", Type: "Task", Category: "", Subcategory: "", Priority: "High", Status: "To Do", "Start Date": "", Duration: "", "Due Date": "2026-09-15", Progress: 0, Milestone: "Yes", "Depends On": "IDT-001", "Parent Code": "" },
       { Code: "", Title: "Draft launch announcement", Description: "", Module: "", Tags: "", Comment: "", Project: "Fayendra", Assignee: "", Type: "Service Request", Category: "Configuration", Subcategory: "", Priority: "Medium", Status: "To Do", "Start Date": "2026-09-06", Duration: 5, "Due Date": "", Progress: 0, Milestone: "No", "Depends On": "", "Parent Code": "IDT-002" },
     ];
     const ExcelJS = (await import("exceljs")).default;
