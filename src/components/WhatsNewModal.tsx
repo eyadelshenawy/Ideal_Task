@@ -6,6 +6,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "User Guide brought up to date",
+    description: "The User Guide (⋯ menu → User Guide) now covers everything added recently — two-factor sign-in, automatic sign-out and password rules, ticket types and the Impact × Urgency matrix, categories, the SLA countdown, customer satisfaction ratings, multi-select filters, and the new Lists, Ticket Categories, Work Calendar and Security Policy screens — with fresh screenshots throughout.",
+  },
+  {
     title: "Modules, ticket types and priority names are now editable lists",
     description: "Super Admins have a new Admin menu → Lists screen with three tabs. Modules: the list starts from every module already typed on a task, with how many tasks use each, so you can tidy it first — rename one (every task using it changes too; renaming to a name already in the list merges the two), hide one, or add a new one. Ticket Types: rename, change the short tag and colour, hide, or add a new type (Task, Incident and Service Request can't be hidden). Priorities: change the name shown and the colour. Hiding only removes an entry from the drop-downs — tickets that already have it keep it. In a task, Module is now picked from the list instead of typed, and the bulk Module change works the same way. Excel import matches modules against the list; unknown ones are reported in the preview and left empty.",
   },
