@@ -41,6 +41,7 @@ import GlobalSearchModal from "./GlobalSearchModal";
 import PushAutoSubscribe from "./PushAutoSubscribe";
 import PushPermissionBanner from "./PushPermissionBanner";
 import StatCard from "./ui/StatCard";
+import MultiSelectFilter from "./ui/MultiSelectFilter";
 
 const fetcher = (url: string) =>
   fetch(url).then((r) => {
@@ -62,13 +63,13 @@ interface DashboardProps {
 
 interface Filters {
   search: string;
-  assigneeId: string;
-  priority: string;
-  projectId: string;
-  /** "all" or a TicketType. */
-  type: string;
-  /** "all" or a top-level category id. */
-  categoryId: string;
+  /** Every list filter below: empty = no filter; otherwise a task matches any selected value. */
+  assigneeIds: string[];
+  priorities: string[];
+  projectIds: string[];
+  types: string[];
+  /** Top-level category ids. */
+  categoryIds: string[];
   /** Empty = every status (subject to Hide Done). Picking statuses overrides Hide Done. */
   statusIds: string[];
   /** Empty = all modules. A task matches if ANY of its own (comma-separated) modules is in this list. */
@@ -79,9 +80,31 @@ interface Filters {
 }
 
 const defaultFilters: Filters = {
-  search: "", assigneeId: "all", priority: "all", projectId: "all", type: "all", categoryId: "all", statusIds: [], moduleIds: [],
+  search: "", assigneeIds: [], priorities: [], projectIds: [], types: [], categoryIds: [], statusIds: [], moduleIds: [],
   overdueOnly: false, milestonesOnly: false, dueThisWeek: false,
 };
+
+// Saved filters from before these were multi-select stored a single value
+// ("all" or an id) per field; turn those into the list form.
+function normalizeSavedFilters(saved: Record<string, unknown>): Filters {
+  const legacy = (key: string): string[] => {
+    const v = saved[key];
+    return typeof v === "string" && v !== "all" ? [v] : [];
+  };
+  const list = (key: string, legacyKey: string): string[] =>
+    Array.isArray(saved[key]) ? (saved[key] as string[]) : legacy(legacyKey);
+  return {
+    ...defaultFilters,
+    ...(saved as Partial<Filters>),
+    assigneeIds: list("assigneeIds", "assigneeId"),
+    priorities: list("priorities", "priority"),
+    projectIds: list("projectIds", "projectId"),
+    types: list("types", "type"),
+    categoryIds: list("categoryIds", "categoryId"),
+    statusIds: Array.isArray(saved.statusIds) ? (saved.statusIds as string[]) : [],
+    moduleIds: Array.isArray(saved.moduleIds) ? (saved.moduleIds as string[]) : [],
+  };
+}
 
 const GROUP_PAGE_SIZE = 30;
 
@@ -159,8 +182,6 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   // a project with a lot of subtasks by hiding them as separate cards
   // (their parent still shows its "N/M subtasks" progress either way).
   const [hideSubtasksInBoard, setHideSubtasksInBoard] = useState(false);
-  const [moduleFilterOpen, setModuleFilterOpen] = useState(false);
-  const [statusFilterOpen, setStatusFilterOpen] = useState(false);
   // Hides Done tasks everywhere (Board/List/Timeline) — separate from the
   // per-view "Hide subtasks" toggle above.
   // On every time the dashboard opens; turning it off lasts for this visit only.
@@ -254,11 +275,11 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   // narrow it further for the actual task list below.
   const statsBase = useMemo(() => taskList.filter((t) => {
     if (filters.dueThisWeek && !isDueThisWeek(t)) return false;
-    if (filters.assigneeId !== "all" && !t.assigneeIds.includes(filters.assigneeId)) return false;
-    if (filters.priority !== "all" && t.priority !== filters.priority) return false;
-    if (filters.projectId !== "all" && t.projectId !== filters.projectId) return false;
-    if (filters.type !== "all" && t.type !== filters.type) return false;
-    if (filters.categoryId !== "all" && t.categoryId !== filters.categoryId) return false;
+    if (filters.assigneeIds.length > 0 && !t.assigneeIds.some((id) => filters.assigneeIds.includes(id))) return false;
+    if (filters.priorities.length > 0 && !filters.priorities.includes(t.priority)) return false;
+    if (filters.projectIds.length > 0 && !(t.projectId && filters.projectIds.includes(t.projectId))) return false;
+    if (filters.types.length > 0 && !filters.types.includes(t.type)) return false;
+    if (filters.categoryIds.length > 0 && !(t.categoryId && filters.categoryIds.includes(t.categoryId))) return false;
     if (filters.moduleIds.length > 0 && !splitModules(t.module).some((m) => filters.moduleIds.includes(m))) return false;
     if (filters.search) {
       const q = filters.search.trim().toLowerCase();
@@ -1053,121 +1074,50 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             <SlidersHorizontal size={13} /> Filters
           </button>
           <div className={`${mobileFiltersOpen ? "flex flex-wrap gap-1.5 w-full" : "hidden"} sm:contents`}>
-          <select
-            value={filters.assigneeId}
-            onChange={(e) => setFilters((f) => ({ ...f, assigneeId: e.target.value }))}
-            className="rounded-lg px-2 py-1.5 text-xs bg-white border border-brand-border"
-          >
-            <option value="all">All Assignees</option>
-            {teamList.map((m) => <option key={m.id} value={m.id}>{m.name}{!m.active ? " (Inactive)" : ""}</option>)}
-          </select>
-          <select
-            value={filters.priority}
-            onChange={(e) => setFilters((f) => ({ ...f, priority: e.target.value }))}
-            className="rounded-lg px-2 py-1.5 text-xs bg-white border border-brand-border"
-          >
-            <option value="all">All Priorities</option>
-            {PRIORITIES.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-          </select>
-          <select
-            value={filters.projectId}
-            onChange={(e) => setFilters((f) => ({ ...f, projectId: e.target.value }))}
-            className="rounded-lg px-2 py-1.5 text-xs bg-white border border-brand-border"
-          >
-            <option value="all">All Projects</option>
-            {projectList.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-          <select
-            value={filters.type}
-            onChange={(e) => setFilters((f) => ({ ...f, type: e.target.value }))}
-            className="rounded-lg px-2 py-1.5 text-xs bg-white border border-brand-border"
-          >
-            <option value="all">All Types</option>
-            {TICKET_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-          </select>
+          <MultiSelectFilter
+            allLabel="All Assignees" pluralNoun="people"
+            options={teamList.map((m) => ({ value: m.id, label: m.name + (!m.active ? " (Inactive)" : "") }))}
+            selected={filters.assigneeIds}
+            onChange={(v) => setFilters((f) => ({ ...f, assigneeIds: v }))}
+          />
+          <MultiSelectFilter
+            allLabel="All Priorities" pluralNoun="priorities"
+            options={PRIORITIES.map((p) => ({ value: p.id, label: p.label, color: p.color }))}
+            selected={filters.priorities}
+            onChange={(v) => setFilters((f) => ({ ...f, priorities: v }))}
+          />
+          <MultiSelectFilter
+            allLabel="All Projects" pluralNoun="projects" width={260}
+            options={projectList.map((p) => ({ value: p.id, label: p.name }))}
+            selected={filters.projectIds}
+            onChange={(v) => setFilters((f) => ({ ...f, projectIds: v }))}
+          />
+          <MultiSelectFilter
+            allLabel="All Types" pluralNoun="types"
+            options={TICKET_TYPES.map((t) => ({ value: t.value, label: t.label, color: t.color }))}
+            selected={filters.types}
+            onChange={(v) => setFilters((f) => ({ ...f, types: v }))}
+          />
           {categoryList.some((c) => !c.parentId) && (
-            <select
-              value={filters.categoryId}
-              onChange={(e) => setFilters((f) => ({ ...f, categoryId: e.target.value }))}
-              className="rounded-lg px-2 py-1.5 text-xs bg-white border border-brand-border"
-            >
-              <option value="all">All Categories</option>
-              {categoryList.filter((c) => !c.parentId).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <MultiSelectFilter
+              allLabel="All Categories" pluralNoun="categories" width={240}
+              options={categoryList.filter((c) => !c.parentId).map((c) => ({ value: c.id, label: c.name }))}
+              selected={filters.categoryIds}
+              onChange={(v) => setFilters((f) => ({ ...f, categoryIds: v }))}
+            />
           )}
-          <div className="relative">
-            <button
-              onClick={() => setStatusFilterOpen((v) => !v)}
-              className="rounded-lg px-2 py-1.5 text-xs bg-white border text-brand-text"
-              style={{ borderColor: filters.statusIds.length ? "#0A5A46" : undefined }}
-            >
-              {filters.statusIds.length === 0
-                ? "All Statuses"
-                : filters.statusIds.length === 1
-                  ? STATUSES.find((s) => s.id === filters.statusIds[0])?.label
-                  : `${filters.statusIds.length} statuses`}
-            </button>
-            {statusFilterOpen && (
-              <div className="absolute left-0 top-[calc(100%+4px)] z-20 w-[180px] rounded-lg bg-white border border-brand-border shadow-lg p-2">
-                {STATUSES.map((st) => (
-                  <label key={st.id} className="flex items-center gap-2 text-xs py-0.5 text-brand-text cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={filters.statusIds.includes(st.id)}
-                      onChange={() => setFilters((f) => ({
-                        ...f,
-                        statusIds: f.statusIds.includes(st.id) ? f.statusIds.filter((x) => x !== st.id) : [...f.statusIds, st.id],
-                      }))}
-                    />
-                    <span className="inline-block w-2 h-2 rounded-full" style={{ background: st.color }} />
-                    {st.label}
-                  </label>
-                ))}
-                {filters.statusIds.length > 0 && (
-                  <button
-                    onClick={() => setFilters((f) => ({ ...f, statusIds: [] }))}
-                    className="text-[11px] text-brand-dark underline mt-1"
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-          <div className="relative">
-            <button
-              onClick={() => setModuleFilterOpen((v) => !v)}
-              className="rounded-lg px-2 py-1.5 text-xs bg-white border border-brand-border text-brand-text"
-            >
-              {filters.moduleIds.length === 0 ? "All Modules" : `${filters.moduleIds.length} module${filters.moduleIds.length === 1 ? "" : "s"}`}
-            </button>
-            {moduleFilterOpen && (
-              <div className="absolute left-0 top-[calc(100%+4px)] z-20 w-[180px] max-h-[220px] overflow-y-auto rounded-lg bg-white border border-brand-border shadow-lg p-2">
-                {moduleList.length === 0 && <div className="text-[11px] text-brand-sub px-1 py-1">No modules yet</div>}
-                {moduleList.map((m) => (
-                  <label key={m} className="flex items-center gap-2 text-xs py-0.5 text-brand-text cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={filters.moduleIds.includes(m)}
-                      onChange={() => setFilters((f) => ({
-                        ...f,
-                        moduleIds: f.moduleIds.includes(m) ? f.moduleIds.filter((x) => x !== m) : [...f.moduleIds, m],
-                      }))}
-                    />
-                    {m}
-                  </label>
-                ))}
-                {filters.moduleIds.length > 0 && (
-                  <button
-                    onClick={() => setFilters((f) => ({ ...f, moduleIds: [] }))}
-                    className="text-[11px] text-brand-dark underline mt-1"
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+          <MultiSelectFilter
+            allLabel="All Statuses" pluralNoun="statuses"
+            options={STATUSES.map((st) => ({ value: st.id, label: st.label, color: st.color }))}
+            selected={filters.statusIds}
+            onChange={(v) => setFilters((f) => ({ ...f, statusIds: v }))}
+          />
+          <MultiSelectFilter
+            allLabel="All Modules" pluralNoun="modules"
+            options={moduleList.map((m) => ({ value: m, label: m }))}
+            selected={filters.moduleIds}
+            onChange={(v) => setFilters((f) => ({ ...f, moduleIds: v }))}
+          />
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortBy)}
@@ -1319,7 +1269,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
           <div className="flex items-center gap-1.5 flex-wrap mb-3">
             {savedFilters.map((sf) => (
               <div key={sf.id} className="flex items-center gap-1 rounded-full pl-2.5 pr-1 py-1 bg-white border border-brand-border">
-                <button onClick={() => setFilters({ ...defaultFilters, ...sf.filters })} className="text-[11.5px] font-medium text-brand-text">
+                <button onClick={() => setFilters(normalizeSavedFilters(sf.filters as unknown as Record<string, unknown>))} className="text-[11.5px] font-medium text-brand-text">
                   {sf.name}
                 </button>
                 <button onClick={() => deleteSavedFilter(sf.id)} className="p-0.5 rounded-full hover:bg-gray-100 text-brand-sub">
