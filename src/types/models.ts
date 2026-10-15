@@ -53,6 +53,8 @@ export interface TeamMember {
   active: boolean;
   /** Project ids this member holds a per-project admin grant on. */
   projectAdminOf: string[];
+  /** Two-factor sign-in on — only sent to Super Admins. */
+  mfaEnabled?: boolean;
 }
 
 export interface Project {

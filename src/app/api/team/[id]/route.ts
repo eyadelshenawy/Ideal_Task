@@ -37,6 +37,10 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
     updateData.passwordHash = await bcrypt.hash(tempPassword, 10);
     updateData.mustChangePassword = true;
   }
+  if (data.resetMfa) {
+    updateData.totpSecret = null;
+    updateData.totpEnabled = false;
+  }
 
   try {
     const user = await prisma.$transaction(async (tx) => {
@@ -45,6 +49,8 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
         data: updateData,
         select: { id: true, name: true, email: true, role: true, active: true },
       });
+      // Trusted devices would otherwise still skip a code set up later.
+      if (data.resetMfa) await tx.trustedDevice.deleteMany({ where: { userId: params.id } });
 
       if (data.projectAdminIds !== undefined) {
         const existing = await tx.projectAdmin.findMany({
@@ -78,6 +84,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
     if (data.role !== undefined) changes.push(`role set to ${data.role}`);
     if (data.projectAdminIds !== undefined) changes.push("project-admin grants changed");
     if (data.resetPassword) changes.push("password reset");
+    if (data.resetMfa) changes.push("two-factor sign-in switched off");
     if (changes.length > 0) {
       logAudit(session.user.id, `Updated team member "${user.name}": ${changes.join(", ")}`);
     }

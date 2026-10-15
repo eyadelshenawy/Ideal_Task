@@ -12,6 +12,8 @@ export const teamUpdateSchema = z.object({
   active: z.boolean().optional(),
   role: z.enum(["SUPER_ADMIN", "MEMBER"]).optional(),
   resetPassword: z.boolean().optional(),
+  /** Switches off two-factor sign-in, e.g. when the member lost their phone. */
+  resetMfa: z.boolean().optional(),
   /** Full-replacement set of project ids this member should administer. */
   projectAdminIds: z.array(z.string()).optional(),
 });

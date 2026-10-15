@@ -7,13 +7,15 @@ import { generateTempPassword } from "@/lib/tempPassword";
 import { logAudit } from "@/lib/audit";
 
 export async function GET() {
-  const { error } = await requireSession();
+  const { session, error } = await requireSession();
   if (error) return error;
+  // Two-factor status is only shown to Super Admins (for the reset button).
+  const isSuperAdmin = session.user.role === "SUPER_ADMIN";
 
   const users = await prisma.user.findMany({
     orderBy: { name: "asc" },
     select: {
-      id: true, name: true, email: true, role: true, active: true,
+      id: true, name: true, email: true, role: true, active: true, totpEnabled: true,
       projectAdminOf: { select: { projectId: true } },
     },
   });
@@ -21,6 +23,7 @@ export async function GET() {
     users.map((u) => ({
       id: u.id, name: u.name, email: u.email, role: u.role, active: u.active,
       projectAdminOf: u.projectAdminOf.map((g) => g.projectId),
+      ...(isSuperAdmin ? { mfaEnabled: u.totpEnabled } : {}),
     })),
   );
 }
