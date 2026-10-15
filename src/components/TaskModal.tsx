@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import type { Task, Project, TeamMember, Contact, Priority, Status, RecurrenceFreq, TicketType, MatrixLevel, Category } from "@/types/models";
 import { PRIORITIES, STATUSES, descendantIds, splitModules } from "@/lib/taskHelpers";
 import { TICKET_TYPES, MATRIX_LEVELS, priorityFromMatrix } from "@/lib/ticketMeta";
+import { MODULE_OPTIONS } from "@/lib/listConfig";
 import type { TaskSla } from "@/lib/taskSla";
 import SlaStatusPanel from "./SlaStatusPanel";
 import TaskActivityPanel from "./TaskActivityPanel";
@@ -130,7 +131,6 @@ export default function TaskModal({
   const [newContactName, setNewContactName] = useState("");
   const [contactError, setContactError] = useState("");
   const [newTagText, setNewTagText] = useState("");
-  const [newModuleText, setNewModuleText] = useState("");
 
   // SLA-driven Duration auto-fill for tasks in an SLA-tracked project.
   // Rules (in order of who wins):
@@ -184,12 +184,13 @@ export default function TaskModal({
   // Module is stored as a single comma-separated string ("FICO, MM"), edited
   // here as add/remove chips the same way Tags works below.
   const moduleList = splitModules(draft.module);
-  function addModule() {
-    const name = newModuleText.trim();
-    if (!name || moduleList.includes(name)) { setNewModuleText(""); return; }
+  function addModule(name: string) {
+    if (!name || moduleList.includes(name)) return;
     setDraft({ ...draft, module: [...moduleList, name].join(", ") });
-    setNewModuleText("");
   }
+  // Only active modules can be picked; hidden ones already on the task stay
+  // as chips until removed.
+  const modulesToAdd = MODULE_OPTIONS.filter((m) => m.active && !moduleList.includes(m.name));
   function removeModule(name: string) {
     setDraft({ ...draft, module: moduleList.filter((m) => m !== name).join(", ") });
   }
@@ -357,14 +358,14 @@ export default function TaskModal({
                     </button>
                   </span>
                 ))}
-                <input
-                  value={newModuleText}
-                  onChange={(e) => setNewModuleText(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addModule(); } }}
-                  onBlur={addModule}
-                  placeholder="e.g. Billing, Auth — press Enter (optional)"
+                <select
+                  value=""
+                  onChange={(e) => addModule(e.target.value)}
                   className="flex-1 min-w-[100px] rounded-lg border border-brand-border px-2 py-1 text-xs outline-none"
-                />
+                >
+                  <option value="">{modulesToAdd.length ? "Add a module… (optional)" : "No more modules in the list"}</option>
+                  {modulesToAdd.map((m) => <option key={m.id} value={m.name}>{m.name}</option>)}
+                </select>
               </div>
             </div>
 
@@ -407,7 +408,7 @@ export default function TaskModal({
                   onChange={(e) => setDraft({ ...draft, type: e.target.value as TicketType })}
                   className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
                 >
-                  {TICKET_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  {TICKET_TYPES.filter((t) => t.active || t.value === draft.type).map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
               </div>
               <div className="flex-1">

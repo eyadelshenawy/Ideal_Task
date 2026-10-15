@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { normaliseModules } from "@/lib/lists";
 import { randomUUID } from "crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -19,6 +20,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid import data" }, { status: 400 });
   }
   const { tasksToAdd, newProjectNames } = parsed.data;
+  // Re-check against the configured lists in case they changed after the preview.
+  const typeCodes = new Set((await prisma.ticketTypeOption.findMany({ select: { code: true } })).map((t) => t.code));
+  const moduleRows = await prisma.moduleOption.findMany({ select: { name: true } });
+  for (const t of tasksToAdd) {
+    if (!typeCodes.has(t.type)) t.type = "TASK";
+    t.module = (await normaliseModules(t.module, moduleRows)).value ?? "";
+  }
   const createdById = session.user.id;
   const commentsToAdd: { taskId: string; message: string }[] = [];
 

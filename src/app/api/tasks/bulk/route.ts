@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkTaskLists } from "@/lib/lists";
 import { prisma } from "@/lib/prisma";
 import { requireSession, getUserAccess } from "@/lib/permissions";
 import { taskBulkUpdateSchema, taskBulkDeleteSchema, assigneesToSet } from "@/lib/validation/task";
@@ -24,7 +25,10 @@ export async function PATCH(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request" }, { status: 400 });
   }
-  const { taskIds, status, assignees, projectId, priority, type, categoryId, startDate, dueDate, durationDays, progress, module, addTag, removeTag } = parsed.data;
+  const { taskIds, status, assignees, projectId, priority, type, categoryId, startDate, dueDate, durationDays, progress, addTag, removeTag } = parsed.data;
+  const lists = await checkTaskLists(type, parsed.data.module);
+  if (lists.error) return NextResponse.json({ error: lists.error }, { status: 400 });
+  const moduleValue = lists.module;
   if (categoryId) {
     const categoryError = await checkCategoryPair(categoryId, null);
     if (categoryError) return NextResponse.json({ error: categoryError }, { status: 400 });
@@ -69,7 +73,7 @@ export async function PATCH(req: NextRequest) {
   const touchesOnlyStatusOrProgress =
     assignees === undefined && projectId === undefined && priority === undefined && type === undefined && categoryId === undefined &&
     startDate === undefined && dueDate === undefined && durationDays === undefined &&
-    module === undefined && addTag === undefined && removeTag === undefined;
+    moduleValue === undefined && addTag === undefined && removeTag === undefined;
 
   for (const task of tasks) {
     const canManage = access.isSuperAdmin || (task.projectId !== null && access.administeredProjectIds.includes(task.projectId));
@@ -149,7 +153,7 @@ export async function PATCH(req: NextRequest) {
         // A new category invalidates whatever subcategory the task had.
         ...(categoryId !== undefined ? { categoryId, subcategoryId: null } : {}),
         ...bulkDateData,
-        ...(module !== undefined ? { module: module || null } : {}),
+        ...(moduleValue !== undefined ? { module: moduleValue || null } : {}),
         ...(addTagRecord ? { tags: { connect: [{ id: addTagRecord.id }] } } : {}),
         ...(removeTagRecord ? { tags: { disconnect: [{ id: removeTagRecord.id }] } } : {}),
       },

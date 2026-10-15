@@ -16,7 +16,7 @@ export const previewTaskSchema = z.object({
   newProjectName: z.string().nullable(),
   assigneeId: z.string().nullable(),
   priority: z.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW"]),
-  type: z.enum(["TASK", "INCIDENT", "SERVICE_REQUEST", "CHANGE_REQUEST", "PROBLEM"]).default("TASK"),
+  type: z.string().trim().min(1).max(40).default("TASK"),
   categoryId: z.string().nullable().default(null),
   subcategoryId: z.string().nullable().default(null),
   status: z.enum(["TODO", "READY", "INPROGRESS", "INTERNAL_TEST", "CUSTOMER_TEST", "DONE"]),

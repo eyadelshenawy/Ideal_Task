@@ -2,7 +2,39 @@ export type Role = "SUPER_ADMIN" | "MEMBER";
 export type Priority = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
 export type Status = "TODO" | "READY" | "INPROGRESS" | "INTERNAL_TEST" | "CUSTOMER_TEST" | "DONE";
 export type RecurrenceFreq = "DAILY" | "WEEKLY" | "MONTHLY";
-export type TicketType = "TASK" | "INCIDENT" | "SERVICE_REQUEST" | "CHANGE_REQUEST" | "PROBLEM";
+/** Code of a configurable ticket type (Super Admin → Lists). */
+export type TicketType = string;
+
+export interface TicketTypeOption {
+  code: string;
+  label: string;
+  short: string;
+  color: string;
+  bg: string;
+  sortOrder: number;
+  active: boolean;
+  system: boolean;
+}
+
+export interface ModuleOption {
+  id: string;
+  name: string;
+  sortOrder: number;
+  active: boolean;
+}
+
+export interface PriorityOption {
+  code: Priority;
+  label: string;
+  color: string;
+}
+
+/** Everything GET /api/settings/lists returns. */
+export interface ListConfig {
+  ticketTypes: TicketTypeOption[];
+  modules: ModuleOption[];
+  priorities: PriorityOption[];
+}
 export type MatrixLevel = "HIGH" | "MEDIUM" | "LOW";
 
 /** Org-wide ticket category; parentId set means it's a subcategory. */

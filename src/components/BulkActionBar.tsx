@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { X, Loader2, MoreHorizontal } from "lucide-react";
 import type { Project, Status, TeamMember } from "@/types/models";
 import { STATUSES } from "@/lib/taskHelpers";
+import { MODULE_OPTIONS } from "@/lib/listConfig";
 
 interface BulkActionBarProps {
   selectedCount: number;
@@ -237,13 +238,14 @@ export default function BulkActionBar({
 
             <label className="block text-[11px] font-semibold text-brand-sub mb-1">Module</label>
             <div className="flex gap-1 mb-3">
-              <input
-                type="text"
-                placeholder="e.g. FICO"
+              <select
                 value={module}
                 onChange={(e) => setModule(e.target.value)}
                 className="flex-1 rounded-md px-2 py-1 text-xs border border-brand-border"
-              />
+              >
+                <option value="">— No module —</option>
+                {MODULE_OPTIONS.filter((m) => m.active).map((m) => <option key={m.id} value={m.name}>{m.name}</option>)}
+              </select>
               <button
                 onClick={() => applyMore({ module: module.trim() || null }, () => setModule(""))}
                 className="rounded-md px-2 py-1 text-[11px] font-semibold bg-brand-dark text-white"

@@ -3,7 +3,7 @@
 // DB-resolution step in /api/import/preview, which needs server access anyway.
 
 import type { Priority, Status, TicketType } from "@/types/models";
-import { TICKET_TYPES } from "@/lib/ticketMeta";
+import { TICKET_TYPES, type TicketTypeMeta } from "@/lib/ticketMeta";
 import { PRIORITIES, STATUSES } from "./taskHelpers";
 
 function normalizeKeyRow(row: Record<string, unknown>): Record<string, unknown> {
@@ -44,15 +44,15 @@ function matchStatus(s: unknown): Status {
   return found ? found.id : "TODO";
 }
 
-function matchPriority(s: unknown): Priority {
+function matchPriority(s: unknown, priorities: { id: Priority; label: string }[]): Priority {
   const v = String(s || "").trim().toLowerCase();
-  const found = PRIORITIES.find((p) => p.label.toLowerCase() === v || p.id.toLowerCase() === v);
+  const found = priorities.find((p) => p.label.toLowerCase() === v || p.id.toLowerCase() === v);
   return found ? found.id : "MEDIUM";
 }
 
-function matchType(s: unknown): TicketType {
+function matchType(s: unknown, types: TicketTypeMeta[]): TicketType {
   const v = String(s || "").trim().toLowerCase();
-  const found = TICKET_TYPES.find((t) => t.label.toLowerCase() === v || t.value.toLowerCase() === v || t.short.toLowerCase() === v);
+  const found = types.find((t) => t.label.toLowerCase() === v || t.value.toLowerCase() === v || t.short.toLowerCase() === v);
   return found ? found.value : "TASK";
 }
 
@@ -85,7 +85,11 @@ export interface RawParsedRow {
   parentCode: string;
 }
 
-export function parseSheetRows(rows: Record<string, unknown>[]): { parsed: RawParsedRow[]; warnings: string[] } {
+// `lists` lets the server pass the configured ticket types and priority names.
+export function parseSheetRows(
+  rows: Record<string, unknown>[],
+  lists: { types: TicketTypeMeta[]; priorities: { id: Priority; label: string }[] } = { types: TICKET_TYPES, priorities: PRIORITIES },
+): { parsed: RawParsedRow[]; warnings: string[] } {
   const warnings: string[] = [];
   const parsed: RawParsedRow[] = [];
 
@@ -126,8 +130,8 @@ export function parseSheetRows(rows: Record<string, unknown>[]): { parsed: RawPa
       comment: commentRaw.trim(),
       projectName: projectRaw.trim(),
       assigneeName: assigneeRaw.trim(),
-      priority: matchPriority(priorityRaw),
-      type: matchType(typeRaw),
+      priority: matchPriority(priorityRaw, lists.priorities),
+      type: matchType(typeRaw, lists.types),
       // Older exports wrote "Category › Subcategory" in one column.
       categoryName: categoryRaw.split("›")[0].trim(),
       subcategoryName: (subcategoryRaw || categoryRaw.split("›")[1] || "").trim(),

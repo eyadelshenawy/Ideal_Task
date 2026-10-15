@@ -17,7 +17,8 @@ type AssigneeEntry = z.infer<typeof assigneeEntrySchema>;
 // Full task shape — shared fields for both create (strict, below) and
 // full-edit (as a lenient .partial(), so editing an older task that predates
 // a mandatory-field rule doesn't get blocked).
-export const ticketTypeEnum = z.enum(["TASK", "INCIDENT", "SERVICE_REQUEST", "CHANGE_REQUEST", "PROBLEM"]);
+// Ticket types are a configurable list; the route checks the code exists.
+export const ticketTypeEnum = z.string().trim().min(1).max(40);
 export const matrixLevelEnum = z.enum(["HIGH", "MEDIUM", "LOW"]);
 
 const taskFields = z.object({
