@@ -6,6 +6,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Pick more than one value in every filter",
+    description: "Assignees, Priorities, Projects, Types and Categories now work like Statuses and Modules: click the filter, tick as many values as you need (for example Critical + High, or two projects together), and the list shows tasks matching any of them. The button shows the name when one value is picked, or a count when several are, and each list has a Clear link. Filters you saved earlier keep working.",
+  },
+  {
     title: "Filter by status, clickable stat cards, Done hidden on every visit",
     description: "A new \"All Statuses\" filter next to Modules lets you show one or several statuses (To Do, In Progress, Internal Test, Done, …). The In Progress and Done cards at the top now work as one-click filters too (click again to clear), and the Total card clears the status, Overdue and Milestones filters in one go. Picking Done in the status filter shows Done tasks even while Hide Done is on. Hide Done is now switched on every time you open the app; turning it off only lasts until you leave.",
   },
