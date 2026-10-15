@@ -69,6 +69,8 @@ interface Filters {
   type: string;
   /** "all" or a top-level category id. */
   categoryId: string;
+  /** Empty = every status (subject to Hide Done). Picking statuses overrides Hide Done. */
+  statusIds: string[];
   /** Empty = all modules. A task matches if ANY of its own (comma-separated) modules is in this list. */
   moduleIds: string[];
   overdueOnly: boolean;
@@ -77,7 +79,7 @@ interface Filters {
 }
 
 const defaultFilters: Filters = {
-  search: "", assigneeId: "all", priority: "all", projectId: "all", type: "all", categoryId: "all", moduleIds: [],
+  search: "", assigneeId: "all", priority: "all", projectId: "all", type: "all", categoryId: "all", statusIds: [], moduleIds: [],
   overdueOnly: false, milestonesOnly: false, dueThisWeek: false,
 };
 
@@ -158,12 +160,11 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   // (their parent still shows its "N/M subtasks" progress either way).
   const [hideSubtasksInBoard, setHideSubtasksInBoard] = useState(false);
   const [moduleFilterOpen, setModuleFilterOpen] = useState(false);
+  const [statusFilterOpen, setStatusFilterOpen] = useState(false);
   // Hides Done tasks everywhere (Board/List/Timeline) — separate from the
   // per-view "Hide subtasks" toggle above.
-  // Defaults to on; once a user picks their own preference, it's remembered
-  // per-person (not a global default flip) via localStorage.
-  const [hideDone, setHideDoneState] = useState(true);
-  const hideDoneKey = `idealtasks:hideDone:${userId}`;
+  // On every time the dashboard opens; turning it off lasts for this visit only.
+  const [hideDone, setHideDone] = useState(true);
   // Mobile only: everything after Search in the filter bar collapses behind
   // this toggle so the dashboard doesn't eat half the phone with filters.
   // sm+ layouts ignore this state entirely.
@@ -280,11 +281,13 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   }), [statsBase, today]);
 
   const filteredTasks = useMemo(() => statsBase.filter((t) => {
-    if (hideDone && t.status === "DONE") return false;
+    if (filters.statusIds.length > 0) {
+      if (!filters.statusIds.includes(t.status)) return false;
+    } else if (hideDone && t.status === "DONE") return false;
     if (filters.overdueOnly && !(t.dueDate && t.dueDate < today && t.status !== "DONE")) return false;
     if (filters.milestonesOnly && !t.isMilestone) return false;
     return true;
-  }), [statsBase, filters.overdueOnly, filters.milestonesOnly, hideDone, today]);
+  }), [statsBase, filters.overdueOnly, filters.milestonesOnly, filters.statusIds, hideDone, today]);
 
   const moduleList = useMemo(
     () => Array.from(new Set(taskList.flatMap((t) => splitModules(t.module)))).sort(),
@@ -298,23 +301,9 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
     } catch {
       // ignore malformed/unavailable localStorage
     }
-    try {
-      const raw = window.localStorage.getItem(hideDoneKey);
-      if (raw !== null) setHideDoneState(raw === "true");
-    } catch {
-      // ignore malformed/unavailable localStorage — default (on) stands
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function setHideDone(next: boolean) {
-    setHideDoneState(next);
-    try {
-      window.localStorage.setItem(hideDoneKey, String(next));
-    } catch {
-      // ignore — worst case the preference just doesn't persist
-    }
-  }
 
   function persistSavedFilters(next: { id: string; name: string; filters: Filters }[]) {
     setSavedFilters(next);
@@ -1016,14 +1005,25 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
         ) : (
         <>
         <div className="grid grid-cols-5 sm:flex sm:flex-wrap gap-1.5 sm:gap-2 mb-2 sm:mb-3">
-          <StatCard label="Total" value={stats.total} color="#0A5A46" />
-          <StatCard label="In Progress" value={stats.inProgress} color="#82B478" />
+          <StatCard
+            label="Total" value={stats.total} color="#0A5A46"
+            onClick={() => setFilters((f) => ({ ...f, statusIds: [], overdueOnly: false, milestonesOnly: false }))}
+          />
+          <StatCard
+            label="In Progress" value={stats.inProgress} color="#82B478"
+            active={filters.statusIds.length === 1 && filters.statusIds[0] === "INPROGRESS"}
+            onClick={() => setFilters((f) => ({ ...f, statusIds: f.statusIds.length === 1 && f.statusIds[0] === "INPROGRESS" ? [] : ["INPROGRESS"] }))}
+          />
           <StatCard
             label="Overdue" value={stats.overdue} color="#C4443D"
             active={filters.overdueOnly}
             onClick={() => setFilters((f) => ({ ...f, overdueOnly: !f.overdueOnly }))}
           />
-          <StatCard label="Done" value={stats.done} color="#0A5A46" />
+          <StatCard
+            label="Done" value={stats.done} color="#0A5A46"
+            active={filters.statusIds.length === 1 && filters.statusIds[0] === "DONE"}
+            onClick={() => setFilters((f) => ({ ...f, statusIds: f.statusIds.length === 1 && f.statusIds[0] === "DONE" ? [] : ["DONE"] }))}
+          />
           <StatCard
             label="Milestones" value={stats.milestones} color="#7A5C9E"
             active={filters.milestonesOnly}
@@ -1095,6 +1095,45 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
               {categoryList.filter((c) => !c.parentId).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           )}
+          <div className="relative">
+            <button
+              onClick={() => setStatusFilterOpen((v) => !v)}
+              className="rounded-lg px-2 py-1.5 text-xs bg-white border text-brand-text"
+              style={{ borderColor: filters.statusIds.length ? "#0A5A46" : undefined }}
+            >
+              {filters.statusIds.length === 0
+                ? "All Statuses"
+                : filters.statusIds.length === 1
+                  ? STATUSES.find((s) => s.id === filters.statusIds[0])?.label
+                  : `${filters.statusIds.length} statuses`}
+            </button>
+            {statusFilterOpen && (
+              <div className="absolute left-0 top-[calc(100%+4px)] z-20 w-[180px] rounded-lg bg-white border border-brand-border shadow-lg p-2">
+                {STATUSES.map((st) => (
+                  <label key={st.id} className="flex items-center gap-2 text-xs py-0.5 text-brand-text cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={filters.statusIds.includes(st.id)}
+                      onChange={() => setFilters((f) => ({
+                        ...f,
+                        statusIds: f.statusIds.includes(st.id) ? f.statusIds.filter((x) => x !== st.id) : [...f.statusIds, st.id],
+                      }))}
+                    />
+                    <span className="inline-block w-2 h-2 rounded-full" style={{ background: st.color }} />
+                    {st.label}
+                  </label>
+                ))}
+                {filters.statusIds.length > 0 && (
+                  <button
+                    onClick={() => setFilters((f) => ({ ...f, statusIds: [] }))}
+                    className="text-[11px] text-brand-dark underline mt-1"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
           <div className="relative">
             <button
               onClick={() => setModuleFilterOpen((v) => !v)}

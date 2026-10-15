@@ -6,6 +6,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Filter by status, clickable stat cards, Done hidden on every visit",
+    description: "A new \"All Statuses\" filter next to Modules lets you show one or several statuses (To Do, In Progress, Internal Test, Done, …). The In Progress and Done cards at the top now work as one-click filters too (click again to clear), and the Total card clears the status, Overdue and Milestones filters in one go. Picking Done in the status filter shows Done tasks even while Hide Done is on. Hide Done is now switched on every time you open the app; turning it off only lasts until you leave.",
+  },
+  {
     title: "Audit Log filters, categories in Excel import, security updates",
     description: "The Audit Log now has a search box, a person filter and a date range, and shows how many entries match. Excel import reads Category and Subcategory columns (matched by name against Ticket Categories; unknown names are reported in the preview and left empty), and Excel export now writes them as two separate columns so an export can be imported straight back. Behind the scenes the app moved to the latest Next.js 15 release to close known security holes, the unused image-processing endpoint is switched off, and the old Excel library with unfixed vulnerabilities was replaced — .xlsx and .csv files are supported; older .xls files need saving as .xlsx first.",
   },
