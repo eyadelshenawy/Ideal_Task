@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 // Per-project manifest so the person a status link is shared with can
 // install it as an icon that opens straight to their project's status page
 // — same idea as the intake and tracking link manifests.
-export async function GET(_req: Request, { params }: { params: { token: string } }) {
+export async function GET(_req: Request, props: { params: Promise<{ token: string }> }) {
+  const params = await props.params;
   const project = await prisma.project.findUnique({
     where: { shareToken: params.token },
     select: { name: true, deletedAt: true },

@@ -4,7 +4,8 @@ import { requireSuperAdmin } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
 
 // Restoring a project is Super-Admin-only, same as deleting it.
-export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { session, error } = await requireSuperAdmin();
   if (error) return error;
 

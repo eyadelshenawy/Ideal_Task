@@ -3,7 +3,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireSession, requireSuperAdmin } from "@/lib/permissions";
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { error } = await requireSession();
   if (error) return error;
 
@@ -20,7 +21,8 @@ const createSchema = z.object({
   options: z.array(z.string().trim().min(1)).default([]),
 });
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { error } = await requireSuperAdmin();
   if (error) return error;
 

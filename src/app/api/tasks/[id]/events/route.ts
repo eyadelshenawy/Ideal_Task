@@ -19,7 +19,8 @@ function serializeEvent(e: { id: string; type: string; message: string; createdA
   };
 }
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { error } = await requireTaskAccess(params.id);
   if (error) return error;
 
@@ -35,7 +36,8 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 // headroom, not a realistic ceiling anyone should hit.
 const commentSchema = z.object({ message: z.string().trim().min(1).max(20000) });
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { session, error } = await requireTaskAccess(params.id);
   if (error) return error;
 

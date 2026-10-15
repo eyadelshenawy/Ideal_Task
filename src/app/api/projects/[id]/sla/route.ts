@@ -5,7 +5,8 @@ import { requireSession, requireSuperAdmin } from "@/lib/permissions";
 import { dateStrToUTC } from "@/lib/serverDates";
 import { SLA_DEFAULT_SENTINEL, loadSlaConfig } from "@/lib/slaConfig";
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { error } = await requireSession();
   if (error) return error;
   return NextResponse.json(await loadSlaConfig(params.id));
@@ -21,7 +22,8 @@ const slaConfigSchema = z.object({
   cutoffDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
 });
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { error } = await requireSuperAdmin();
   if (error) return error;
   if (params.id === SLA_DEFAULT_SENTINEL) {
@@ -54,7 +56,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   return NextResponse.json(await loadSlaConfig(params.id));
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { error } = await requireSuperAdmin();
   if (error) return error;
 

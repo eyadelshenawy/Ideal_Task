@@ -6,7 +6,8 @@ import { logAudit } from "@/lib/audit";
 
 // Generates (or replaces) a project's public share token — Super Admin only.
 // Replacing immediately invalidates any previously-issued link.
-export async function POST(_req: Request, { params }: { params: { id: string } }) {
+export async function POST(_req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { session, error } = await requireSuperAdmin();
   if (error) return error;
 
@@ -26,7 +27,8 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
 }
 
 // Revokes the share link — Super Admin only.
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { session, error } = await requireSuperAdmin();
   if (error) return error;
 

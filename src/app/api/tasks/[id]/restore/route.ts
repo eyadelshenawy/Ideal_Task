@@ -8,7 +8,8 @@ import { logAudit } from "@/lib/audit";
 // Restore rights mirror delete rights: Super Admin for anything, or a
 // Project-Admin grant on the task's project. Any of its subtasks still
 // sitting in Trash come back along with it.
-export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { session, error } = await requireSession();
   if (error) return error;
 

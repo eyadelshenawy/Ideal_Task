@@ -19,7 +19,8 @@ const bodySchema = z.object({
   recipients: z.array(z.string().trim().email()),
 });
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { session, error } = await requireTaskAccess(params.id);
   if (error) return error;
 

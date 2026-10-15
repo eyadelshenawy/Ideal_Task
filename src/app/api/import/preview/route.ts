@@ -17,11 +17,26 @@ export async function POST(req: NextRequest) {
 
   const { parsed, warnings } = parseSheetRows(parsedBody.data.rows);
 
-  const [existingProjects, existingMembers, existingTasks] = await Promise.all([
+  const [existingProjects, existingMembers, existingTasks, categories] = await Promise.all([
     prisma.project.findMany(),
     prisma.user.findMany({ where: { active: true }, select: { id: true, name: true } }),
     prisma.task.findMany({ where: { code: { not: null } }, select: { id: true, code: true } }),
+    prisma.category.findMany({ select: { id: true, name: true, parentId: true } }),
   ]);
+  const topCategoryByName = new Map(categories.filter((c) => !c.parentId).map((c) => [c.name.toLowerCase(), c.id]));
+  const subCategoryByKey = new Map(categories.filter((c) => c.parentId).map((c) => [`${c.parentId}|${c.name.toLowerCase()}`, c.id]));
+  function resolveCategory(rowNo: number, catName: string, subName: string): { categoryId: string | null; subcategoryId: string | null } {
+    if (!catName) return { categoryId: null, subcategoryId: null };
+    const categoryId = topCategoryByName.get(catName.toLowerCase()) ?? null;
+    if (!categoryId) {
+      warnings.push(`Row ${rowNo}: category "${catName}" not found — left empty (add it in Ticket Categories first)`);
+      return { categoryId: null, subcategoryId: null };
+    }
+    if (!subName) return { categoryId, subcategoryId: null };
+    const subcategoryId = subCategoryByKey.get(`${categoryId}|${subName.toLowerCase()}`) ?? null;
+    if (!subcategoryId) warnings.push(`Row ${rowNo}: subcategory "${subName}" not found under "${catName}" — left empty`);
+    return { categoryId, subcategoryId };
+  }
 
   const projectByName = new Map(existingProjects.map((p) => [p.name.toLowerCase(), p.id]));
   // Also keep each existing project's own code around so the row-level
@@ -124,6 +139,7 @@ export async function POST(req: NextRequest) {
       assigneeId,
       priority: t.priority,
       type: t.type,
+      ...resolveCategory(Number(t.tempId.slice(4)) + 2, t.categoryName, t.subcategoryName),
       status: t.status,
       startDate: t.startDate || null,
       dueDate: t.dueDate || null,

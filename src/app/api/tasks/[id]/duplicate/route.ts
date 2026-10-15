@@ -12,7 +12,8 @@ const bodySchema = z.object({ projectId: z.string().min(1).optional() });
 // is given. Resets status/progress to a fresh start; drops comments,
 // activity, checklist, dependencies, and recurrence (a copy is a new task,
 // not a clone of its history).
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { session, error } = await requireSession();
   if (error) return error;
 

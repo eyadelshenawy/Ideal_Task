@@ -8,7 +8,11 @@ const updateSchema = z.object({
   text: z.string().trim().min(1).max(300).optional(),
 });
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string; itemId: string } }) {
+export async function PATCH(
+  req: NextRequest,
+  props: { params: Promise<{ id: string; itemId: string }> }
+) {
+  const params = await props.params;
   const { error } = await requireTaskAccess(params.id);
   if (error) return error;
 
@@ -30,7 +34,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   return NextResponse.json(updated);
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string; itemId: string } }) {
+export async function DELETE(
+  _req: NextRequest,
+  props: { params: Promise<{ id: string; itemId: string }> }
+) {
+  const params = await props.params;
   const { error } = await requireTaskAccess(params.id);
   if (error) return error;
 

@@ -13,7 +13,8 @@ import { TO_CUSTOMER_PREFIX, FROM_CUSTOMER_PREFIX } from "@/lib/customerThread";
 // Public, unauthenticated — the token is the only gate. Deliberately
 // minimal: status of one ticket plus the customer-facing message thread —
 // nothing about the rest of the project, internal comments, or activity log.
-export async function GET(_req: Request, { params }: { params: { token: string } }) {
+export async function GET(_req: Request, props: { params: Promise<{ token: string }> }) {
+  const params = await props.params;
   const task = await prisma.task.findUnique({
     where: { trackingToken: params.token },
     select: {
@@ -69,7 +70,8 @@ const replySchema = z.object({ message: z.string().trim().min(1).max(5000) });
 // Public, unauthenticated — logs a Comment on the task (marked as from the
 // customer) and notifies the task's assignees + Super Admins, mirroring the
 // existing comment/new-ticket notification patterns.
-export async function POST(req: NextRequest, { params }: { params: { token: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ token: string }> }) {
+  const params = await props.params;
   const form = await req.formData().catch(() => null);
   if (!form) {
     return NextResponse.json({ error: "Message can't be empty" }, { status: 400 });

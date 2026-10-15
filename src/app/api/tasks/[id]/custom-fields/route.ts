@@ -3,7 +3,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireTaskAccess } from "@/lib/permissions";
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { error } = await requireTaskAccess(params.id);
   if (error) return error;
 
@@ -23,7 +24,8 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
 const putSchema = z.object({ values: z.record(z.string()) });
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { error } = await requireTaskAccess(params.id);
   if (error) return error;
 

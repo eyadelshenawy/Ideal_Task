@@ -7,7 +7,8 @@ import { prisma } from "@/lib/prisma";
 // is what they'd get "installing" without this, since the root layout's
 // manifest points start_url at "/"). Public, unauthenticated, same gate as
 // the intake endpoints themselves.
-export async function GET(_req: Request, { params }: { params: { token: string } }) {
+export async function GET(_req: Request, props: { params: Promise<{ token: string }> }) {
+  const params = await props.params;
   const project = await prisma.project.findUnique({
     where: { intakeToken: params.token },
     select: { name: true, deletedAt: true },

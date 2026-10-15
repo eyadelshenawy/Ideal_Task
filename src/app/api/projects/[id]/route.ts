@@ -4,7 +4,8 @@ import { requireSuperAdmin } from "@/lib/permissions";
 import { projectUpdateSchema } from "@/lib/validation/project";
 import { logAudit } from "@/lib/audit";
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { session, error } = await requireSuperAdmin();
   if (error) return error;
 
@@ -35,7 +36,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 // untouched — they keep showing it — while it sits in Trash; they're only
 // unassigned (Task.projectId's onDelete: SetNull) if it's later purged for
 // good via /api/trash. See /api/projects/[id]/restore to undo.
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { session, error } = await requireSuperAdmin();
   if (error) return error;
 

@@ -16,7 +16,8 @@ function serializeEntry(e: { id: string; hours: number; date: Date; note: string
   };
 }
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { error } = await requireTaskAccess(params.id);
   if (error) return error;
 
@@ -41,7 +42,8 @@ const createSchema = z.object({
   userId: z.string().optional(),
 });
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { session, error } = await requireTaskAccess(params.id);
   if (error) return error;
 

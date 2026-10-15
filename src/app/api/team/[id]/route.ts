@@ -6,7 +6,8 @@ import { teamUpdateSchema } from "@/lib/validation/team";
 import { generateTempPassword } from "@/lib/tempPassword";
 import { logAudit } from "@/lib/audit";
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { session, error } = await requireSuperAdmin();
   if (error) return error;
 
@@ -94,7 +95,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 // Permanently deletes a user account. Tasks they created keep their record
 // (createdById just goes null — see Task.createdBy onDelete: SetNull);
 // tasks assigned to them become unassigned the same way.
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { session, error } = await requireSuperAdmin();
   if (error) return error;
 

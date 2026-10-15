@@ -19,7 +19,7 @@ export async function POST() {
 
   // Grab a reasonable label from the UA so the user can tell devices apart
   // in the trusted-list page without typing anything.
-  const h = headers();
+  const h = await headers();
   const ua = h.get("user-agent") ?? "";
   const label = ua.slice(0, 160) || null;
 

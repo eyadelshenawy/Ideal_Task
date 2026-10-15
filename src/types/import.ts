@@ -13,6 +13,8 @@ export interface ImportPreviewTask {
   assigneeId: string | null;
   priority: Priority;
   type: TicketType;
+  categoryId: string | null;
+  subcategoryId: string | null;
   status: Status;
   startDate: string | null;
   dueDate: string | null;

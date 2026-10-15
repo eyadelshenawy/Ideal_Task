@@ -14,7 +14,8 @@ import { checkRateLimit, ipFromRequest } from "@/lib/rateLimit";
 
 // Public, unauthenticated — the token is the only gate. Only ever returns
 // the project's name, never anything else about it.
-export async function GET(_req: Request, { params }: { params: { token: string } }) {
+export async function GET(_req: Request, props: { params: Promise<{ token: string }> }) {
+  const params = await props.params;
   const project = await prisma.project.findUnique({
     where: { intakeToken: params.token },
     select: { name: true, deletedAt: true },
@@ -43,7 +44,8 @@ const submitSchema = z.object({
   website: z.string().optional(),
 });
 
-export async function POST(req: NextRequest, { params }: { params: { token: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ token: string }> }) {
+  const params = await props.params;
   const form = await req.formData().catch(() => null);
   if (!form) {
     return NextResponse.json({ error: "Please fill in the required fields" }, { status: 400 });

@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 // Per-ticket manifest so the submitter can install their tracking page as an
 // icon that opens straight to it — same idea as the intake and share
 // manifests.
-export async function GET(_req: Request, { params }: { params: { token: string } }) {
+export async function GET(_req: Request, props: { params: Promise<{ token: string }> }) {
+  const params = await props.params;
   const task = await prisma.task.findUnique({
     where: { trackingToken: params.token },
     select: { title: true, deletedAt: true },

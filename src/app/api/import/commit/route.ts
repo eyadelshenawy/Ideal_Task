@@ -211,6 +211,8 @@ export async function POST(req: NextRequest) {
             childCodeSeq: childCodeSeqDelta.get(ownRealId) ?? 0,
             priority: t.priority,
             type: t.type,
+            categoryId: t.categoryId,
+            subcategoryId: t.subcategoryId,
             status: t.status,
             startDate: dateStrToUTC(dates.startDate),
             dueDate: dateStrToUTC(dates.dueDate),
