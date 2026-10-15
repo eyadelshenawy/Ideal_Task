@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, X, Shield, ToggleLeft, ToggleRight, RotateCcw, FolderKanban, Trash2, Check } from "lucide-react";
+import { Plus, X, Shield, ShieldOff, ToggleLeft, ToggleRight, RotateCcw, FolderKanban, Trash2, Check } from "lucide-react";
 import type { TeamMember, Project } from "@/types/models";
 
 interface TeamModalProps {
@@ -20,6 +20,7 @@ export default function TeamModal({ team, projects, currentUserId, onClose, onCh
   const [tempPasswordInfo, setTempPasswordInfo] = useState<{ name: string; password: string } | null>(null);
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
+  const [confirmingMfaId, setConfirmingMfaId] = useState<string | null>(null);
 
   async function addMember() {
     if (!newName.trim() || !newEmail.trim()) return;
@@ -173,6 +174,19 @@ export default function TeamModal({ team, projects, currentUserId, onClose, onCh
                   >
                     <RotateCcw size={15} />
                   </button>
+                  {m.mfaEnabled && (
+                    <button
+                      onClick={() => {
+                        if (confirmingMfaId === m.id) { setConfirmingMfaId(null); patchMember(m.id, { resetMfa: true }); }
+                        else setConfirmingMfaId(m.id);
+                      }}
+                      disabled={busyId === m.id}
+                      title={confirmingMfaId === m.id ? "Click to confirm — they can sign in with their password and set it up again" : "Switch off two-factor sign-in (e.g. lost phone)"}
+                      style={{ color: confirmingMfaId === m.id ? "#C4443D" : "#5B6B64" }}
+                    >
+                      {confirmingMfaId === m.id ? <Check size={15} /> : <ShieldOff size={15} />}
+                    </button>
+                  )}
                   <button
                     onClick={() => !isSelf && (confirmingDeleteId === m.id ? deleteMember(m.id) : setConfirmingDeleteId(m.id))}
                     disabled={isSelf || busyId === m.id}

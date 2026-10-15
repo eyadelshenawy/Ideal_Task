@@ -6,6 +6,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Super Admins can switch off a member's two-factor sign-in",
+    description: "If someone loses the phone with their Authenticator app, a Super Admin can now help: in Manage Team, a shield-off icon appears next to anyone using two-factor sign-in. Click it twice to confirm and that member can sign in with just their password, then set two-factor up again on their new phone. It's recorded in the Audit Log.",
+  },
+  {
     title: "Excel template no longer triggers a module warning",
     description: "The sample rows in Download Excel Template used a made-up module name (\"Billing\") that isn't in the Modules list, so importing the template unchanged showed a warning. The sample now leaves Module empty.",
   },
