@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkTaskLists } from "@/lib/lists";
 import { prisma } from "@/lib/prisma";
 import { requireSession, getUserAccess } from "@/lib/permissions";
 import { taskCreateSchema, assigneesToConnect } from "@/lib/validation/task";
@@ -45,6 +46,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid task" }, { status: 400 });
   }
   const data = parsed.data;
+  const lists = await checkTaskLists(data.type, data.module);
+  if (lists.error) return NextResponse.json({ error: lists.error }, { status: 400 });
+  data.module = lists.module ?? "";
 
   // A subtask always lives in its parent's project — the parent decides,
   // whatever projectId the client sent is overridden below.

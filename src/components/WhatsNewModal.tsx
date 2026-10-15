@@ -6,6 +6,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Modules, ticket types and priority names are now editable lists",
+    description: "Super Admins have a new Admin menu → Lists screen with three tabs. Modules: the list starts from every module already typed on a task, with how many tasks use each, so you can tidy it first — rename one (every task using it changes too; renaming to a name already in the list merges the two), hide one, or add a new one. Ticket Types: rename, change the short tag and colour, hide, or add a new type (Task, Incident and Service Request can't be hidden). Priorities: change the name shown and the colour. Hiding only removes an entry from the drop-downs — tickets that already have it keep it. In a task, Module is now picked from the list instead of typed, and the bulk Module change works the same way. Excel import matches modules against the list; unknown ones are reported in the preview and left empty.",
+  },
+  {
     title: "Pick more than one value in every filter",
     description: "Assignees, Priorities, Projects, Types and Categories now work like Statuses and Modules: click the filter, tick as many values as you need (for example Critical + High, or two projects together), and the list shows tasks matching any of them. The button shows the name when one value is picked, or a count when several are, and each list has a Clear link. Filters you saved earlier keep working.",
   },

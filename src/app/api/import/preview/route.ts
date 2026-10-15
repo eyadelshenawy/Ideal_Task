@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { loadListConfig } from "@/lib/lists";
+import { toTypeMeta } from "@/lib/ticketMeta";
+import { PRIORITIES, splitModules } from "@/lib/taskHelpers";
 import { prisma } from "@/lib/prisma";
 import { requireSuperAdmin } from "@/lib/permissions";
 import { importRawRowsSchema } from "@/lib/validation/import";
@@ -15,7 +18,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid file data" }, { status: 400 });
   }
 
-  const { parsed, warnings } = parseSheetRows(parsedBody.data.rows);
+  const lists = await loadListConfig();
+  const { parsed, warnings } = parseSheetRows(parsedBody.data.rows, {
+    types: lists.ticketTypes.map(toTypeMeta),
+    priorities: PRIORITIES.map((p) => ({ id: p.id, label: lists.priorities.find((o) => o.code === p.id)?.label ?? p.label })),
+  });
+  const moduleByName = new Map(lists.modules.map((m) => [m.name.toLowerCase(), m.name]));
+  function resolveModule(rowNo: number, raw: string): string {
+    const known: string[] = [];
+    for (const name of splitModules(raw)) {
+      const match = moduleByName.get(name.toLowerCase());
+      if (match) { if (!known.includes(match)) known.push(match); }
+      else warnings.push(`Row ${rowNo}: module "${name}" not found — left empty (add it in Lists first)`);
+    }
+    return known.join(", ");
+  }
 
   const [existingProjects, existingMembers, existingTasks, categories] = await Promise.all([
     prisma.project.findMany(),
@@ -131,7 +148,7 @@ export async function POST(req: NextRequest) {
       code: t.code,
       title: t.title,
       description: t.description,
-      module: t.module,
+      module: resolveModule(Number(t.tempId.slice(4)) + 2, t.module),
       tags: t.tags,
       comment: t.comment,
       projectId,

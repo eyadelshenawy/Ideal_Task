@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkTaskLists } from "@/lib/lists";
 import { prisma } from "@/lib/prisma";
 import { requireSession, getUserAccess } from "@/lib/permissions";
 import { taskFullUpdateSchema, taskStatusUpdateSchema, assigneesToSet } from "@/lib/validation/task";
@@ -99,6 +100,9 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid task" }, { status: 400 });
   }
   const data = parsed.data;
+  const lists = await checkTaskLists(data.type, data.module);
+  if (lists.error) return NextResponse.json({ error: lists.error }, { status: 400 });
+  if (data.module !== undefined) data.module = lists.module ?? "";
   const nextStatus = data.status ?? existing.status;
   const dependsOn = data.dependsOn?.filter((id) => id !== params.id);
 

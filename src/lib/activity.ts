@@ -14,8 +14,8 @@ export async function addComment(taskId: string, authorId: string, message: stri
 function statusLabel(id: string): string {
   return STATUSES.find((s) => s.id === id)?.label ?? id;
 }
-function priorityLabel(id: string): string {
-  return PRIORITIES.find((p) => p.id === id)?.label ?? id;
+function priorityLabel(id: string, lookups: Lookups): string {
+  return lookups.priorityLabels?.get(id) ?? PRIORITIES.find((p) => p.id === id)?.label ?? id;
 }
 function dateLabel(d: Date | null): string {
   return d ? utcToDateStr(d) ?? "" : "none";
@@ -38,6 +38,9 @@ interface Lookups {
   userNames: Map<string, string>;
   contactNames: Map<string, string>;
   projectNames: Map<string, string>;
+  // Configured names (Lists); built-in names are used when missing.
+  priorityLabels?: Map<string, string>;
+  typeLabels?: Map<string, string>;
 }
 
 function sameSet(a: string[], b: string[]): boolean {
@@ -52,9 +55,9 @@ export function describeTaskChanges(before: TaskSnapshot, after: TaskSnapshot, l
 
   if (before.title !== after.title) lines.push(`Title changed to "${after.title}"`);
   if (before.status !== after.status) lines.push(`Status changed from ${statusLabel(before.status)} to ${statusLabel(after.status)}`);
-  if (before.priority !== after.priority) lines.push(`Priority changed from ${priorityLabel(before.priority)} to ${priorityLabel(after.priority)}`);
+  if (before.priority !== after.priority) lines.push(`Priority changed from ${priorityLabel(before.priority, lookups)} to ${priorityLabel(after.priority, lookups)}`);
   if (before.type !== undefined && after.type !== undefined && before.type !== after.type) {
-    const label = (t: string) => TICKET_TYPES.find((x) => x.value === t)?.label ?? t;
+    const label = (t: string) => lookups.typeLabels?.get(t) ?? TICKET_TYPES.find((x) => x.value === t)?.label ?? t;
     lines.push(`Type changed from ${label(before.type)} to ${label(after.type)}`);
   }
 
@@ -90,14 +93,18 @@ export async function loadNameLookups(params: {
   contactIds: string[];
   projectIds: string[];
 }): Promise<Lookups> {
-  const [users, contacts, projects] = await Promise.all([
+  const [users, contacts, projects, priorities, types] = await Promise.all([
     params.userIds.length ? prisma.user.findMany({ where: { id: { in: params.userIds } }, select: { id: true, name: true } }) : [],
     params.contactIds.length ? prisma.contact.findMany({ where: { id: { in: params.contactIds } }, select: { id: true, name: true } }) : [],
     params.projectIds.length ? prisma.project.findMany({ where: { id: { in: params.projectIds } }, select: { id: true, name: true } }) : [],
+    prisma.priorityOption.findMany({ select: { code: true, label: true } }),
+    prisma.ticketTypeOption.findMany({ select: { code: true, label: true } }),
   ]);
   return {
     userNames: new Map(users.map((u) => [u.id, u.name])),
     contactNames: new Map(contacts.map((c) => [c.id, c.name])),
     projectNames: new Map(projects.map((p) => [p.id, p.name])),
+    priorityLabels: new Map(priorities.map((p) => [p.code, p.label])),
+    typeLabels: new Map(types.map((t) => [t.code, t.label])),
   };
 }

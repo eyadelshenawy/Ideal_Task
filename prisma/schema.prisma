@@ -33,16 +33,6 @@ enum Status {
   DONE
 }
 
-// ITIL-style ticket classification. TASK is the default for project/
-// implementation work that isn't a support ticket.
-enum TicketType {
-  TASK
-  INCIDENT
-  SERVICE_REQUEST
-  CHANGE_REQUEST
-  PROBLEM
-}
-
 // Shared scale for Impact and Urgency; the pair maps to a Priority via
 // src/lib/priorityMatrix.ts.
 enum MatrixLevel {
@@ -390,7 +380,8 @@ model Task {
   priority Priority @default(MEDIUM)
   status   Status   @default(TODO)
 
-  type    TicketType   @default(TASK)
+  // Code of a TicketTypeOption row (TASK, INCIDENT, ...).
+  type    String       @default("TASK")
   impact  MatrixLevel?
   urgency MatrixLevel?
 
@@ -498,6 +489,39 @@ model SatisfactionSurvey {
   respondedAt DateTime?
 
   @@index([respondedAt])
+}
+
+// Configurable ticket types (Super Admin → Lists). `system` rows are relied
+// on by code (TASK is the default; INCIDENT and SERVICE_REQUEST are offered on
+// the customer form) and can be renamed but not hidden. Hiding a type keeps
+// it on existing tickets but stops it being offered for new ones.
+model TicketTypeOption {
+  code      String  @id
+  label     String
+  short     String
+  color     String
+  bg        String
+  sortOrder Int     @default(0)
+  active    Boolean @default(true)
+  system    Boolean @default(false)
+}
+
+// Configurable list of modules. Tasks still store their modules as a
+// comma-separated string of these names; renaming one rewrites it on tasks.
+model ModuleOption {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+// Display name and colour for each fixed priority level. The four levels
+// themselves stay fixed because SLA targets and Impact × Urgency use them.
+model PriorityOption {
+  code  String @id
+  label String
+  color String
 }
 
 // Org-wide ticket categories, managed by a Super Admin. A row with a

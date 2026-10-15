@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks, BarChart3, FileDown, Bookmark, X, AlertTriangle, ScrollText, BookOpen, ChevronDown, ChevronRight, Lock, ClipboardList, MoreHorizontal, Sparkles, Calendar as CalendarIcon, SlidersHorizontal, Shield, ShieldCheck, FolderTree } from "lucide-react";
+import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks, BarChart3, FileDown, Bookmark, X, AlertTriangle, ScrollText, BookOpen, ChevronDown, ChevronRight, Lock, ClipboardList, MoreHorizontal, Sparkles, Calendar as CalendarIcon, SlidersHorizontal, Shield, ShieldCheck, FolderTree, ListTree } from "lucide-react";
 import useSWR from "swr";
-import type { Task, Project, TeamMember, Contact, Status, AssigneeDisplay, Category } from "@/types/models";
+import type { Task, Project, TeamMember, Contact, Status, AssigneeDisplay, Category, ListConfig } from "@/types/models";
 import type { ImportPreview } from "@/types/import";
 import {
   colorForIndex, STATUSES, PRIORITIES, todayStr, sortTasks, toTreeRows, splitModules, isDueThisWeek,
@@ -31,6 +31,8 @@ import MfaSettingsModal from "./MfaSettingsModal";
 import SecurityPolicyModal from "./SecurityPolicyModal";
 import IdleTimeoutWatcher from "./IdleTimeoutWatcher";
 import CategoriesModal from "./CategoriesModal";
+import ListsModal from "./ListsModal";
+import { applyListConfig } from "@/lib/listConfig";
 import { readSpreadsheetRows } from "@/lib/excelRead";
 import { computeTaskSla, type SlaAll, type TaskSla } from "@/lib/taskSla";
 import { TICKET_TYPES } from "@/lib/ticketMeta";
@@ -114,6 +116,9 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   const { data: projects, mutate: mutateProjects } = useSWR<Project[]>("/api/projects", fetcher);
   const { data: contacts, mutate: mutateContacts } = useSWR<Contact[]>("/api/contacts", fetcher);
   const { data: categories, mutate: mutateCategories } = useSWR<Category[]>("/api/categories", fetcher);
+  const { data: listConfig, mutate: mutateListConfig } = useSWR<ListConfig>("/api/settings/lists", fetcher);
+  // Push the configured names/colours into the shared lists before children render.
+  if (listConfig) applyListConfig(listConfig);
   const { data: slaAll } = useSWR<SlaAll>("/api/settings/sla/all", fetcher);
   const { data: firstCommentAt } = useSWR<Record<string, string>>("/api/reports/sla", fetcher, { refreshInterval: 120000 });
   // Re-render SLA countdowns once a minute.
@@ -145,6 +150,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   const [mfaModalOpen, setMfaModalOpen] = useState(false);
   const [securityPolicyOpen, setSecurityPolicyOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [listsOpen, setListsOpen] = useState(false);
   const [checklistTemplatesOpen, setChecklistTemplatesOpen] = useState(false);
   const [workCalendarOpen, setWorkCalendarOpen] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
@@ -310,10 +316,12 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
     return true;
   }), [statsBase, filters.overdueOnly, filters.milestonesOnly, filters.statusIds, hideDone, today]);
 
-  const moduleList = useMemo(
-    () => Array.from(new Set(taskList.flatMap((t) => splitModules(t.module)))).sort(),
-    [taskList]
-  );
+  // Modules from Lists, plus hidden ones still used on a task so old tickets
+  // can still be filtered.
+  const moduleList = useMemo(() => {
+    const used = new Set(taskList.flatMap((t) => splitModules(t.module)));
+    return (listConfig?.modules ?? []).filter((m) => m.active || used.has(m.name)).map((m) => m.name);
+  }, [taskList, listConfig]);
 
   useEffect(() => {
     try {
@@ -929,6 +937,14 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
                     )}
                     {isSuperAdmin && (
                       <button
+                        onClick={() => { setListsOpen(true); setAdminMenuOpen(false); }}
+                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
+                      >
+                        <ListTree size={14} /> Lists
+                      </button>
+                    )}
+                    {isSuperAdmin && (
+                      <button
                         onClick={() => { setSecurityPolicyOpen(true); setAdminMenuOpen(false); }}
                         className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
                       >
@@ -1430,6 +1446,13 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
           categories={categoryList}
           onChanged={() => { mutateCategories(); mutateTasks(); }}
           onClose={() => setCategoriesOpen(false)}
+        />
+      )}
+
+      {listsOpen && (
+        <ListsModal
+          onChanged={() => { mutateListConfig(); mutateTasks(); }}
+          onClose={() => setListsOpen(false)}
         />
       )}
 
