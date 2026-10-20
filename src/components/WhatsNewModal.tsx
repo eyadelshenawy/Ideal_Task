@@ -6,6 +6,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "A shorter, tidier task form",
+    description: "Opening a task now shows its title and code at the top, with tabs for Details, Checklist, Time, Files and Comments instead of one long page. Status, progress and the SLA countdown sit together at the top of Details (click the SLA tag for the response and resolve times). Priority shows on its own, with Impact × Urgency one click away under \"change\". Assignees are picked from a drop-down and shown as names you can remove. Less-used settings — code, tags, milestone, repeat, depends on, parent task and duplicate — are folded under More options. A new task opens on the same Details layout. Nothing was removed: every field is still there.",
+  },
+  {
     title: "Cleaner ticket cards on the Board",
     description: "Board cards are simpler to read. The ticket code sits on its own line with the full title underneath. Only the ticket type, SLA countdown and Blocked keep a coloured tag; project, modules, category, tags and subtask info share one grey line. Comment, attachment and checklist counts moved to the bottom line beside the due date. On a computer, the Edit, Duplicate and Delete icons appear when the mouse is over a card, and the ‹ › arrows are hidden — drag the card to change its status. On a phone or tablet, the icons and arrows stay visible as before.",
   },
