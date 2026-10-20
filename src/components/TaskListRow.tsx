@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Pencil, Trash2, Check, Diamond, Copy, ChevronDown, ChevronRight, AlertTriangle } from "lucide-react";
 import type { Task, Project, AssigneeDisplay, Status } from "@/types/models";
 import { PRIORITIES, STATUSES, dueBadge, toneStyle, isBlocked, splitModules } from "@/lib/taskHelpers";
+import { useWorkDays } from "@/lib/useWorkDays";
 import AvatarStack from "./ui/AvatarStack";
 import Chip from "./ui/Chip";
 import SlaChip from "./SlaChip";
@@ -49,7 +50,7 @@ export default function TaskListRow({
   const [confirmingDuplicate, setConfirmingDuplicate] = useState(false);
   const priority = PRIORITIES.find((p) => p.id === task.priority)!;
   const status = STATUSES.find((s) => s.id === task.status)!;
-  const badge = dueBadge(task);
+  const badge = dueBadge(task, useWorkDays());
   const blocked = isBlocked(task, allTasks);
   const modules = splitModules(task.module);
   const compact = density === "compact";

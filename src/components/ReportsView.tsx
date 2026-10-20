@@ -1,5 +1,7 @@
 "use client";
 
+import { isOverdue } from "@/lib/workdays";
+import { useWorkDays } from "@/lib/useWorkDays";
 import { useMemo, useState } from "react";
 import useSWR from "swr";
 import type { Task, Project, TeamMember, Category } from "@/types/models";
@@ -46,10 +48,6 @@ interface CsatSummary {
   recent: { taskId: string; code: string | null; title: string; rating: number; comment: string | null }[];
 }
 
-function isOverdue(task: Task, today: string): boolean {
-  return !!task.dueDate && task.dueDate < today && task.status !== "DONE";
-}
-
 export default function ReportsView({ tasks, projects, team, categories, isSuperAdmin, currentUserId, onOpenTask }: ReportsViewProps) {
   const [tab, setTab] = useState<"overview" | InsightsTab>("overview");
   const [monthCount, setMonthCount] = useState(6);
@@ -64,6 +62,7 @@ export default function ReportsView({ tasks, projects, team, categories, isSuper
     fetcher
   );
   const today = todayStr();
+  const workDays = useWorkDays();
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
   const { data: firstCommentAt } = useSWR<Record<string, string>>("/api/reports/sla", fetcher);
   const { data: slaAll } = useSWR<SlaAll>("/api/settings/sla/all", fetcher);
@@ -74,11 +73,11 @@ export default function ReportsView({ tasks, projects, team, categories, isSuper
     if (tab === "overview") return null;
     const catName = new Map(categories.map((c) => [c.id, c.name]));
     return computeInsights({
-      tasks, projects, team, slaAll, firstCommentAt, raw: insightsRaw, today, monthCount,
+      tasks, projects, team, slaAll, firstCommentAt, raw: insightsRaw, today, monthCount, workDays,
       projectIds: insightProjectIds,
       categoryName: (id) => (id ? catName.get(id) ?? null : null),
     });
-  }, [tab, tasks, projects, team, categories, slaAll, firstCommentAt, insightsRaw, today, monthCount, insightProjectIds]);
+  }, [tab, tasks, projects, team, categories, slaAll, firstCommentAt, insightsRaw, today, monthCount, insightProjectIds, workDays]);
 
   const sla = useMemo(() => {
     if (!firstCommentAt || !slaAll) return null;
@@ -111,7 +110,7 @@ export default function ReportsView({ tasks, projects, team, categories, isSuper
     const total = tasks.length;
     const done = tasks.filter((t) => t.status === "DONE").length;
     const inProgress = tasks.filter((t) => t.status === "INPROGRESS").length;
-    const overdue = tasks.filter((t) => isOverdue(t, today)).length;
+    const overdue = tasks.filter((t) => isOverdue(t, today, workDays)).length;
     const createdLast7 = tasks.filter((t) => t.createdAt >= sevenDaysAgo).length;
     const completedLast7 = tasks.filter((t) => t.status === "DONE" && t.updatedAt >= sevenDaysAgo).length;
     return {
@@ -119,27 +118,27 @@ export default function ReportsView({ tasks, projects, team, categories, isSuper
       completionRate: total > 0 ? Math.round((done / total) * 100) : 0,
       createdLast7, completedLast7,
     };
-  }, [tasks, today, sevenDaysAgo]);
+  }, [tasks, today, sevenDaysAgo, workDays]);
 
   const perProject = useMemo(() => {
     const rows = projects.map((p) => {
       const projectTasks = tasks.filter((t) => t.projectId === p.id);
       const total = projectTasks.length;
       const done = projectTasks.filter((t) => t.status === "DONE").length;
-      const overdue = projectTasks.filter((t) => isOverdue(t, today)).length;
+      const overdue = projectTasks.filter((t) => isOverdue(t, today, workDays)).length;
       return { id: p.id, name: p.name, total, done, overdue, completionRate: total > 0 ? Math.round((done / total) * 100) : 0 };
     });
     const unassignedTasks = tasks.filter((t) => !t.projectId);
     if (unassignedTasks.length > 0) {
       const done = unassignedTasks.filter((t) => t.status === "DONE").length;
-      const overdue = unassignedTasks.filter((t) => isOverdue(t, today)).length;
+      const overdue = unassignedTasks.filter((t) => isOverdue(t, today, workDays)).length;
       rows.push({
         id: "__none__", name: "No project", total: unassignedTasks.length, done, overdue,
         completionRate: Math.round((done / unassignedTasks.length) * 100),
       });
     }
     return rows.sort((a, b) => b.total - a.total);
-  }, [tasks, projects, today]);
+  }, [tasks, projects, today, workDays]);
 
   // Open (non-Done) work per person, sorted heaviest-first — a quick "who's
   // overloaded, who has room" read. A task with multiple assignees counts
@@ -148,13 +147,13 @@ export default function ReportsView({ tasks, projects, team, categories, isSuper
     const open = tasks.filter((t) => t.status !== "DONE");
     const rows = team.filter((m) => m.active).map((m) => {
       const mine = open.filter((t) => t.assigneeIds.includes(m.id));
-      const overdue = mine.filter((t) => isOverdue(t, today)).length;
+      const overdue = mine.filter((t) => isOverdue(t, today, workDays)).length;
       const highPriority = mine.filter((t) => t.priority === "CRITICAL" || t.priority === "HIGH").length;
       return { id: m.id, name: m.name, total: mine.length, overdue, highPriority };
     });
     const maxTotal = Math.max(1, ...rows.map((r) => r.total));
     return rows.sort((a, b) => b.total - a.total).map((r) => ({ ...r, barPct: Math.round((r.total / maxTotal) * 100) }));
-  }, [tasks, team, today]);
+  }, [tasks, team, today, workDays]);
 
   const timeSummary = useMemo(() => {
     if (!timeTotals) return null;

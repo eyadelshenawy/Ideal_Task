@@ -62,7 +62,7 @@ export async function notifyAssignment(
 }
 
 export function dueSoonEmailHtml(task: TaskSummary) {
-  return wrap("Due tomorrow", task);
+  return wrap("Due soon", task);
 }
 
 export function overdueEmailHtml(task: TaskSummary) {

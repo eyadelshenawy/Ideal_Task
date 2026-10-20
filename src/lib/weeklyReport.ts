@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { utcToDateStr } from "@/lib/serverDates";
 import { visibleTasksWhere } from "@/lib/taskVisibility";
+import { loadWorkDays } from "@/lib/scheduling";
+import { isOverdue } from "@/lib/workdays";
 
 const APP_URL = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
 
@@ -23,6 +25,8 @@ export async function sendWeeklyReports(): Promise<{ sent: number }> {
   const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   const sevenDaysAgo = new Date(today.getTime() - 7 * 86400000);
   const sevenDaysAhead = new Date(today.getTime() + 7 * 86400000);
+  const todayStr = utcToDateStr(today)!;
+  const workDays = await loadWorkDays();
 
   const users = await prisma.user.findMany({
     where: { active: true },
@@ -49,9 +53,9 @@ export async function sendWeeklyReports(): Promise<{ sent: number }> {
     });
 
     const doneLastWeek = visibleTasks.filter((t) => t.status === "DONE" && t.updatedAt >= sevenDaysAgo);
-    const overdueNow = visibleTasks.filter((t) => t.dueDate && t.dueDate < today && t.status !== "DONE");
+    const overdueNow = visibleTasks.filter((t) => isOverdue({ status: t.status, dueDate: utcToDateStr(t.dueDate) }, todayStr, workDays));
     const dueNextWeek = visibleTasks.filter(
-      (t) => t.dueDate && t.dueDate >= today && t.dueDate <= sevenDaysAhead && t.status !== "DONE"
+      (t) => t.dueDate && t.dueDate <= sevenDaysAhead && t.status !== "DONE" && !overdueNow.includes(t)
     );
 
     const projectNames = new Set(visibleTasks.map((t) => t.project?.name).filter((n): n is string => !!n));

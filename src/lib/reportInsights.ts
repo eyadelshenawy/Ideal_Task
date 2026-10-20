@@ -1,6 +1,7 @@
 import type { Task, Project, TeamMember, Priority } from "@/types/models";
 import { MONTHS, PRIORITIES, addDays, diffDays, splitModules } from "@/lib/taskHelpers";
 import { computeTaskSla, type SlaAll } from "@/lib/taskSla";
+import { isOverdue, type WorkDays } from "@/lib/workdays";
 
 /** GET /api/reports/insights */
 export interface InsightsRaw {
@@ -71,8 +72,9 @@ export function computeInsights(input: {
   today: string;
   monthCount: number;
   projectIds: string[];
+  workDays: WorkDays;
 }): Insights {
-  const { projects, team, slaAll, firstCommentAt, raw, today, monthCount, projectIds } = input;
+  const { projects, team, slaAll, firstCommentAt, raw, today, monthCount, projectIds, workDays } = input;
   const months = lastMonths(today, monthCount);
   const from = `${months[0].key}-01`;
   const inPeriod = (d: string | null) => !!d && dayOf(d) >= from && dayOf(d) <= today;
@@ -164,7 +166,7 @@ export function computeInsights(input: {
       closed: mineDone.length,
       resolutionDays: mineDone.reduce((sum, t) => sum + Math.max(0, diffDays(dayOf(t.createdAt), t.completedAt!)), 0),
       open: mineOpen.length,
-      overdue: mineOpen.filter((t) => !!t.dueDate && t.dueDate < today).length,
+      overdue: mineOpen.filter((t) => isOverdue(t, today, workDays)).length,
     };
   }).filter((r) => r.closed > 0 || r.open > 0).sort((a, b) => b.closed - a.closed || b.open - a.open);
 

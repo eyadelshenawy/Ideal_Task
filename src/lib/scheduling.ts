@@ -17,6 +17,7 @@
 // below.
 
 import { prisma } from "@/lib/prisma";
+import type { WorkDays } from "@/lib/workdays";
 
 export interface WorkWeek {
   // Sunday..Saturday, true means "counts as a working day".
@@ -167,4 +168,10 @@ export function resolveTaskDates(
     return { startDate, dueDate: computedDue, durationDays };
   }
   return { startDate, dueDate: dueDate, durationDays: null };
+}
+
+// The same calendar in the shape the overdue / due-soon helpers take.
+export async function loadWorkDays(): Promise<WorkDays> {
+  const cal = await loadSchedulingCalendar();
+  return { days: cal.workWeek.days, holidays: cal.holidayDateSet };
 }

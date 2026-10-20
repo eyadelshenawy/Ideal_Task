@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { Priority, Status, Task, TeamMember } from "@/types/models";
+import { daysOverdue, workDaysAfter, type WorkDays } from "@/lib/workdays";
 
 // Ported from ideal-tasks.jsx, with enum ids uppercased to match the Prisma schema.
 
@@ -77,13 +78,18 @@ export function isDueThisWeek(task: Pick<Task, "dueDate" | "status">): boolean {
   return diff >= 0 && diff <= 7;
 }
 
-export function dueBadge(task: Pick<Task, "dueDate" | "status">): { label: string; tone: DueTone } | null {
+/** Overdue and "Due in" count working days only (Work Calendar), not weekends or holidays. */
+export function dueBadge(task: Pick<Task, "dueDate" | "status">, cal: WorkDays): { label: string; tone: DueTone } | null {
   if (!task.dueDate) return null;
-  const diff = diffDays(todayStr(), task.dueDate);
+  const today = todayStr();
   if (task.status === "DONE") return { label: formatDateDisplay(task.dueDate), tone: "done" };
-  if (diff < 0) return { label: `${Math.abs(diff)}d overdue`, tone: "overdue" };
-  if (diff === 0) return { label: "Due today", tone: "soon" };
-  if (diff <= 2) return { label: `Due in ${diff}d`, tone: "soon" };
+  const late = daysOverdue(task, today, cal);
+  if (late > 0) return { label: `${late}d overdue`, tone: "overdue" };
+  if (task.dueDate === today) return { label: "Due today", tone: "soon" };
+  // Past the due date, but no working day has gone by yet (e.g. a weekend).
+  if (task.dueDate < today) return { label: formatDateDisplay(task.dueDate), tone: "soon" };
+  const ahead = workDaysAfter(today, task.dueDate, cal);
+  if (ahead <= 2) return { label: `Due in ${Math.max(1, ahead)}d`, tone: "soon" };
   return { label: formatDateDisplay(task.dueDate), tone: "normal" };
 }
 
