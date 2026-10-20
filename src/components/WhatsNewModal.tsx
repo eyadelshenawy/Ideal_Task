@@ -6,6 +6,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Cleaner ticket cards on the Board",
+    description: "Board cards are simpler to read. The ticket code sits on its own line with the full title underneath. Only the ticket type, SLA countdown and Blocked keep a coloured tag; project, modules, category, tags and subtask info share one grey line. Comment, attachment and checklist counts moved to the bottom line beside the due date. On a computer, the Edit, Duplicate and Delete icons appear when the mouse is over a card, and the ‹ › arrows are hidden — drag the card to change its status. On a phone or tablet, the icons and arrows stay visible as before.",
+  },
+  {
     title: "Super Admins can switch off a member's two-factor sign-in",
     description: "If someone loses the phone with their Authenticator app, a Super Admin can now help: in Manage Team, a shield-off icon appears next to anyone using two-factor sign-in. Click it twice to confirm and that member can sign in with just their password, then set two-factor up again on their new phone. It's recorded in the Audit Log.",
   },
