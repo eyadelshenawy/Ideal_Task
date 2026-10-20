@@ -7,7 +7,7 @@ import { sendWeeklyReports } from "@/lib/weeklyReport";
 import { notify } from "@/lib/inAppNotify";
 import { checkSlaRisks } from "@/lib/slaRisk";
 import { loadWorkDays } from "@/lib/scheduling";
-import { isWorkDay, isOverdue, nextWorkDay } from "@/lib/workdays";
+import { isWorkDay, isOverdue, nextWorkDay, workDaysAfter } from "@/lib/workdays";
 
 function startOfTodayUTC(): Date {
   const now = new Date();
@@ -99,10 +99,14 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // The daily check runs every morning; the weekly summary only goes out on
-  // Sundays (day 0), the start of the work week here.
+  // The daily check runs every morning; the weekly summary goes out on the
+  // first working day of the week (Sunday, or the next working day when
+  // Sunday is a holiday).
+  // = today is a working day and the only one from Sunday up to today.
+  const saturdayBefore = utcToDateStr(new Date(today.getTime() - (today.getUTCDay() + 1) * 86400000))!;
+  const firstWorkDayOfWeek = workingToday && workDaysAfter(saturdayBefore, todayKey, workDays) === 1;
   let weeklyReportsSent: number | null = null;
-  if (today.getUTCDay() === 0) {
+  if (firstWorkDayOfWeek) {
     const result = await sendWeeklyReports();
     weeklyReportsSent = result.sent;
   }

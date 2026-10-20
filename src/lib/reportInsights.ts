@@ -1,7 +1,7 @@
 import type { Task, Project, TeamMember, Priority } from "@/types/models";
-import { MONTHS, PRIORITIES, addDays, diffDays, splitModules } from "@/lib/taskHelpers";
+import { MONTHS, PRIORITIES, addDays, splitModules } from "@/lib/taskHelpers";
 import { computeTaskSla, type SlaAll } from "@/lib/taskSla";
-import { isOverdue, type WorkDays } from "@/lib/workdays";
+import { isOverdue, workDaysAfter, type WorkDays } from "@/lib/workdays";
 
 /** GET /api/reports/insights */
 export interface InsightsRaw {
@@ -121,13 +121,13 @@ export function computeInsights(input: {
   const completed = tasks.filter((t) => t.status === "DONE" && inPeriod(t.completedAt));
   for (const t of completed) {
     const s = speed.get(t.priority)!;
-    s.resolutionDays += Math.max(0, diffDays(dayOf(t.createdAt), t.completedAt!));
+    s.resolutionDays += workDaysAfter(dayOf(t.createdAt), t.completedAt!, workDays);
     s.resolutionCount++;
   }
 
-  // 4 · Age of tickets open today.
+  // 4 · Age of tickets open today, in working days.
   const open = tasks.filter((t) => t.status !== "DONE");
-  const ages = open.map((t) => diffDays(dayOf(t.createdAt), today));
+  const ages = open.map((t) => workDaysAfter(dayOf(t.createdAt), today, workDays));
   const ageing: AgeBucket[] = [
     { label: "0–7 days", count: ages.filter((a) => a <= 7).length },
     { label: "8–30 days", count: ages.filter((a) => a >= 8 && a <= 30).length },
@@ -164,7 +164,7 @@ export function computeInsights(input: {
       id: m.id,
       name: m.name,
       closed: mineDone.length,
-      resolutionDays: mineDone.reduce((sum, t) => sum + Math.max(0, diffDays(dayOf(t.createdAt), t.completedAt!)), 0),
+      resolutionDays: mineDone.reduce((sum, t) => sum + workDaysAfter(dayOf(t.createdAt), t.completedAt!, workDays), 0),
       open: mineOpen.length,
       overdue: mineOpen.filter((t) => isOverdue(t, today, workDays)).length,
     };

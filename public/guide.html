@@ -488,14 +488,14 @@
       <tr><td>Customers</td><td>1 · Tickets per customer per month</td><td>count of tickets created in the month</td></tr>
       <tr><td>Customers</td><td>5 · Where problems come from (top 5 modules and categories)</td><td>count of tickets created in the period</td></tr>
       <tr><td>SLA &amp; speed</td><td>2 · Resolution SLA met per customer per month</td><td>met ÷ (met + breached) × 100</td></tr>
-      <tr><td>SLA &amp; speed</td><td>3 · Average response and resolution time per priority</td><td>sum of hours (or days) ÷ number of tickets — response = created → first comment; resolution = created → Done</td></tr>
-      <tr><td>SLA &amp; speed</td><td>4 · Age of open tickets (0–7, 8–30, 31–60, 60+ days)</td><td>today − created date</td></tr>
-      <tr><td>Team</td><td>7 · Team performance</td><td>average resolution = resolution days ÷ closed; overdue % = overdue ÷ open × 100 (overdue counted in working days)</td></tr>
+      <tr><td>SLA &amp; speed</td><td>3 · Average response and resolution time per priority</td><td>sum of hours (or working days) ÷ number of tickets — response = created → first comment (hours); resolution = created → Done (working days)</td></tr>
+      <tr><td>SLA &amp; speed</td><td>4 · Age of open tickets (0–7, 8–30, 31–60, 60+ days)</td><td>working days from created date to today</td></tr>
+      <tr><td>Team</td><td>7 · Team performance</td><td>average resolution = resolution working days ÷ closed; overdue % = overdue ÷ open × 100 (overdue counted in working days)</td></tr>
       <tr><td>Time &amp; billing</td><td>6 · Hours logged per customer per month</td><td>sum of hours logged in the month</td></tr>
       <tr><td>Quality</td><td>8 · Opened vs closed per week (last 12 weeks)</td><td>backlog change = opened − closed</td></tr>
       <tr><td>Quality</td><td>9 · Reopened tickets</td><td>reopened ÷ closed × 100 — a ticket counts as reopened when it is moved back from Done</td></tr>
     </table>
-    <p>Times are calendar time. Averages are rounded to 1 decimal place and percentages to a whole number. As with the rest of Reports, you only see figures for tasks you're allowed to see.</p>
+    <p>Response times are calendar hours; resolution times, ticket age and overdue are working days (weekends and holidays from Settings → Work calendar don't count). Averages are rounded to 1 decimal place and percentages to a whole number. As with the rest of Reports, you only see figures for tasks you're allowed to see.</p>
     <h3>SLA</h3>
     <p>Response/resolution targets only make sense for support/ticket work measured from when a request came in — an implementation project's tasks already have their own Start/Due dates, so SLA is <strong>off by default</strong> for every project. Turn it on per-project from Settings → Projects (see below) for the ones that are actually support contracts; the rest are left out of this section entirely.</p>
     <p>Two targets are tracked automatically, by priority, for any project with tracking on — how quickly someone first commented on a task, and how quickly it was actually closed. Every project shares the same numbers by default (Critical: first response within 4 hours, close within 2 days; High: 24 hours / 4 days; Medium: 48 hours / 7 days; Low: 72 hours / 10 days) — a Super Admin can change these shared defaults via <strong>Edit default targets</strong>, or set different numbers for one specific project via its own <strong>SLA targets</strong> button in Settings → Projects. Either level can also set a cutoff date so tasks created before it (e.g. old backlog imported before this feature existed) are left out of the percentages entirely.</p>
@@ -556,8 +556,8 @@
       <tr><td>New assignment</td><td>The moment you're added to a task</td><td>Newly assigned people only</td></tr>
       <tr><td>Due soon</td><td>Once, on the last working day before it's due (e.g. Thursday for a Sunday due date)</td><td>The task's assignees</td></tr>
       <tr><td>Overdue</td><td>Every working day it stays overdue (none on weekends or holidays)</td><td>Assignees + the project's admins + all Super Admins</td></tr>
-      <tr><td>Weekly summary</td><td>Every Sunday, 9am Cairo time</td><td>Everyone — scoped to what they can see (see below)</td></tr>
-      <tr><td>SLA warning</td><td>Once, when a ticket enters the last quarter of its response or resolution time (checked every 15 minutes during working hours, Sunday–Thursday)</td><td>The ticket's assignees</td></tr>
+      <tr><td>Weekly summary</td><td>First working day of the week, 9am Cairo time (Sunday, or Monday if Sunday is a holiday)</td><td>Everyone — scoped to what they can see (see below)</td></tr>
+      <tr><td>SLA warning</td><td>Once, when a ticket enters the last quarter of its response or resolution time (checked every 15 minutes during working hours, on working days from Settings → Work calendar)</td><td>The ticket's assignees</td></tr>
       <tr><td>Mention</td><td>When someone types @your name in a comment</td><td>The person mentioned</td></tr>
       <tr><td>Satisfaction survey</td><td>Once, when a customer ticket in an SLA-tracked project is first marked Done</td><td>The ticket's outside contact</td></tr>
     </table>

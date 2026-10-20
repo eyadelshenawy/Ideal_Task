@@ -6,6 +6,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Reports and schedules follow the Work calendar",
+    description: "In Reports, average resolution time and the age of open tickets are now counted in working days, like overdue — weekends and holidays don't count (response time stays in calendar hours). The Excel export headings say so too. The SLA warning check now skips any non-working day in Settings → Work calendar, including holidays, and the weekly summary email goes out on the first working day of the week — Sunday, or the next working day if Sunday is a holiday.",
+  },
+  {
     title: "Overdue counts working days only",
     description: "Weekends and holidays (Settings → Work calendar) no longer count towards overdue. Days overdue = working days after the due date up to today, and a task is overdue once that reaches 1 — so a task due on Thursday isn't overdue on Friday or Saturday and shows 1d overdue on Sunday. The same rule applies to the badge on cards, the Overdue count and filter, Needs attention, Reports (including overdue % in Team performance), the client report and the weekly email. \"Due in 2d\" and the 3-day high-priority list also count working days. The daily overdue and due-soon emails are no longer sent on weekends or holidays; the due-soon reminder now goes out on the last working day before the due date.",
   },
