@@ -6,7 +6,7 @@ import useSWR from "swr";
 import type { Task, Project, TeamMember, Contact, Status, AssigneeDisplay, Category, ListConfig } from "@/types/models";
 import type { ImportPreview } from "@/types/import";
 import {
-  colorForIndex, STATUSES, PRIORITIES, todayStr, sortTasks, toTreeRows, splitModules, isDueThisWeek,
+  colorForIndex, STATUSES, PRIORITIES, todayStr, sortTasks, toTreeRows, splitModules, isDueThisWeek, initials,
   groupTaskRows, countGroupUnits, GROUP_FIELD_LABELS, type SortBy, type GroupField, type GroupNode, type TaskTreeRow,
 } from "@/lib/taskHelpers";
 import { computeDependencyWarnings, describeDependencyWarning } from "@/lib/dependencyWarnings";
@@ -1406,7 +1406,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
           </div>
         )}
 
-        {view === "timeline" && <GanttView tasks={sortedGantt} onEditTask={openEdit} />}
+        {view === "timeline" && <GanttView tasks={sortedGantt} onEditTask={openEdit} assigneeLabel={(t) => getAssigneeDisplays(t).map((a) => initials(a.name)).join(", ")} />}
         </>
         )}
       </div>

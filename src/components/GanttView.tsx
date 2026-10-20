@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Diamond } from "lucide-react";
 import type { Task } from "@/types/models";
 import { STATUSES, MONTHS, todayStr, addDays, diffDays, toTreeRows } from "@/lib/taskHelpers";
@@ -8,43 +8,81 @@ import { STATUSES, MONTHS, todayStr, addDays, diffDays, toTreeRows } from "@/lib
 interface GanttViewProps {
   tasks: Task[];
   onEditTask: (task: Task) => void;
+  /** Initials of the task's assignees ("OH, MA"), shown beside each bar. */
+  assigneeLabel?: (task: Task) => string;
 }
 
-const dayWidth = 30;
-const rowHeight = 42;
-const headerHeight = 46;
-const sidebarWidth = 210;
+type Scale = "days" | "weeks";
 
-export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
+// Days: one 30px column per day. Weeks: one 56px column per week (8px a day).
+const dayWidthFor: Record<Scale, number> = { days: 30, weeks: 8 };
+const rowHeight = 34;
+const headerHeight = 40;
+
+function dayOfWeek(dateStr: string): number {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d).getDay();
+}
+
+export default function GanttView({ tasks, onEditTask, assigneeLabel }: GanttViewProps) {
+  const [scale, setScale] = useState<Scale>("days");
+  const scrollRef = useRef<HTMLDivElement>(null);
+  // A narrower task-name column on phones leaves room for the bars.
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const update = () => setNarrow(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  const sidebarWidth = narrow ? 130 : 230;
+  // Month and year at the left edge of what's in view, shown beside the buttons.
+  const [visibleMonth, setVisibleMonth] = useState("");
+  const dayWidth = dayWidthFor[scale];
+  const todayS = todayStr();
+
+  // The range always includes today, so the view can open scrolled to it.
   const { start, end } = useMemo(() => {
-    const dates: string[] = [];
+    const dates: string[] = [todayS];
     tasks.forEach((t) => {
       if (t.startDate) dates.push(t.startDate);
       if (t.dueDate) dates.push(t.dueDate);
     });
-    if (dates.length === 0) {
-      const t0 = todayStr();
-      return { start: addDays(t0, -3), end: addDays(t0, 17) };
-    }
     dates.sort();
-    return { start: addDays(dates[0], -2), end: addDays(dates[dates.length - 1], 4) };
-  }, [tasks]);
+    let s = addDays(dates[0], -2);
+    let e = addDays(dates[dates.length - 1], 4);
+    if (scale === "weeks") {
+      // Whole weeks, Sunday to Saturday.
+      s = addDays(s, -dayOfWeek(s));
+      e = addDays(e, 6 - dayOfWeek(e));
+    }
+    return { start: s, end: e };
+  }, [tasks, scale, todayS]);
 
-  const days = useMemo(() => {
-    const arr: { date: string; dayNum: number; isWeekend: boolean; isMonthStart: boolean; monthLabel: string; isToday: boolean }[] = [];
+  // Header columns: one per day, or one per week.
+  const columns = useMemo(() => {
+    const step = scale === "days" ? 1 : 7;
+    const arr: { date: string; label: string; monthLabel: string | null; isWeekend: boolean; isToday: boolean }[] = [];
     let cur = start;
-    const todayS = todayStr();
+    let lastMonth = -1;
     while (cur <= end) {
-      const [y, m, d] = cur.split("-").map(Number);
-      const dow = new Date(y, m - 1, d).getDay();
+      const [, m, d] = cur.split("-").map(Number);
+      const dow = dayOfWeek(cur);
+      const containsToday = scale === "days" ? cur === todayS : todayS >= cur && todayS <= addDays(cur, 6);
       arr.push({
-        date: cur, dayNum: d, isWeekend: dow === 5 || dow === 6, isMonthStart: d === 1,
-        monthLabel: MONTHS[m - 1], isToday: cur === todayS,
+        date: cur,
+        label: String(d),
+        monthLabel: m !== lastMonth ? MONTHS[m - 1] : null,
+        isWeekend: scale === "days" && (dow === 5 || dow === 6),
+        isToday: containsToday,
       });
-      cur = addDays(cur, 1);
+      lastMonth = m;
+      cur = addDays(cur, step);
     }
     return arr;
-  }, [start, end]);
+  }, [start, end, scale, todayS]);
+  const columnWidth = dayWidth * (scale === "days" ? 1 : 7);
 
   // Parent/child tasks render in tree order (child rows directly beneath
   // their parent, indented) rather than whatever order the caller sorted
@@ -52,7 +90,8 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
   // there, full nesting works here without conflicting with anything.
   const rows = useMemo(() => toTreeRows(tasks, new Set()), [tasks]);
 
-  const totalWidth = sidebarWidth + days.length * dayWidth;
+  const totalDays = diffDays(start, end) + 1;
+  const totalWidth = sidebarWidth + totalDays * dayWidth;
   const totalHeight = headerHeight + rows.length * rowHeight;
   const xForDate = (dateStr: string) => sidebarWidth + diffDays(start, dateStr) * dayWidth;
 
@@ -68,7 +107,7 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
       })
       .filter((b): b is NonNullable<typeof b> => b !== null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [rows, start],
+    [rows, start, dayWidth, sidebarWidth],
   );
 
   const barById = useMemo(() => {
@@ -89,118 +128,166 @@ export default function GanttView({ tasks, onEditTask }: GanttViewProps) {
     return list;
   }, [bars, barById]);
 
-  const todayX = xForDate(todayStr()) + dayWidth / 2;
+  const todayX = xForDate(todayS) + dayWidth / 2;
+
+  function updateVisibleMonth() {
+    const el = scrollRef.current;
+    if (!el) return;
+    const [y, m] = addDays(start, Math.floor(el.scrollLeft / dayWidth)).split("-").map(Number);
+    setVisibleMonth(`${MONTHS[m - 1]} ${y}`);
+  }
+
+  function scrollToToday() {
+    const el = scrollRef.current;
+    if (!el) return;
+    // Leave up to a week (or a third of the visible width) before today.
+    const lead = Math.min(dayWidth * 7, (el.clientWidth - sidebarWidth) / 3);
+    el.scrollLeft = Math.max(0, todayX - sidebarWidth - lead);
+    updateVisibleMonth();
+  }
+  // Open on today, and again whenever Days/Weeks or the column width changes.
+  useEffect(() => { scrollToToday(); }, [scale, sidebarWidth]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (tasks.length === 0) {
     return <div className="text-center text-brand-sub text-sm py-10">No tasks to show on the timeline</div>;
   }
 
   return (
-    <div className="overflow-auto border border-brand-border rounded-[10px] bg-white" style={{ maxHeight: 520 }}>
-      <div style={{ position: "relative", width: totalWidth, height: totalHeight }}>
-        <div style={{ display: "grid", gridTemplateColumns: `${sidebarWidth}px repeat(${days.length}, ${dayWidth}px)` }}>
-          <div
-            className="text-[11px] font-bold text-brand-sub"
-            style={{
-              position: "sticky", top: 0, left: 0, zIndex: 4, background: "#fff",
-              borderBottom: "1px solid #E1E8E4", borderLeft: "1px solid #E1E8E4",
-              height: headerHeight, display: "flex", alignItems: "center", paddingLeft: 10,
-            }}
-          >
-            TASK
-          </div>
-          {days.map((d) => (
-            <div
-              key={d.date}
-              className="text-[10px] text-brand-sub"
-              style={{
-                position: "sticky", top: 0, zIndex: 2, height: headerHeight,
-                background: d.isToday ? "#E4EFE8" : d.isWeekend ? "#F5F8F6" : "#fff",
-                borderBottom: "1px solid #E1E8E4", borderLeft: "1px solid #E1E8E4",
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end",
-                paddingBottom: 4,
-              }}
+    <div className="border border-brand-border rounded-[10px] bg-white overflow-hidden">
+      <div className="flex items-center gap-2 px-2.5 py-2 border-b border-brand-border">
+        <button onClick={scrollToToday} className="rounded-lg px-2.5 py-1 text-xs border border-brand-border text-brand-text">
+          Today
+        </button>
+        <div className="flex rounded-lg border border-brand-border overflow-hidden">
+          {(["days", "weeks"] as Scale[]).map((s) => (
+            <button
+              key={s}
+              onClick={() => setScale(s)}
+              className="px-2.5 py-1 text-xs"
+              style={{ background: scale === s ? "#0A5A46" : "#fff", color: scale === s ? "#fff" : "#5B6B64" }}
             >
-              {d.isMonthStart && (
-                <div className="text-[9px] font-bold text-brand-dark" style={{ position: "absolute", top: 3 }}>
-                  {d.monthLabel}
-                </div>
-              )}
-              <div style={{ fontWeight: d.isToday ? 700 : 400 }}>{d.dayNum}</div>
-            </div>
-          ))}
-
-          {rows.map(({ task: t, depth }) => (
-            <Fragment key={t.id}>
-              <div
-                onClick={() => onEditTask(t)}
-                className="text-[12px] text-brand-text cursor-pointer"
-                style={{
-                  position: "sticky", left: 0, zIndex: 3, background: "#fff",
-                  borderBottom: "1px solid #E1E8E4", borderLeft: "1px solid #E1E8E4",
-                  height: rowHeight, display: "flex", alignItems: "center", gap: 6, padding: `0 10px 0 ${10 + depth * 14}px`,
-                }}
-              >
-                {t.isMilestone && <Diamond size={11} className="text-brand-dark flex-shrink-0" />}
-                {t.code && <span className="font-mono text-[10px] text-brand-sub flex-shrink-0">{t.code}</span>}
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</span>
-              </div>
-              {days.map((d) => (
-                <div
-                  key={t.id + d.date}
-                  style={{
-                    height: rowHeight, borderBottom: "1px solid #E1E8E4", borderLeft: "1px solid #E1E8E4",
-                    background: d.isWeekend ? "#FAFCFB" : "#fff",
-                  }}
-                />
-              ))}
-            </Fragment>
+              {s === "days" ? "Days" : "Weeks"}
+            </button>
           ))}
         </div>
+        <span className="text-xs font-semibold text-brand-dark ml-1">{visibleMonth}</span>
+      </div>
 
-        <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-          <svg width={totalWidth} height={totalHeight} style={{ position: "absolute", top: 0, left: 0 }}>
-            <defs>
-              <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-                <path d="M0,0 L8,4 L0,8 Z" fill="#9AA6A0" />
-              </marker>
-            </defs>
-            <line x1={todayX} y1={headerHeight} x2={todayX} y2={totalHeight} stroke="#C4443D" strokeWidth={1} strokeDasharray="3,3" />
-            {arrows.map((a, idx) => (
-              <line key={idx} x1={a.x1} y1={a.y1} x2={a.x2} y2={a.y2} stroke="#9AA6A0" strokeWidth={1.5} markerEnd="url(#arrowhead)" />
+      <div ref={scrollRef} onScroll={updateVisibleMonth} className="overflow-auto" style={{ maxHeight: 520 }}>
+        <div style={{ position: "relative", width: totalWidth, height: totalHeight }}>
+          {/* Weekend shading sits behind everything; no per-day grid lines. */}
+          <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+            {columns.filter((c) => c.isWeekend).map((c) => (
+              <div key={c.date} style={{ position: "absolute", top: 0, bottom: 0, left: xForDate(c.date), width: columnWidth, background: "#F7F9F8" }} />
             ))}
-          </svg>
+          </div>
 
-          {bars.map((b) => {
-            const status = STATUSES.find((s) => s.id === b.task.status)!;
-            if (b.task.isMilestone) {
-              return (
-                <div
-                  key={b.task.id}
-                  onClick={() => onEditTask(b.task)}
-                  title={b.task.title}
-                  style={{
-                    position: "absolute", left: b.x - 6, top: b.y + rowHeight / 2 - 6, width: 12, height: 12,
-                    background: "#0A5A46", transform: "rotate(45deg)", pointerEvents: "auto", cursor: "pointer",
-                  }}
-                />
-              );
-            }
-            return (
+          <div style={{ display: "grid", gridTemplateColumns: `${sidebarWidth}px repeat(${columns.length}, ${columnWidth}px)`, position: "relative" }}>
+            <div
+              style={{
+                position: "sticky", top: 0, left: 0, zIndex: 4, background: "#fff",
+                borderBottom: "1px solid #E1E8E4", height: headerHeight,
+              }}
+            />
+            {columns.map((c) => (
               <div
-                key={b.task.id}
-                onClick={() => onEditTask(b.task)}
-                title={`${b.task.title} — ${b.task.progress || 0}%`}
+                key={c.date}
+                className="text-[10px] text-brand-sub"
                 style={{
-                  position: "absolute", left: b.x + 1, top: b.y + (rowHeight - 20) / 2, width: b.width - 2, height: 20,
-                  borderRadius: 5, background: status.color + "33", border: `1px solid ${status.color}`,
-                  pointerEvents: "auto", cursor: "pointer", overflow: "hidden",
+                  position: "sticky", top: 0, zIndex: 2, height: headerHeight,
+                  background: c.isToday ? "#E4EFE8" : c.isWeekend ? "#F7F9F8" : "#fff",
+                  color: c.isToday ? "#0A5A46" : undefined,
+                  borderBottom: "1px solid #E1E8E4",
+                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end",
+                  paddingBottom: 4,
                 }}
               >
-                <div style={{ height: "100%", width: `${b.task.progress || 0}%`, background: status.color }} />
+                {c.monthLabel && (
+                  <div className="text-[9px] font-bold text-brand-dark" style={{ position: "absolute", top: 3, left: 3 }}>
+                    {c.monthLabel}
+                  </div>
+                )}
+                <div style={{ fontWeight: c.isToday ? 700 : 400 }}>{c.label}</div>
               </div>
-            );
-          })}
+            ))}
+
+            {rows.map(({ task: t, depth }) => (
+              <Fragment key={t.id}>
+                <div
+                  onClick={() => onEditTask(t)}
+                  className="text-[12px] text-brand-text cursor-pointer"
+                  style={{
+                    position: "sticky", left: 0, zIndex: 3, background: "#fff",
+                    borderBottom: "1px solid #EEF2F0", borderRight: "1px solid #E1E8E4",
+                    height: rowHeight, display: "flex", alignItems: "center", gap: 6, padding: `0 10px 0 ${10 + depth * 14}px`,
+                  }}
+                >
+                  {t.isMilestone && <Diamond size={11} className="text-brand-dark flex-shrink-0" />}
+                  {t.code && !narrow && <span className="font-mono text-[10px] flex-shrink-0" style={{ color: "#9AA7A1" }}>{t.code}</span>}
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={t.title}>{t.title}</span>
+                </div>
+                <div style={{ gridColumn: "2 / -1", height: rowHeight, borderBottom: "1px solid #EEF2F0" }} />
+              </Fragment>
+            ))}
+          </div>
+
+          <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+            <svg width={totalWidth} height={totalHeight} style={{ position: "absolute", top: 0, left: 0 }}>
+              <defs>
+                <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                  <path d="M0,0 L8,4 L0,8 Z" fill="#9AA6A0" />
+                </marker>
+              </defs>
+              <line x1={todayX} y1={headerHeight} x2={todayX} y2={totalHeight} stroke="#C4443D" strokeWidth={1} strokeDasharray="3,3" />
+              {arrows.map((a, idx) => (
+                <line key={idx} x1={a.x1} y1={a.y1} x2={a.x2} y2={a.y2} stroke="#9AA6A0" strokeWidth={1.5} markerEnd="url(#arrowhead)" />
+              ))}
+            </svg>
+
+            {bars.map((b) => {
+              const status = STATUSES.find((s) => s.id === b.task.status)!;
+              const who = assigneeLabel?.(b.task);
+              const label = who ? (
+                <div
+                  className="text-[10.5px] text-brand-sub whitespace-nowrap"
+                  style={{ position: "absolute", left: b.x + b.width + 6, top: b.y + rowHeight / 2 - 7, lineHeight: "14px" }}
+                >
+                  {who}
+                </div>
+              ) : null;
+              if (b.task.isMilestone) {
+                return (
+                  <Fragment key={b.task.id}>
+                    <div
+                      onClick={() => onEditTask(b.task)}
+                      title={b.task.title}
+                      style={{
+                        position: "absolute", left: b.x + b.width / 2 - 6, top: b.y + rowHeight / 2 - 6, width: 12, height: 12,
+                        background: "#0A5A46", transform: "rotate(45deg)", pointerEvents: "auto", cursor: "pointer",
+                      }}
+                    />
+                    {label}
+                  </Fragment>
+                );
+              }
+              return (
+                <Fragment key={b.task.id}>
+                  <div
+                    onClick={() => onEditTask(b.task)}
+                    title={`${b.task.title} — ${b.task.progress || 0}%`}
+                    style={{
+                      position: "absolute", left: b.x + 1, top: b.y + (rowHeight - 16) / 2, width: b.width - 2, height: 16,
+                      borderRadius: 5, background: status.color + "33", border: `1px solid ${status.color}`,
+                      pointerEvents: "auto", cursor: "pointer", overflow: "hidden",
+                    }}
+                  >
+                    <div style={{ height: "100%", width: `${b.task.progress || 0}%`, background: status.color }} />
+                  </div>
+                  {label}
+                </Fragment>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
