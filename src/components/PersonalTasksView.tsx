@@ -4,7 +4,7 @@ import { useState } from "react";
 import useSWR from "swr";
 import { Plus, Lock, Trash2, Check } from "lucide-react";
 import type { Task } from "@/types/models";
-import { STATUSES, PRIORITIES, dueBadge, toneStyle } from "@/lib/taskHelpers";
+import { PRIORITIES, PERSONAL_COLUMNS, personalColumnOf, dueBadge, toneStyle } from "@/lib/taskHelpers";
 import { api } from "@/lib/apiClient";
 import PersonalTaskModal, { blankPersonalDraft, personalDraftFromTask, type PersonalTaskDraft } from "./PersonalTaskModal";
 import Chip from "./ui/Chip";
@@ -15,7 +15,7 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json());
 function PersonalCard({ task, onEdit, onDelete }: { task: Task; onEdit: (t: Task) => void; onDelete: (id: string) => void }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const priority = PRIORITIES.find((p) => p.id === task.priority)!;
-  const status = STATUSES.find((s) => s.id === task.status)!;
+  const status = personalColumnOf(task.status);
   const badge = dueBadge(task);
 
   return (
@@ -107,10 +107,10 @@ export default function PersonalTasksView({ currentUserId }: { currentUserId: st
       </div>
 
       <div className="flex gap-3 overflow-x-auto pb-2">
-        {STATUSES.map((status) => {
-          const colTasks = taskList.filter((t) => t.status === status.id);
+        {PERSONAL_COLUMNS.map((status) => {
+          const colTasks = taskList.filter((t) => status.statuses.includes(t.status));
           return (
-            <div key={status.id} style={{ minWidth: 250, width: 250, flexShrink: 0 }}>
+            <div key={status.id} className="flex-1" style={{ minWidth: 250 }}>
               <div className="flex items-center gap-2 mb-2 px-1">
                 <span className="w-2 h-2 rounded-full" style={{ background: status.color }} />
                 <span className="font-bold text-[12.5px] text-brand-text">{status.label}</span>

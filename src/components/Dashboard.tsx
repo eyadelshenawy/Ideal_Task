@@ -23,7 +23,7 @@ import TrashModal from "./TrashModal";
 import ImportPreviewModal from "./ImportPreviewModal";
 import BulkActionBar from "./BulkActionBar";
 import ReportsView from "./ReportsView";
-import NeedsAttentionView from "./NeedsAttentionView";
+import NeedsAttentionView, { needsAttention } from "./NeedsAttentionView";
 import PersonalTasksView from "./PersonalTasksView";
 import NotificationBell from "./NotificationBell";
 import AuditLogModal from "./AuditLogModal";
@@ -138,7 +138,9 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
   // List is the default landing view — it's the one with Group by, pagination,
   // and Compact view, so it scales to a large project better than Board,
   // which still renders every card in a column unbounded.
-  const [view, setView] = useState<"board" | "list" | "timeline" | "reports" | "attention" | "personal">("list");
+  const [view, setView] = useState<"board" | "list" | "timeline" | "reports" | "personal">("list");
+  // List's "Needs attention" button swaps the list for the overdue / due-soon lists.
+  const [attentionOnly, setAttentionOnly] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [draft, setDraft] = useState<TaskDraft>(blankDraft());
   const [editingCanFullyEdit, setEditingCanFullyEdit] = useState(true);
@@ -270,6 +272,8 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
   }
   const canCreateAnywhere = isSuperAdmin || administeredProjectIds.length > 0;
   const closeSettings = () => setSettingsSection(null);
+  const attention = needsAttention(taskList, todayStr());
+  const attentionCount = attention.overdue.length + attention.dueSoonHighPriority.length;
   // Same visibility rules the ⋯ menu used for each screen.
   const settingsItems: SettingsItem[] = [
     ...(isSuperAdmin ? [{ id: "team", label: "Team", group: "People" } as const] : []),
@@ -848,14 +852,6 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
                 <BarChart3 size={13} /> <span className="hidden sm:inline">Reports</span>
               </button>
               <button
-                onClick={() => setView("attention")}
-                title="Attention"
-                className="flex items-center gap-1 px-1.5 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold"
-                style={{ background: view === "attention" ? "#fff" : "transparent", color: view === "attention" ? "#0A5A46" : "#fff" }}
-              >
-                <AlertTriangle size={13} /> <span className="hidden sm:inline">Attention</span>
-              </button>
-              <button
                 onClick={() => setView("personal")}
                 title="My Tasks"
                 className="flex items-center gap-1 px-1.5 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold"
@@ -875,14 +871,6 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
             <PushAutoSubscribe />
             <IdleTimeoutWatcher idleMinutes={idleTimeoutMinutes} />
             <NotificationBell onOpenTask={openTaskById} />
-            <button
-              onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
-              title={selectMode ? "Exit select mode" : "Select multiple tasks"}
-              className="p-1.5 sm:p-2 rounded-lg text-white"
-              style={{ background: selectMode ? "#fff" : "rgba(255,255,255,0.12)", color: selectMode ? "#0A5A46" : "#fff" }}
-            >
-              <ListChecks size={15} />
-            </button>
             <div className="relative">
               <button
                 onClick={() => setAdminMenuOpen((v) => !v)}
@@ -1003,18 +991,6 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
         <PushPermissionBanner />
         {view === "reports" ? (
           <ReportsView tasks={taskList} projects={projectList} team={teamList} categories={categoryList} isSuperAdmin={isSuperAdmin} currentUserId={userId} onOpenTask={openTaskById} />
-        ) : view === "attention" ? (
-          <NeedsAttentionView
-            tasks={taskList}
-            projectList={projectList}
-            allTasks={taskList}
-            canManage={canManage}
-            getAssigneeDisplays={getAssigneeDisplays}
-            onEdit={openEdit}
-            onDelete={deleteTask}
-            onDuplicate={duplicateTask}
-            onChangeStatus={(t, status) => moveTaskToStatus(t.id, status)}
-          />
         ) : view === "personal" ? (
           <PersonalTasksView currentUserId={userId} />
         ) : (
@@ -1086,6 +1062,23 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
             selected={filters.statusIds}
             onChange={(v) => setFilters((f) => ({ ...f, statusIds: v }))}
           />
+          {view === "list" && (
+            <button
+              onClick={() => setAttentionOnly((v) => !v)}
+              title="Overdue tasks, and Critical/High tasks due within 3 days"
+              className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs border"
+              style={{
+                background: attentionOnly ? "#C4443D" : "#fff",
+                color: attentionOnly ? "#fff" : "#9A3530",
+                borderColor: "#C4443D",
+              }}
+            >
+              <AlertTriangle size={13} /> Needs attention
+              {attentionCount > 0 && (
+                <span className="rounded-full text-[10px] px-1.5 leading-[16px]" style={{ background: attentionOnly ? "#fff" : "#C4443D", color: attentionOnly ? "#C4443D" : "#fff" }}>{attentionCount}</span>
+              )}
+            </button>
+          )}
           <div className="relative" ref={moreFiltersRef}>
             <button
               onClick={() => setMoreFiltersOpen((v) => !v)}
@@ -1161,6 +1154,20 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
           >
             Due this week
           </button>
+          {(view === "list" || view === "board") && (
+            <button
+              onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
+              title={selectMode ? "Exit select mode" : "Select multiple tasks to change them together"}
+              className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs border"
+              style={{
+                background: selectMode ? "#0A5A46" : "#fff",
+                color: selectMode ? "#fff" : "#5B6B64",
+                borderColor: selectMode ? "#0A5A46" : "#E1E7E4",
+              }}
+            >
+              <ListChecks size={13} /> {selectMode ? "Done selecting" : "Select"}
+            </button>
+          )}
           <div className="flex items-center gap-1.5 sm:ml-auto">
           {view === "list" && (
             <div className="relative">
@@ -1359,7 +1366,21 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
           </div>
         )}
 
-        {view === "list" && (
+        {view === "list" && attentionOnly && (
+          <NeedsAttentionView
+            tasks={taskList}
+            projectList={projectList}
+            allTasks={taskList}
+            canManage={canManage}
+            getAssigneeDisplays={getAssigneeDisplays}
+            onEdit={openEdit}
+            onDelete={deleteTask}
+            onDuplicate={duplicateTask}
+            onChangeStatus={(t, status) => moveTaskToStatus(t.id, status)}
+          />
+        )}
+
+        {view === "list" && !attentionOnly && (
           <div>
             {sortedList.length === 0 && (
               <div className="text-center text-brand-sub text-sm py-10">No tasks match your filters</div>

@@ -250,7 +250,7 @@
   <!-- ============ ROLES ============ -->
   <section class="doc-section" id="roles" data-group="Start here" data-icon="shield" data-label="Roles & permissions">
     <h2>{{ICON:shield}} Roles & what each one can see</h2>
-    <p class="lede">Every view in the app — Board, List, Timeline, Reports, Attention, and the weekly email — follows the exact same visibility rule, so what you see is always consistent no matter which screen you're on.</p>
+    <p class="lede">Every view in the app — Board, List (including Needs attention), Timeline, Reports, and the weekly email — follows the exact same visibility rule, so what you see is always consistent no matter which screen you're on.</p>
     <table class="perm-table">
       <tr><th>Role</th><th>Sees</th><th>Can manage</th></tr>
       <tr><td><strong>Super Admin</strong></td><td>Every task, in every project</td><td>Everything — team, projects, all tasks, audit log</td></tr>
@@ -461,7 +461,7 @@
   <!-- ============ BULK ACTIONS ============ -->
   <section class="doc-section" id="bulk" data-group="Working with tasks" data-icon="check-square" data-label="Bulk actions">
     <h2>{{ICON:check-square}} Selecting multiple tasks at once</h2>
-    <p class="lede">Click the checkbox icon in the top toolbar to enter select mode, tick the tasks you want, then act on all of them together — set status, assignee, or project directly on the bar, or hit <strong>Mark Done</strong> as a shortcut. Behind <strong>More…</strong> you'll find priority, start date, due date, <strong>duration</strong>, progress %, module (picked from the Modules list), and add/remove a tag, one field at a time — dates flow through the same Duration ↔ Due auto-compute as the single-task modal, so bulk-setting a Duration of 5 on ten tasks recomputes each of their Due Dates against its own Start. <strong>Move to Trash</strong> deletes the selection (with a confirm step). And when you're in Trash, tick multiple tasks and hit <strong>Restore N selected</strong> to bring them all back at once.</p>
+    <p class="lede">Click <strong>Select</strong> in the filter bar on Board or List to enter select mode (click <strong>Done selecting</strong> to leave it), tick the tasks you want, then act on all of them together — set status, assignee, or project directly on the bar, or hit <strong>Mark Done</strong> as a shortcut. Behind <strong>More…</strong> you'll find priority, start date, due date, <strong>duration</strong>, progress %, module (picked from the Modules list), and add/remove a tag, one field at a time — dates flow through the same Duration ↔ Due auto-compute as the single-task modal, so bulk-setting a Duration of 5 on ten tasks recomputes each of their Due Dates against its own Start. <strong>Move to Trash</strong> deletes the selection (with a confirm step). And when you're in Trash, tick multiple tasks and hit <strong>Restore N selected</strong> to bring them all back at once.</p>
     <figure class="shot">
       <img loading="lazy" src="/guide/bulk.jpg" alt="Bulk action bar">
       <figcaption>Select mode — tick tasks, then change status, assignee or project for all of them, open More… for other fields, or move them to Trash.</figcaption>
@@ -475,7 +475,7 @@
     <p class="lede">A live snapshot, scoped to whatever you're allowed to see.</p>
     <figure class="shot">
       <img loading="lazy" src="/guide/reports.jpg" alt="Reports view">
-      <figcaption>Overview stats, last-7-days activity, a per-project completion breakdown and team workload. Time Logged, SLA and Customer satisfaction follow further down.</figcaption>
+      <figcaption>The Overview tab — overall numbers, last-7-days activity, a per-project completion breakdown and team workload. Time logged per person is on Time &amp; billing, the SLA summary on SLA &amp; speed, and Customer satisfaction on Quality.</figcaption>
     </figure>
     <h3>Report tabs</h3>
     <p>Tabs across the top: <strong>Overview</strong> (everything described below) plus five more. Pick a <strong>Period</strong> (last 3, 6 or 12 months) and, if you like, one or more projects. <strong>Export to Excel (with formulas)</strong> downloads all nine reports, one sheet each, where every total, average and percentage is an Excel formula you can check. Each card shows its formula under the title.</p>
@@ -525,7 +525,7 @@
 
   <section class="doc-section" id="attention" data-group="Staying on top of things" data-icon="alert-triangle" data-label="Needs Attention">
     <h2>{{ICON:alert-triangle}} Needs Attention</h2>
-    <p class="lede">Everything that's overdue, plus anything high-priority due within 3 days — the two lists most worth checking first thing.</p>
+    <p class="lede">Everything that's overdue, plus anything high-priority due within 3 days — the two lists most worth checking first thing. In <strong>List</strong>, click the red <strong>Needs attention</strong> button in the filter bar (its number shows how many tasks are on the two lists); click it again to go back to the full list.</p>
     <figure class="shot">
       <img loading="lazy" src="/guide/attention.jpg" alt="Needs Attention view, empty state">
       <figcaption>Overdue tasks first, then high-priority tasks due soon.</figcaption>
@@ -743,11 +743,12 @@
     </div>
 <figure class="shot">
       <img loading="lazy" src="/guide/personal.jpg" alt="My Tasks">
-      <figcaption>My Tasks — a private board only you can see.</figcaption>
+      <figcaption>My Tasks — a private board only you can see, in three columns: To do, Doing and Done.</figcaption>
     </figure>
     <h3>What's different from a regular task</h3>
     <ul>
       <li>No project, no assignees to pick — it's always just you.</li>
+      <li>Three columns instead of six: <strong>To do</strong> (New and Ready), <strong>Doing</strong> (In Progress, Internal Test and Customer Test) and <strong>Done</strong>. The Status field offers the same three.</li>
       <li>A simpler form: title, description, priority, dates, status, and progress. No code, module, dependencies, subtasks, or recurrence.</li>
       <li>Still gets its own checklist, file attachments, and comment log, exactly like a regular task.</li>
       <li>Its own mini Board (New → Ready → In Progress → Internal Test → Customer Test → Done), fully separate from your company boards.</li>

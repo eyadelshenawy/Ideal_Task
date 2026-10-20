@@ -17,22 +17,25 @@ interface NeedsAttentionViewProps {
   onChangeStatus: (task: Task, status: Status) => void;
 }
 
+/** Overdue tasks, plus Critical/High tasks due within 3 days — the two "needs attention" lists. */
+export function needsAttention(tasks: Task[], today: string) {
+  const overdue = tasks.filter((t) => t.dueDate && t.dueDate < today && t.status !== "DONE");
+  const dueSoonHighPriority = tasks.filter((t) => {
+    if (!t.dueDate || t.status === "DONE" || t.dueDate < today) return false;
+    return (t.priority === "CRITICAL" || t.priority === "HIGH") && diffDays(today, t.dueDate) <= 3;
+  });
+  return {
+    overdue: sortTasks(overdue, "dueDate", []),
+    dueSoonHighPriority: sortTasks(dueSoonHighPriority, "dueDate", []),
+  };
+}
+
 export default function NeedsAttentionView({
   tasks, projectList, allTasks, canManage, getAssigneeDisplays, onEdit, onDelete, onDuplicate, onChangeStatus,
 }: NeedsAttentionViewProps) {
   const today = todayStr();
 
-  const { overdue, dueSoonHighPriority } = useMemo(() => {
-    const overdue = tasks.filter((t) => t.dueDate && t.dueDate < today && t.status !== "DONE");
-    const dueSoonHighPriority = tasks.filter((t) => {
-      if (!t.dueDate || t.status === "DONE" || t.dueDate < today) return false;
-      return (t.priority === "CRITICAL" || t.priority === "HIGH") && diffDays(today, t.dueDate) <= 3;
-    });
-    return {
-      overdue: sortTasks(overdue, "dueDate", []),
-      dueSoonHighPriority: sortTasks(dueSoonHighPriority, "dueDate", []),
-    };
-  }, [tasks, today]);
+  const { overdue, dueSoonHighPriority } = useMemo(() => needsAttention(tasks, today), [tasks, today]);
 
   function renderRow(task: Task) {
     return (

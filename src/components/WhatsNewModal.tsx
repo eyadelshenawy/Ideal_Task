@@ -6,6 +6,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Fewer tabs, a Select button and a simpler My Tasks",
+    description: "Needs attention is now a red button in List's filter bar (with a count) instead of its own tab — click it for the same overdue and due-soon high-priority lists, click again to go back. Selecting several tasks starts from a Select button next to the filters on Board and List, instead of the icon in the green bar. My Tasks has three columns — To do, Doing and Done — and its Status field the same three. In Reports, Overview keeps the overall numbers, projects and team workload; time logged per person moved to Time & billing, the SLA summary to SLA & speed, and Customer satisfaction to Quality.",
+  },
+  {
     title: "Nine new reports, with an Excel export that keeps the formulas",
     description: "Reports now has tabs. Customers: tickets per customer per month, and the top 5 modules and categories problems come from. SLA & speed: resolution SLA met % per customer per month, average response and resolution time per priority, and the age of open tickets. Team: closed per person, average resolution and overdue %. Time & billing: hours logged per customer per month. Quality: opened vs closed per week and the reopened rate. Pick a period (3, 6 or 12 months) and projects; each card shows its formula, and Export to Excel downloads all nine with real Excel formulas for every total, average and percentage. The original reports are on the Overview tab.",
   },

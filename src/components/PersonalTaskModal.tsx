@@ -2,7 +2,7 @@
 
 import { X, Lock } from "lucide-react";
 import type { Task, Priority, Status } from "@/types/models";
-import { PRIORITIES, STATUSES } from "@/lib/taskHelpers";
+import { PRIORITIES, PERSONAL_COLUMNS, personalColumnOf } from "@/lib/taskHelpers";
 import TaskActivityPanel from "./TaskActivityPanel";
 import TaskChecklistPanel from "./TaskChecklistPanel";
 import TaskAttachmentsPanel from "./TaskAttachmentsPanel";
@@ -120,11 +120,15 @@ export default function PersonalTaskModal({ draft, setDraft, onClose, onSave, on
             <div>
               <label className="text-xs font-semibold text-brand-sub">Status</label>
               <select
-                value={draft.status}
-                onChange={(e) => setDraft({ ...draft, status: e.target.value as Status })}
+                value={personalColumnOf(draft.status).id}
+                onChange={(e) => {
+                  const col = PERSONAL_COLUMNS.find((c) => c.id === e.target.value)!;
+                  // Keep the exact status if it already belongs to the picked column.
+                  setDraft({ ...draft, status: col.statuses.includes(draft.status) ? draft.status : col.statuses[0] });
+                }}
                 className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
               >
-                {STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                {PERSONAL_COLUMNS.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
               </select>
             </div>
 
