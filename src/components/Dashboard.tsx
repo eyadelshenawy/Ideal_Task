@@ -88,6 +88,11 @@ const defaultFilters: Filters = {
 
 // Saved filters from before these were multi-select stored a single value
 // ("all" or an id) per field; turn those into the list form.
+/** How many of the filters folded under "More filters" are in use. */
+function moreFilterCount(f: Filters): number {
+  return [f.priorities, f.types, f.categoryIds, f.moduleIds].filter((v) => v.length > 0).length;
+}
+
 function normalizeSavedFilters(saved: Record<string, unknown>): Filters {
   const legacy = (key: string): string[] => {
     const v = saved[key];
@@ -196,6 +201,17 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   // this toggle so the dashboard doesn't eat half the phone with filters.
   // sm+ layouts ignore this state entirely.
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  // Less-used filters (Priorities, Types, Categories, Modules) live behind one button.
+  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
+  const moreFiltersRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!moreFiltersOpen) return;
+    function onDown(e: MouseEvent) {
+      if (moreFiltersRef.current && !moreFiltersRef.current.contains(e.target as Node)) setMoreFiltersOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [moreFiltersOpen]);
   const [groupByOpen, setGroupByOpen] = useState(false);
   // List-view only: which fields to nest tasks under, in order. Empty = the
   // existing flat behavior, unchanged.
@@ -1040,27 +1056,27 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
           <PersonalTasksView currentUserId={userId} />
         ) : (
         <>
-        <div className="grid grid-cols-5 sm:flex sm:flex-wrap gap-1.5 sm:gap-2 mb-2 sm:mb-3">
-          <StatCard
+        <div className="grid grid-cols-5 sm:flex sm:flex-wrap gap-1.5 mb-2 sm:mb-3">
+          <StatCard compact
             label="Total" value={stats.total} color="#0A5A46"
             onClick={() => setFilters((f) => ({ ...f, statusIds: [], overdueOnly: false, milestonesOnly: false }))}
           />
-          <StatCard
+          <StatCard compact
             label="In Progress" value={stats.inProgress} color="#82B478"
             active={filters.statusIds.length === 1 && filters.statusIds[0] === "INPROGRESS"}
             onClick={() => setFilters((f) => ({ ...f, statusIds: f.statusIds.length === 1 && f.statusIds[0] === "INPROGRESS" ? [] : ["INPROGRESS"] }))}
           />
-          <StatCard
+          <StatCard compact
             label="Overdue" value={stats.overdue} color="#C4443D"
             active={filters.overdueOnly}
             onClick={() => setFilters((f) => ({ ...f, overdueOnly: !f.overdueOnly }))}
           />
-          <StatCard
+          <StatCard compact
             label="Done" value={stats.done} color="#0A5A46"
             active={filters.statusIds.length === 1 && filters.statusIds[0] === "DONE"}
             onClick={() => setFilters((f) => ({ ...f, statusIds: f.statusIds.length === 1 && f.statusIds[0] === "DONE" ? [] : ["DONE"] }))}
           />
-          <StatCard
+          <StatCard compact
             label="Milestones" value={stats.milestones} color="#7A5C9E"
             active={filters.milestonesOnly}
             onClick={() => setFilters((f) => ({ ...f, milestonesOnly: !f.milestonesOnly }))}
@@ -1096,43 +1112,57 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             onChange={(v) => setFilters((f) => ({ ...f, assigneeIds: v }))}
           />
           <MultiSelectFilter
-            allLabel="All Priorities" pluralNoun="priorities"
-            options={PRIORITIES.map((p) => ({ value: p.id, label: p.label, color: p.color }))}
-            selected={filters.priorities}
-            onChange={(v) => setFilters((f) => ({ ...f, priorities: v }))}
-          />
-          <MultiSelectFilter
             allLabel="All Projects" pluralNoun="projects" width={260}
             options={projectList.map((p) => ({ value: p.id, label: p.name }))}
             selected={filters.projectIds}
             onChange={(v) => setFilters((f) => ({ ...f, projectIds: v }))}
           />
           <MultiSelectFilter
-            allLabel="All Types" pluralNoun="types"
-            options={TICKET_TYPES.map((t) => ({ value: t.value, label: t.label, color: t.color }))}
-            selected={filters.types}
-            onChange={(v) => setFilters((f) => ({ ...f, types: v }))}
-          />
-          {categoryList.some((c) => !c.parentId) && (
-            <MultiSelectFilter
-              allLabel="All Categories" pluralNoun="categories" width={240}
-              options={categoryList.filter((c) => !c.parentId).map((c) => ({ value: c.id, label: c.name }))}
-              selected={filters.categoryIds}
-              onChange={(v) => setFilters((f) => ({ ...f, categoryIds: v }))}
-            />
-          )}
-          <MultiSelectFilter
             allLabel="All Statuses" pluralNoun="statuses"
             options={STATUSES.map((st) => ({ value: st.id, label: st.label, color: st.color }))}
             selected={filters.statusIds}
             onChange={(v) => setFilters((f) => ({ ...f, statusIds: v }))}
           />
-          <MultiSelectFilter
-            allLabel="All Modules" pluralNoun="modules"
-            options={moduleList.map((m) => ({ value: m, label: m }))}
-            selected={filters.moduleIds}
-            onChange={(v) => setFilters((f) => ({ ...f, moduleIds: v }))}
-          />
+          <div className="relative" ref={moreFiltersRef}>
+            <button
+              onClick={() => setMoreFiltersOpen((v) => !v)}
+              className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs bg-white border text-brand-text"
+              style={{ borderColor: moreFilterCount(filters) ? "#0A5A46" : "#E1E7E4" }}
+            >
+              <SlidersHorizontal size={13} /> More filters
+              {moreFilterCount(filters) > 0 && <span className="rounded-full bg-brand-dark text-white text-[10px] px-1.5 leading-[16px]">{moreFilterCount(filters)}</span>}
+            </button>
+            {moreFiltersOpen && (
+              <div className="absolute left-0 top-[calc(100%+4px)] z-30 flex flex-wrap gap-1.5 w-[300px] rounded-lg bg-white border border-brand-border shadow-lg p-2">
+                <MultiSelectFilter
+                  allLabel="All Priorities" pluralNoun="priorities"
+                  options={PRIORITIES.map((p) => ({ value: p.id, label: p.label, color: p.color }))}
+                  selected={filters.priorities}
+                  onChange={(v) => setFilters((f) => ({ ...f, priorities: v }))}
+                />
+                <MultiSelectFilter
+                  allLabel="All Types" pluralNoun="types"
+                  options={TICKET_TYPES.map((t) => ({ value: t.value, label: t.label, color: t.color }))}
+                  selected={filters.types}
+                  onChange={(v) => setFilters((f) => ({ ...f, types: v }))}
+                />
+                {categoryList.some((c) => !c.parentId) && (
+                  <MultiSelectFilter
+                    allLabel="All Categories" pluralNoun="categories" width={240}
+                    options={categoryList.filter((c) => !c.parentId).map((c) => ({ value: c.id, label: c.name }))}
+                    selected={filters.categoryIds}
+                    onChange={(v) => setFilters((f) => ({ ...f, categoryIds: v }))}
+                  />
+                )}
+                <MultiSelectFilter
+                  allLabel="All Modules" pluralNoun="modules"
+                  options={moduleList.map((m) => ({ value: m, label: m }))}
+                  selected={filters.moduleIds}
+                  onChange={(v) => setFilters((f) => ({ ...f, moduleIds: v }))}
+                />
+              </div>
+            )}
+          </div>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortBy)}
@@ -1168,16 +1198,17 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
           >
             Due this week
           </button>
+          <div className="flex items-center gap-1.5 sm:ml-auto">
           {view === "list" && (
             <div className="relative">
               <button
                 onClick={() => setGroupByOpen((v) => !v)}
                 className="rounded-lg px-2 py-1.5 text-xs bg-white border border-brand-border text-brand-text"
               >
-                {groupByLevels.length === 0 ? "Group by" : `Group: ${groupByLevels.map((f) => GROUP_FIELD_LABELS[f]).join(" › ")}`}
+                {groupByLevels.length === 0 ? "Group" : `Group: ${groupByLevels.map((f) => GROUP_FIELD_LABELS[f]).join(" › ")}`}
               </button>
               {groupByOpen && (
-                <div className="absolute left-0 top-[calc(100%+4px)] z-20 w-[220px] rounded-lg bg-white border border-brand-border shadow-lg p-2">
+                <div className="absolute left-0 sm:left-auto sm:right-0 top-[calc(100%+4px)] z-20 w-[220px] rounded-lg bg-white border border-brand-border shadow-lg p-2">
                   <div className="flex flex-col gap-1.5">
                     {groupByLevels.map((lv, i) => {
                       const available = (Object.keys(GROUP_FIELD_LABELS) as GroupField[]).filter((f) => f === lv || !groupByLevels.includes(f));
@@ -1234,7 +1265,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
               title="Toggle row density"
               className="rounded-lg px-2 py-1.5 text-xs bg-white border border-brand-border text-brand-sub"
             >
-              {density === "comfortable" ? "Compact view" : "Comfortable view"}
+              {density === "comfortable" ? "Compact" : "Comfortable"}
             </button>
           )}
           {view === "board" && (
@@ -1256,8 +1287,9 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             title="Save current filter combination"
             className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs bg-white border border-brand-border text-brand-sub"
           >
-            <Bookmark size={13} /> Save filter
+            <Bookmark size={13} /> Save
           </button>
+          </div>
           </div>
         </div>
 
