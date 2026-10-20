@@ -35,6 +35,20 @@ export function todayStr(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+/**
+ * My Tasks uses three simple columns. Each groups one or more of the shared
+ * statuses; moving a personal task to a column sets its first status.
+ */
+export const PERSONAL_COLUMNS: { id: string; label: string; color: string; statuses: Status[] }[] = [
+  { id: "todo", label: "To do", color: "#8A8F8C", statuses: ["TODO", "READY"] },
+  { id: "doing", label: "Doing", color: "#82B478", statuses: ["INPROGRESS", "INTERNAL_TEST", "CUSTOMER_TEST"] },
+  { id: "done", label: "Done", color: "#0A5A46", statuses: ["DONE"] },
+];
+
+export function personalColumnOf(status: Status) {
+  return PERSONAL_COLUMNS.find((c) => c.statuses.includes(status)) ?? PERSONAL_COLUMNS[0];
+}
+
 export function addDays(dateStr: string, n: number): string {
   const [y, m, d] = dateStr.split("-").map(Number);
   const dt = new Date(y, m - 1, d);
