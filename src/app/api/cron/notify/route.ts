@@ -6,6 +6,8 @@ import { dueSoonEmailHtml, overdueEmailHtml } from "@/lib/notifications";
 import { sendWeeklyReports } from "@/lib/weeklyReport";
 import { notify } from "@/lib/inAppNotify";
 import { checkSlaRisks } from "@/lib/slaRisk";
+import { loadWorkDays } from "@/lib/scheduling";
+import { isWorkDay, isOverdue, nextWorkDay } from "@/lib/workdays";
 
 function startOfTodayUTC(): Date {
   const now = new Date();
@@ -13,16 +15,21 @@ function startOfTodayUTC(): Date {
 }
 
 // Called once a day by an external scheduler (see .github/workflows/daily-task-notifications.yml).
-// Sends a one-time "due tomorrow" reminder to each task's assignees, and a
-// daily "overdue" reminder (to Super Admins + the task's project admins +
-// its assignees) for as long as a task stays overdue.
+// On working days only (Work Calendar), it sends a one-time "due next working
+// day" reminder to each task's assignees, and a daily "overdue" reminder (to
+// Super Admins + the task's project admins + its assignees) for as long as a
+// task stays overdue — overdue counted in working days.
 export async function GET(req: NextRequest) {
   if (!process.env.CRON_SECRET || req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const today = startOfTodayUTC();
-  const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+  const todayKey = utcToDateStr(today)!;
+  const workDays = await loadWorkDays();
+  const workingToday = isWorkDay(todayKey, workDays);
+  const nextWorkKey = nextWorkDay(todayKey, workDays);
+  const tomorrowKey = utcToDateStr(new Date(today.getTime() + 86400000))!;
 
   const [tasks, superAdmins] = await Promise.all([
     prisma.task.findMany({
@@ -51,8 +58,8 @@ export async function GET(req: NextRequest) {
   let overdueSent = 0;
 
   for (const task of tasks) {
-    if (!task.dueDate) continue;
-    const due = task.dueDate.getTime();
+    if (!task.dueDate || !workingToday) continue;
+    const dueKey = utcToDateStr(task.dueDate)!;
     const summary = {
       title: task.title,
       projectName: task.project?.name ?? null,
@@ -60,12 +67,14 @@ export async function GET(req: NextRequest) {
       priority: task.priority,
     };
 
-    if (due === tomorrow.getTime() && !task.dueSoonNotifiedAt) {
+    // Due after today, up to the next working day (so a Sunday due date is
+    // reminded on Thursday, not over the weekend).
+    if (dueKey > todayKey && dueKey <= nextWorkKey && !task.dueSoonNotifiedAt) {
       const recipients = task.assignees.map((a) => a.email).filter(Boolean);
       if (recipients.length > 0) {
         await sendEmail({
           to: recipients,
-          subject: `Reminder: "${task.title}" is due tomorrow`,
+          subject: `Reminder: "${task.title}" is due ${dueKey === tomorrowKey ? "tomorrow" : `on ${summary.dueDate}`}`,
           html: dueSoonEmailHtml(summary),
         });
         dueSoonSent++;
@@ -73,7 +82,7 @@ export async function GET(req: NextRequest) {
       await prisma.task.update({ where: { id: task.id }, data: { dueSoonNotifiedAt: new Date() } });
     }
 
-    if (due < today.getTime()) {
+    if (isOverdue({ status: task.status, dueDate: dueKey }, todayKey, workDays)) {
       const projectAdminEmails = task.project?.admins.map((a) => a.user.email) ?? [];
       const assigneeEmails = task.assignees.map((a) => a.email);
       const recipients = Array.from(

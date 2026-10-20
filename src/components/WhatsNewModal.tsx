@@ -6,6 +6,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Overdue counts working days only",
+    description: "Weekends and holidays (Settings → Work calendar) no longer count towards overdue. Days overdue = working days after the due date up to today, and a task is overdue once that reaches 1 — so a task due on Thursday isn't overdue on Friday or Saturday and shows 1d overdue on Sunday. The same rule applies to the badge on cards, the Overdue count and filter, Needs attention, Reports (including overdue % in Team performance), the client report and the weekly email. \"Due in 2d\" and the 3-day high-priority list also count working days. The daily overdue and due-soon emails are no longer sent on weekends or holidays; the due-soon reminder now goes out on the last working day before the due date.",
+  },
+  {
     title: "Fewer tabs, a Select button and a simpler My Tasks",
     description: "Needs attention is now a red button in List's filter bar (with a count) instead of its own tab — click it for the same overdue and due-soon high-priority lists, click again to go back. Selecting several tasks starts from a Select button next to the filters on Board and List, instead of the icon in the green bar. My Tasks has three columns — To do, Doing and Done — and its Status field the same three. In Reports, Overview keeps the overall numbers, projects and team workload; time logged per person moved to Time & billing, the SLA summary to SLA & speed, and Customer satisfaction to Quality.",
   },

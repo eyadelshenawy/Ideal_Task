@@ -24,6 +24,8 @@ import ImportPreviewModal from "./ImportPreviewModal";
 import BulkActionBar from "./BulkActionBar";
 import ReportsView from "./ReportsView";
 import NeedsAttentionView, { needsAttention } from "./NeedsAttentionView";
+import { isOverdue } from "@/lib/workdays";
+import { useWorkDays } from "@/lib/useWorkDays";
 import PersonalTasksView from "./PersonalTasksView";
 import NotificationBell from "./NotificationBell";
 import AuditLogModal from "./AuditLogModal";
@@ -272,7 +274,8 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
   }
   const canCreateAnywhere = isSuperAdmin || administeredProjectIds.length > 0;
   const closeSettings = () => setSettingsSection(null);
-  const attention = needsAttention(taskList, todayStr());
+  const workDays = useWorkDays();
+  const attention = needsAttention(taskList, todayStr(), workDays);
   const attentionCount = attention.overdue.length + attention.dueSoonHighPriority.length;
   // Same visibility rules the ⋯ menu used for each screen.
   const settingsItems: SettingsItem[] = [
@@ -331,19 +334,19 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
   const stats = useMemo(() => ({
     total: statsBase.length,
     inProgress: statsBase.filter((t) => t.status === "INPROGRESS").length,
-    overdue: statsBase.filter((t) => t.dueDate && t.dueDate < today && t.status !== "DONE").length,
+    overdue: statsBase.filter((t) => isOverdue(t, today, workDays)).length,
     done: statsBase.filter((t) => t.status === "DONE").length,
     milestones: statsBase.filter((t) => t.isMilestone).length,
-  }), [statsBase, today]);
+  }), [statsBase, today, workDays]);
 
   const filteredTasks = useMemo(() => statsBase.filter((t) => {
     if (filters.statusIds.length > 0) {
       if (!filters.statusIds.includes(t.status)) return false;
     } else if (hideDone && t.status === "DONE") return false;
-    if (filters.overdueOnly && !(t.dueDate && t.dueDate < today && t.status !== "DONE")) return false;
+    if (filters.overdueOnly && !isOverdue(t, today, workDays)) return false;
     if (filters.milestonesOnly && !t.isMilestone) return false;
     return true;
-  }), [statsBase, filters.overdueOnly, filters.milestonesOnly, filters.statusIds, hideDone, today]);
+  }), [statsBase, filters.overdueOnly, filters.milestonesOnly, filters.statusIds, hideDone, today, workDays]);
 
   // Modules from Lists, plus hidden ones still used on a task so old tickets
   // can still be filtered.

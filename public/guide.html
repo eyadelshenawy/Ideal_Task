@@ -490,7 +490,7 @@
       <tr><td>SLA &amp; speed</td><td>2 · Resolution SLA met per customer per month</td><td>met ÷ (met + breached) × 100</td></tr>
       <tr><td>SLA &amp; speed</td><td>3 · Average response and resolution time per priority</td><td>sum of hours (or days) ÷ number of tickets — response = created → first comment; resolution = created → Done</td></tr>
       <tr><td>SLA &amp; speed</td><td>4 · Age of open tickets (0–7, 8–30, 31–60, 60+ days)</td><td>today − created date</td></tr>
-      <tr><td>Team</td><td>7 · Team performance</td><td>average resolution = resolution days ÷ closed; overdue % = overdue ÷ open × 100</td></tr>
+      <tr><td>Team</td><td>7 · Team performance</td><td>average resolution = resolution days ÷ closed; overdue % = overdue ÷ open × 100 (overdue counted in working days)</td></tr>
       <tr><td>Time &amp; billing</td><td>6 · Hours logged per customer per month</td><td>sum of hours logged in the month</td></tr>
       <tr><td>Quality</td><td>8 · Opened vs closed per week (last 12 weeks)</td><td>backlog change = opened − closed</td></tr>
       <tr><td>Quality</td><td>9 · Reopened tickets</td><td>reopened ÷ closed × 100 — a ticket counts as reopened when it is moved back from Done</td></tr>
@@ -526,6 +526,12 @@
   <section class="doc-section" id="attention" data-group="Staying on top of things" data-icon="alert-triangle" data-label="Needs Attention">
     <h2>{{ICON:alert-triangle}} Needs Attention</h2>
     <p class="lede">Everything that's overdue, plus anything high-priority due within 3 days — the two lists most worth checking first thing. In <strong>List</strong>, click the red <strong>Needs attention</strong> button in the filter bar (its number shows how many tasks are on the two lists); click it again to go back to the full list.</p>
+    <p><strong>How overdue is counted.</strong> Only working days count — the weekdays and holidays set in <strong>Settings → Work calendar</strong>. A task becomes overdue once one working day has passed after its due date:</p>
+    <ul>
+      <li><code>Days overdue = number of working days after the Due date, up to and including today</code></li>
+      <li><code>Overdue = not Done AND Days overdue ≥ 1</code></li>
+    </ul>
+    <p>Example: a task due on Thursday is not overdue on Friday or Saturday, and shows <strong>1d overdue</strong> on Sunday. If Monday is a holiday it still shows 1d on Monday. "Due in 2d" and the 3-day high-priority list count working days the same way. The same rule is used on cards, the Overdue count, Needs attention, Reports, the client report and the emails.</p>
     <figure class="shot">
       <img loading="lazy" src="/guide/attention.jpg" alt="Needs Attention view, empty state">
       <figcaption>Overdue tasks first, then high-priority tasks due soon.</figcaption>
@@ -548,8 +554,8 @@
     <table class="perm-table">
       <tr><th>Email</th><th>When</th><th>Sent to</th></tr>
       <tr><td>New assignment</td><td>The moment you're added to a task</td><td>Newly assigned people only</td></tr>
-      <tr><td>Due tomorrow</td><td>Once, the day before it's due</td><td>The task's assignees</td></tr>
-      <tr><td>Overdue</td><td>Every day it stays overdue</td><td>Assignees + the project's admins + all Super Admins</td></tr>
+      <tr><td>Due soon</td><td>Once, on the last working day before it's due (e.g. Thursday for a Sunday due date)</td><td>The task's assignees</td></tr>
+      <tr><td>Overdue</td><td>Every working day it stays overdue (none on weekends or holidays)</td><td>Assignees + the project's admins + all Super Admins</td></tr>
       <tr><td>Weekly summary</td><td>Every Sunday, 9am Cairo time</td><td>Everyone — scoped to what they can see (see below)</td></tr>
       <tr><td>SLA warning</td><td>Once, when a ticket enters the last quarter of its response or resolution time (checked every 15 minutes during working hours, Sunday–Thursday)</td><td>The ticket's assignees</td></tr>
       <tr><td>Mention</td><td>When someone types @your name in a comment</td><td>The person mentioned</td></tr>

@@ -5,6 +5,7 @@ import useSWR from "swr";
 import { Plus, Lock, Trash2, Check } from "lucide-react";
 import type { Task } from "@/types/models";
 import { PRIORITIES, PERSONAL_COLUMNS, personalColumnOf, dueBadge, toneStyle } from "@/lib/taskHelpers";
+import { useWorkDays } from "@/lib/useWorkDays";
 import { api } from "@/lib/apiClient";
 import PersonalTaskModal, { blankPersonalDraft, personalDraftFromTask, type PersonalTaskDraft } from "./PersonalTaskModal";
 import Chip from "./ui/Chip";
@@ -16,7 +17,7 @@ function PersonalCard({ task, onEdit, onDelete }: { task: Task; onEdit: (t: Task
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const priority = PRIORITIES.find((p) => p.id === task.priority)!;
   const status = personalColumnOf(task.status);
-  const badge = dueBadge(task);
+  const badge = dueBadge(task, useWorkDays());
 
   return (
     <div

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Pencil, Trash2, Check, ChevronLeft, ChevronRight, Diamond, AlertTriangle, Copy, Paperclip, MessageSquare, ListChecks } from "lucide-react";
 import type { Task, Project, AssigneeDisplay } from "@/types/models";
 import { PRIORITIES, STATUSES, dueBadge, toneStyle, isBlocked, splitModules } from "@/lib/taskHelpers";
+import { useWorkDays } from "@/lib/useWorkDays";
 import AvatarStack from "./ui/AvatarStack";
 import Chip from "./ui/Chip";
 import SlaChip from "./SlaChip";
@@ -45,7 +46,7 @@ export default function TaskCard({
   const [confirmingDuplicate, setConfirmingDuplicate] = useState(false);
   const priority = PRIORITIES.find((p) => p.id === task.priority)!;
   const status = STATUSES.find((s) => s.id === task.status)!;
-  const badge = dueBadge(task);
+  const badge = dueBadge(task, useWorkDays());
   const statusIdx = STATUSES.findIndex((s) => s.id === task.status);
   const blocked = isBlocked(task, allTasks);
   const parent = task.parentId ? allTasks.find((t) => t.id === task.parentId) : undefined;

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { loadWorkDays } from "@/lib/scheduling";
+import { isOverdue } from "@/lib/workdays";
 import { requireProjectAccess } from "@/lib/permissions";
 import { responseSlaState, resolutionSlaState } from "@/lib/sla";
 import { loadSlaConfig, loadDefaultSlaConfig, loadBusinessCalendar, clockFor } from "@/lib/slaConfig";
@@ -41,7 +43,8 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
   const today = new Date().toISOString().slice(0, 10);
   const total = tasks.length;
   const done = tasks.filter((t) => t.status === "DONE").length;
-  const overdue = tasks.filter((t) => t.status !== "DONE" && t.dueDate && t.dueDate.toISOString().slice(0, 10) < today).length;
+  const workDays = await loadWorkDays();
+  const overdue = tasks.filter((t) => isOverdue({ status: t.status, dueDate: t.dueDate?.toISOString().slice(0, 10) ?? null }, today, workDays)).length;
 
   const fromStr = req.nextUrl.searchParams.get("from");
   const toStr = req.nextUrl.searchParams.get("to");
