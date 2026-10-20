@@ -6,6 +6,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "A cleaner List view and filter bar",
+    description: "List rows now read in one line: project, modules, category, tags, subtasks and comment/file/checklist counts are plain grey text beside the title, status, SLA and due date line up in columns, and progress is a thin line along the bottom of each row. On a computer, the Edit, Duplicate and Delete icons appear when the mouse is over a row. Above the List and Board, the count cards are smaller, and Priorities, Types, Categories and Modules moved under a new More filters button (a number on it shows how many of them are in use). Group, Compact and Save sit at the right.",
+  },
+  {
     title: "User Guide shows the new cards and task form",
     description: "The User Guide (⋯ menu → User Guide) now has fresh screenshots and text for the simpler Board cards, the tabbed task form with More options, and automatic ticket codes.",
   },

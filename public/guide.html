@@ -284,7 +284,7 @@
     </figure>
 
     <h3>List</h3>
-    <p>A flat, sortable table — better when you want to scan everything at once or sort by a specific column. The Status pill on each row is a dropdown — change a task's status right there, no need to open it or switch to Board.</p>
+    <p>A flat, sortable table — better when you want to scan everything at once or sort by a specific column. Each row reads in one line: assignee, code, type tag and title, then project, modules, category, tags, subtasks and comment/file/checklist counts in grey. Status, the SLA countdown and the due date line up in columns on the right, and progress is the thin line along the bottom of the row. The Status pill is a drop-down — change a task's status right there, no need to open it or switch to Board. On a computer, the Edit, Duplicate and Trash icons appear when you move the mouse over a row.</p>
     <figure class="shot">
       <img loading="lazy" src="/guide/list.jpg" alt="List view">
       <figcaption>List view — change a status straight from the drop-down on each row.</figcaption>
@@ -297,7 +297,7 @@
       <figcaption>Timeline view — today is the dotted line; arrows link a task to the one it depends on.</figcaption>
     </figure>
 
-    <p>All three share the same stat cards and toolbar (search, filters and sort — see the next section). Every drop-down list of people and projects is alphabetised.</p>
+    <p>All three share the same counts at the top and toolbar (search, filters and sort — see the next section). Every drop-down list of people and projects is alphabetised.</p>
   </section>
 
   <!-- ============ FILTERS ============ -->
@@ -306,23 +306,23 @@
     <p class="lede">Narrow down what you're looking at, and keep your favorite combination one click away.</p>
     <figure class="shot">
       <img loading="lazy" src="/guide/filters.jpg" alt="Type filter open">
-      <figcaption>Every filter is a tick-list — here Incident and Service Request are both picked, and the button shows “2 types”.</figcaption>
+      <figcaption>More filters open, with the Types tick-list — the number on More filters shows how many of its filters are in use.</figcaption>
     </figure>
     <ul>
       <li><strong>Search</strong> matches task title and code.</li>
-      <li><strong>Filters</strong>: Assignees, Priorities, Projects, Types, Categories, Statuses and Modules. Click one and tick as many values as you need — for example Critical and High together, or two projects at once; the list shows tasks matching any of them. The button shows the name when one value is picked, or a count when several are, and each list has a <strong>Clear</strong> link. Combine as many filters as you like.</li>
-      <li><strong>Stat cards are filters too.</strong> Click <strong>In Progress</strong> or <strong>Done</strong> at the top to show just those tasks (click again to clear); <strong>Total</strong> clears the status, Overdue and Milestones filters in one go.</li>
+      <li><strong>Filters</strong>: Assignees, Projects and Statuses sit in the toolbar; Priorities, Types, Categories and Modules are under <strong>More filters</strong> (a number on it shows how many of those are in use). Click one and tick as many values as you need — for example Critical and High together, or two projects at once; the list shows tasks matching any of them. The button shows the name when one value is picked, or a count when several are, and each list has a <strong>Clear</strong> link. Combine as many filters as you like.</li>
+      <li><strong>The counts at the top are filters too.</strong> Click <strong>In Progress</strong> or <strong>Done</strong> at the top to show just those tasks (click again to clear); <strong>Total</strong> clears the status, Overdue and Milestones filters in one go.</li>
       <li><strong>Hide Done</strong> removes finished tasks from every view (Board, List, Timeline). It's switched on every time you open the app; turning it off only lasts until you leave. Picking <em>Done</em> in the Statuses filter shows Done tasks even while Hide Done is on.</li>
       <li><strong>Due this week</strong> is a single-click chip that hides everything not due in the next 7 days — the fastest way to see what actually needs your attention. Combines with any other filter above.</li>
       <li>On a phone, the filter row collapses behind a single <strong>Filters</strong> button so the dashboard doesn't eat the screen — tap it to open every filter above, tap again to hide.</li>
       <li><strong>Sort</strong>: Due Date, Code, Priority, Assignee, or Newest first.</li>
-      <li><strong>Save filter</strong> stores your current search + filter + sort combination (by name) so you can jump back to it later — it's saved per person, in your browser. Filters saved before multi-select arrived keep working.</li>
+      <li><strong>Save</strong> (right end of the toolbar) stores your current search + filter + sort combination (by name) so you can jump back to it later — it's saved per person, in your browser. Filters saved before multi-select arrived keep working.</li>
     </ul>
     <h3>Global search</h3>
     <p>Press <strong>Ctrl+K</strong> (or click {{IICON:search}} in the top bar) to open a search box that looks everywhere at once — task titles and codes, comment text, and attachment file names — not just the tasks currently on screen. Click any result to jump straight to that task.</p>
-    <h3>Group by (List view)</h3>
-    <p>On large projects, the <strong>Group by</strong> button in List view lets you stack tasks into collapsible sections by Project, Module, Assignee, or Priority — pick just one, or add several levels to nest them (e.g. Project, then Module inside each). A task with subtasks always stays together with its whole subtree in one group, even if a subtask's own field differs from its parent's. Leave it on "Group by" (no levels chosen) for the plain flat list you're used to.</p>
-    <p>Each group only lists its first 30 tasks at a time — click <strong>Show more</strong> to reveal the rest. This, plus a <strong>Compact view</strong> toggle that shrinks row height, is what keeps a project with hundreds of tasks usable instead of one long scroll.</p>
+    <h3>Group (List view)</h3>
+    <p>On large projects, the <strong>Group</strong> button in List view lets you stack tasks into collapsible sections by Project, Module, Assignee, or Priority — pick just one, or add several levels to nest them (e.g. Project, then Module inside each). A task with subtasks always stays together with its whole subtree in one group, even if a subtask's own field differs from its parent's. Leave it on "Group by" (no levels chosen) for the plain flat list you're used to.</p>
+    <p>Each group only lists its first 30 tasks at a time — click <strong>Show more</strong> to reveal the rest. This, plus a <strong>Compact</strong> toggle that shrinks row height, is what keeps a project with hundreds of tasks usable instead of one long scroll.</p>
   </section>
 
   <!-- ============ CREATING TASKS ============ -->
