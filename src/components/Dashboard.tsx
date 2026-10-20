@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Users, Building2, Download, Upload, Loader2, Contact as ContactIcon, Trash2, ListChecks, BarChart3, FileDown, Bookmark, X, AlertTriangle, ScrollText, BookOpen, ChevronDown, ChevronRight, Lock, ClipboardList, MoreHorizontal, Sparkles, Calendar as CalendarIcon, SlidersHorizontal, Shield, ShieldCheck, FolderTree, ListTree } from "lucide-react";
+import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Download, Upload, Loader2, ListChecks, BarChart3, FileDown, Bookmark, X, AlertTriangle, BookOpen, ChevronDown, ChevronRight, Lock, MoreHorizontal, Sparkles, SlidersHorizontal, Shield, Settings, LogOut } from "lucide-react";
 import useSWR from "swr";
 import type { Task, Project, TeamMember, Contact, Status, AssigneeDisplay, Category, ListConfig } from "@/types/models";
 import type { ImportPreview } from "@/types/import";
@@ -38,7 +38,8 @@ import { computeTaskSla, type SlaAll, type TaskSla } from "@/lib/taskSla";
 import { TICKET_TYPES } from "@/lib/ticketMeta";
 import ChecklistTemplatesModal from "./ChecklistTemplatesModal";
 import WorkCalendarModal from "./WorkCalendarModal";
-import LogoutButton from "./LogoutButton";
+import SettingsModal, { type SettingsSection, type SettingsItem } from "./SettingsModal";
+import { signOut } from "next-auth/react";
 import GlobalSearchModal from "./GlobalSearchModal";
 import PushAutoSubscribe from "./PushAutoSubscribe";
 import PushPermissionBanner from "./PushPermissionBanner";
@@ -54,6 +55,7 @@ const fetcher = (url: string) =>
 interface DashboardProps {
   userId: string;
   userName: string;
+  userEmail: string;
   isSuperAdmin: boolean;
   /** Project ids this user holds a per-project admin grant on. */
   administeredProjectIds: string[];
@@ -115,7 +117,7 @@ function normalizeSavedFilters(saved: Record<string, unknown>): Filters {
 
 const GROUP_PAGE_SIZE = 30;
 
-export default function Dashboard({ userId, userName, isSuperAdmin, administeredProjectIds, mfaInitiallyEnabled, idleTimeoutMinutes }: DashboardProps) {
+export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, administeredProjectIds, mfaInitiallyEnabled, idleTimeoutMinutes }: DashboardProps) {
   const { data: tasks, mutate: mutateTasks } = useSWR<Task[]>("/api/tasks", fetcher);
   const { data: team, mutate: mutateTeam } = useSWR<TeamMember[]>("/api/team", fetcher);
   const { data: projects, mutate: mutateProjects } = useSWR<Project[]>("/api/projects", fetcher);
@@ -146,18 +148,11 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
   const savedFiltersKey = `idealtasks:savedFilters:${userId}`;
   const [savedFilters, setSavedFilters] = useState<{ id: string; name: string; filters: Filters }[]>([]);
   const [savingFilterName, setSavingFilterName] = useState<string | null>(null);
-  const [teamModalOpen, setTeamModalOpen] = useState(false);
-  const [projectsModalOpen, setProjectsModalOpen] = useState(false);
-  const [contactsModalOpen, setContactsModalOpen] = useState(false);
+  // Admin screens open inside one Settings window; null = closed.
+  const [settingsSection, setSettingsSection] = useState<SettingsSection | null>(null);
   const [whatsNewOpen, setWhatsNewOpen] = useState(false);
-  const [trashModalOpen, setTrashModalOpen] = useState(false);
-  const [auditLogOpen, setAuditLogOpen] = useState(false);
   const [mfaModalOpen, setMfaModalOpen] = useState(false);
-  const [securityPolicyOpen, setSecurityPolicyOpen] = useState(false);
-  const [categoriesOpen, setCategoriesOpen] = useState(false);
-  const [listsOpen, setListsOpen] = useState(false);
-  const [checklistTemplatesOpen, setChecklistTemplatesOpen] = useState(false);
-  const [workCalendarOpen, setWorkCalendarOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
@@ -274,6 +269,20 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
     return isSuperAdmin || (task.projectId !== null && administeredProjectIds.includes(task.projectId));
   }
   const canCreateAnywhere = isSuperAdmin || administeredProjectIds.length > 0;
+  const closeSettings = () => setSettingsSection(null);
+  // Same visibility rules the ⋯ menu used for each screen.
+  const settingsItems: SettingsItem[] = [
+    ...(isSuperAdmin ? [{ id: "team", label: "Team", group: "People" } as const] : []),
+    ...(canCreateAnywhere ? [{ id: "contacts", label: "Contacts", group: "People" } as const] : []),
+    ...(isSuperAdmin ? [{ id: "projects", label: "Projects", group: "Work" } as const] : []),
+    ...(isSuperAdmin ? [{ id: "categories", label: "Ticket Categories", group: "Work" } as const] : []),
+    ...(isSuperAdmin ? [{ id: "lists", label: "Lists", group: "Work" } as const] : []),
+    ...(isSuperAdmin ? [{ id: "checklists", label: "Checklist Templates", group: "Work" } as const] : []),
+    { id: "calendar", label: "Work Calendar", group: "Work" } as const,
+    ...(isSuperAdmin ? [{ id: "security", label: "Security Policy", group: "Security" } as const] : []),
+    ...(isSuperAdmin ? [{ id: "audit", label: "Audit Log", group: "Security" } as const] : []),
+    ...(canCreateAnywhere ? [{ id: "trash", label: "Trash", group: "Security" } as const] : []),
+  ];
   const modalProjects = isSuperAdmin ? projectList : projectList.filter((p) => administeredProjectIds.includes(p.id));
 
   function getAssigneeDisplays(task: Task): AssigneeDisplay[] {
@@ -804,12 +813,12 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
             <div className="flex rounded-lg p-0.5" style={{ background: "rgba(255,255,255,0.12)" }}>
               <button
                 onClick={() => setView("board")}
                 title="Board"
-                className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold"
+                className="flex items-center gap-1 px-1.5 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold"
                 style={{ background: view === "board" ? "#fff" : "transparent", color: view === "board" ? "#0A5A46" : "#fff" }}
               >
                 <LayoutGrid size={13} /> <span className="hidden sm:inline">Board</span>
@@ -817,7 +826,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
               <button
                 onClick={() => setView("list")}
                 title="List"
-                className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold"
+                className="flex items-center gap-1 px-1.5 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold"
                 style={{ background: view === "list" ? "#fff" : "transparent", color: view === "list" ? "#0A5A46" : "#fff" }}
               >
                 <ListIcon size={13} /> <span className="hidden sm:inline">List</span>
@@ -825,7 +834,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
               <button
                 onClick={() => setView("timeline")}
                 title="Timeline"
-                className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold"
+                className="flex items-center gap-1 px-1.5 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold"
                 style={{ background: view === "timeline" ? "#fff" : "transparent", color: view === "timeline" ? "#0A5A46" : "#fff" }}
               >
                 <CalendarDays size={13} /> <span className="hidden sm:inline">Timeline</span>
@@ -833,7 +842,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
               <button
                 onClick={() => setView("reports")}
                 title="Reports"
-                className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold"
+                className="flex items-center gap-1 px-1.5 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold"
                 style={{ background: view === "reports" ? "#fff" : "transparent", color: view === "reports" ? "#0A5A46" : "#fff" }}
               >
                 <BarChart3 size={13} /> <span className="hidden sm:inline">Reports</span>
@@ -841,7 +850,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
               <button
                 onClick={() => setView("attention")}
                 title="Attention"
-                className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold"
+                className="flex items-center gap-1 px-1.5 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold"
                 style={{ background: view === "attention" ? "#fff" : "transparent", color: view === "attention" ? "#0A5A46" : "#fff" }}
               >
                 <AlertTriangle size={13} /> <span className="hidden sm:inline">Attention</span>
@@ -849,17 +858,16 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
               <button
                 onClick={() => setView("personal")}
                 title="My Tasks"
-                className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold"
+                className="flex items-center gap-1 px-1.5 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold"
                 style={{ background: view === "personal" ? "#fff" : "transparent", color: view === "personal" ? "#0A5A46" : "#fff" }}
               >
                 <Lock size={13} /> <span className="hidden sm:inline">My Tasks</span>
               </button>
             </div>
-            <span className="hidden md:inline text-white text-xs">{userName}</span>
             <button
               onClick={() => setGlobalSearchOpen(true)}
               title="Search"
-              className="p-2 rounded-lg text-white"
+              className="p-1.5 sm:p-2 rounded-lg text-white"
               style={{ background: "rgba(255,255,255,0.12)" }}
             >
               <Search size={15} />
@@ -870,7 +878,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
             <button
               onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
               title={selectMode ? "Exit select mode" : "Select multiple tasks"}
-              className="p-2 rounded-lg text-white"
+              className="p-1.5 sm:p-2 rounded-lg text-white"
               style={{ background: selectMode ? "#fff" : "rgba(255,255,255,0.12)", color: selectMode ? "#0A5A46" : "#fff" }}
             >
               <ListChecks size={15} />
@@ -879,7 +887,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
               <button
                 onClick={() => setAdminMenuOpen((v) => !v)}
                 title="More"
-                className="flex items-center gap-1 p-2 rounded-lg text-white"
+                className="flex items-center gap-1 p-1.5 sm:p-2 rounded-lg text-white"
                 style={{ background: adminMenuOpen ? "#fff" : "rgba(255,255,255,0.12)", color: adminMenuOpen ? "#0A5A46" : "#fff" }}
               >
                 <MoreHorizontal size={15} />
@@ -901,91 +909,13 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
                   >
                     <Sparkles size={14} /> What&apos;s New
                   </button>
-                  {isSuperAdmin && (
-                    <>
-                      <div className="my-1 border-t border-brand-border" />
-                      <button
-                        onClick={() => { setTeamModalOpen(true); setAdminMenuOpen(false); }}
-                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
-                      >
-                        <Users size={14} /> Manage Team
-                      </button>
-                      <button
-                        onClick={() => { setProjectsModalOpen(true); setAdminMenuOpen(false); }}
-                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
-                      >
-                        <Building2 size={14} /> Manage Projects
-                      </button>
-                    </>
-                  )}
-                  {canCreateAnywhere && (
-                      <button
-                        onClick={() => { setContactsModalOpen(true); setAdminMenuOpen(false); }}
-                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
-                      >
-                        <ContactIcon size={14} /> Manage Contacts
-                      </button>
-                    )}
-                    {canCreateAnywhere && (
-                      <button
-                        onClick={() => { setTrashModalOpen(true); setAdminMenuOpen(false); }}
-                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
-                      >
-                        <Trash2 size={14} /> Trash
-                      </button>
-                    )}
-                    {isSuperAdmin && (
-                      <button
-                        onClick={() => { setAuditLogOpen(true); setAdminMenuOpen(false); }}
-                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
-                      >
-                        <ScrollText size={14} /> Audit Log
-                      </button>
-                    )}
-                    {isSuperAdmin && (
-                      <button
-                        onClick={() => { setCategoriesOpen(true); setAdminMenuOpen(false); }}
-                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
-                      >
-                        <FolderTree size={14} /> Ticket Categories
-                      </button>
-                    )}
-                    {isSuperAdmin && (
-                      <button
-                        onClick={() => { setListsOpen(true); setAdminMenuOpen(false); }}
-                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
-                      >
-                        <ListTree size={14} /> Lists
-                      </button>
-                    )}
-                    {isSuperAdmin && (
-                      <button
-                        onClick={() => { setSecurityPolicyOpen(true); setAdminMenuOpen(false); }}
-                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
-                      >
-                        <ShieldCheck size={14} /> Security Policy
-                      </button>
-                    )}
-                    <button
-                      onClick={() => { setMfaModalOpen(true); setAdminMenuOpen(false); }}
-                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
-                    >
-                      <Shield size={14} /> Two-factor (MFA)
-                    </button>
-                    {isSuperAdmin && (
-                      <button
-                        onClick={() => { setChecklistTemplatesOpen(true); setAdminMenuOpen(false); }}
-                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
-                      >
-                        <ClipboardList size={14} /> Checklist Templates
-                      </button>
-                    )}
-                    <button
-                      onClick={() => { setWorkCalendarOpen(true); setAdminMenuOpen(false); }}
-                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
-                    >
-                      <CalendarIcon size={14} /> Work Calendar
-                    </button>
+                  <div className="my-1 border-t border-brand-border" />
+                  <button
+                    onClick={() => { setSettingsSection(settingsItems[0].id); setAdminMenuOpen(false); }}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-semibold text-brand-dark hover:bg-brand-bg text-left"
+                  >
+                    <Settings size={14} /> Settings
+                  </button>
                     {isSuperAdmin && (
                       <>
                         <div className="my-1 border-t border-brand-border" />
@@ -1025,7 +955,40 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
                 <Plus size={14} /> <span className="hidden sm:inline">New Task</span>
               </button>
             )}
-            <LogoutButton />
+            {/* Account menu: the user's initials open their name, two-factor and Log out. */}
+            <div className="relative">
+              <button
+                onClick={() => setAccountMenuOpen((v) => !v)}
+                title={userName}
+                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[11px] sm:text-[12px] font-extrabold border-2 border-white"
+                style={{ background: "#82B478", color: "#0A3F31" }}
+              >
+                {initials(userName || userEmail || "?")}
+              </button>
+              {accountMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setAccountMenuOpen(false)} />
+                  <div className="absolute right-0 top-[calc(100%+4px)] z-20 w-[220px] rounded-lg bg-white border border-brand-border shadow-lg p-1">
+                    <div className="px-2 py-1.5 border-b border-brand-border mb-1">
+                      <div className="text-xs font-bold text-brand-text truncate">{userName}</div>
+                      <div className="text-[11px] text-brand-sub truncate">{userEmail}</div>
+                    </div>
+                    <button
+                      onClick={() => { setMfaModalOpen(true); setAccountMenuOpen(false); }}
+                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
+                    >
+                      <Shield size={14} /> Two-factor (MFA)
+                    </button>
+                    <button
+                      onClick={() => signOut({ callbackUrl: "/login" })}
+                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-brand-text hover:bg-brand-bg text-left"
+                    >
+                      <LogOut size={14} /> Log out
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -1437,71 +1400,61 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
         />
       )}
 
-      {teamModalOpen && (
-        <TeamModal
-          team={teamList}
-          projects={projectList}
-          currentUserId={userId}
-          onClose={() => setTeamModalOpen(false)}
-          onChanged={() => mutateTeam()}
-        />
+      {settingsSection && (
+        <SettingsModal items={settingsItems} section={settingsSection} onSelect={setSettingsSection}>
+          {settingsSection === "team" && (
+            <TeamModal
+              key="team"
+              team={teamList}
+              projects={projectList}
+              currentUserId={userId}
+              onClose={closeSettings}
+              onChanged={() => mutateTeam()}
+            />
+          )}
+          {settingsSection === "projects" && (
+            <ProjectsModal key="projects" projects={projectList} onClose={closeSettings} onChanged={() => mutateProjects()} />
+          )}
+          {settingsSection === "contacts" && (
+            <ContactsModal key="contacts" contacts={contactList} projects={projectList} onClose={closeSettings} onChanged={() => mutateContacts()} />
+          )}
+          {settingsSection === "audit" && <AuditLogModal key="audit" onClose={closeSettings} />}
+          {settingsSection === "security" && <SecurityPolicyModal key="security" onClose={closeSettings} />}
+          {settingsSection === "categories" && (
+            <CategoriesModal
+              key="categories"
+              categories={categoryList}
+              onChanged={() => { mutateCategories(); mutateTasks(); }}
+              onClose={closeSettings}
+            />
+          )}
+          {settingsSection === "lists" && (
+            <ListsModal key="lists" onChanged={() => { mutateListConfig(); mutateTasks(); }} onClose={closeSettings} />
+          )}
+          {settingsSection === "checklists" && <ChecklistTemplatesModal key="checklists" onClose={closeSettings} />}
+          {settingsSection === "calendar" && <WorkCalendarModal key="calendar" onClose={closeSettings} canEdit={isSuperAdmin} />}
+          {settingsSection === "trash" && (
+            <TrashModal
+              key="trash"
+              isSuperAdmin={isSuperAdmin}
+              onClose={closeSettings}
+              onChanged={() => { mutateTasks(); mutateProjects(); }}
+            />
+          )}
+        </SettingsModal>
       )}
 
-      {projectsModalOpen && (
-        <ProjectsModal
-          projects={projectList}
-          onClose={() => setProjectsModalOpen(false)}
-          onChanged={() => mutateProjects()}
-        />
-      )}
-
-      {contactsModalOpen && (
-        <ContactsModal
-          contacts={contactList}
-          projects={projectList}
-          onClose={() => setContactsModalOpen(false)}
-          onChanged={() => mutateContacts()}
-        />
-      )}
-
-      {auditLogOpen && <AuditLogModal onClose={() => setAuditLogOpen(false)} />}
       {mfaModalOpen && (
         <MfaSettingsModal
           initialTotpEnabled={mfaInitiallyEnabled}
           onClose={() => setMfaModalOpen(false)}
         />
       )}
-      {securityPolicyOpen && <SecurityPolicyModal onClose={() => setSecurityPolicyOpen(false)} />}
-      {categoriesOpen && (
-        <CategoriesModal
-          categories={categoryList}
-          onChanged={() => { mutateCategories(); mutateTasks(); }}
-          onClose={() => setCategoriesOpen(false)}
-        />
-      )}
-
-      {listsOpen && (
-        <ListsModal
-          onChanged={() => { mutateListConfig(); mutateTasks(); }}
-          onClose={() => setListsOpen(false)}
-        />
-      )}
 
       {whatsNewOpen && <WhatsNewModal onClose={() => setWhatsNewOpen(false)} />}
 
-      {checklistTemplatesOpen && <ChecklistTemplatesModal onClose={() => setChecklistTemplatesOpen(false)} />}
-      {workCalendarOpen && <WorkCalendarModal onClose={() => setWorkCalendarOpen(false)} canEdit={isSuperAdmin} />}
-
       {globalSearchOpen && (
         <GlobalSearchModal onClose={() => setGlobalSearchOpen(false)} onOpenTask={openTaskById} />
-      )}
-
-      {trashModalOpen && (
-        <TrashModal
-          isSuperAdmin={isSuperAdmin}
-          onClose={() => setTrashModalOpen(false)}
-          onChanged={() => { mutateTasks(); mutateProjects(); }}
-        />
       )}
 
       {importPreview && (

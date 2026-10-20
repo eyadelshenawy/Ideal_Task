@@ -6,6 +6,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "One Settings window and a simpler top bar",
+    description: "Every admin screen — Team, Contacts, Projects, Ticket Categories, Lists, Checklist Templates, Work Calendar, Security Policy, Audit Log and Trash — now opens inside one Settings window (⋯ menu → Settings), picked from the list on its left. Each screen works exactly as before, and you only see the ones your role allows. The ⋯ menu is down to User Guide, What's New, Settings and the Excel options. Your name and the Log out button moved into the circle with your initials at the top right, together with Two-factor (MFA). On a phone the top bar now fits on one row.",
+  },
+  {
     title: "A cleaner Timeline with Days and Weeks",
     description: "The Timeline drops the day-by-day grid lines (weekends are still lightly shaded), uses slimmer rows, and shows the assignees' initials beside each bar. It now opens scrolled to today, with a Today button to jump back. A new Days / Weeks switch shows one column per week, so a long project fits on one screen. Clicking a bar or a task name still opens the task, and dependency arrows are unchanged.",
   },
