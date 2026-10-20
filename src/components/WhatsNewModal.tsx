@@ -6,6 +6,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "User Guide shows the new cards and task form",
+    description: "The User Guide (⋯ menu → User Guide) now has fresh screenshots and text for the simpler Board cards, the tabbed task form with More options, and automatic ticket codes.",
+  },
+  {
     title: "Ticket codes are now assigned automatically and can't be changed",
     description: "When you save a new ticket, the app gives it the next number for its project (e.g. APEX-0008), or the next subtask number under its parent (e.g. APEX-0001-03). The Code field shows the expected number greyed out. Once saved, a ticket's code stays fixed — only a Super Admin can change it, and so only a Super Admin can move a ticket to another project or under a different parent (both change the code). To record a customer's own reference number, add it as a tag.",
   },

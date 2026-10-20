@@ -274,9 +274,10 @@
     <p class="lede">Three ways to look at the same tasks — pick whichever fits what you're doing.</p>
 
     <h3>Board</h3>
-    <p>The default view — tasks grouped into six columns: <strong>New</strong>, <strong>Ready</strong>, <strong>In Progress</strong>, <strong>Internal Test</strong>, <strong>Customer Test</strong>, <strong>Done</strong>. Use the arrows on a card to move it forward or back a stage, or just <strong>drag and drop</strong> a card straight into a different column.</p>
+    <p>The default view — tasks grouped into six columns: <strong>New</strong>, <strong>Ready</strong>, <strong>In Progress</strong>, <strong>Internal Test</strong>, <strong>Customer Test</strong>, <strong>Done</strong>. <strong>Drag and drop</strong> a card into a different column to change its status. On a phone or tablet, use the ‹ › arrows at the bottom of the card instead.</p>
+    <p>Each card shows the code on top, the full title, then the coloured tags that matter (type, SLA countdown, Blocked). Project, modules, category, tags and subtask info share one grey line underneath, and comment and checklist counts sit on the bottom line beside the due date. On a computer, the Edit, Duplicate and Trash icons appear when you move the mouse over a card.</p>
     <p>A card shows small icons at a glance whenever it has any: a paperclip with a count for attachments, a speech bubble for comments, and a checklist icon showing done/total — so you know a task has activity without opening it.</p>
-    <p>Tickets also carry a short coloured <strong>type tag</strong> (INC, SR, CHG, PRB — plain tasks show none), their category, and in SLA-tracked projects a <strong>countdown chip</strong>: "Respond in 2h", "Resolve in 1d 4h", or a red "SLA breached".</p>
+    <p>Tickets also carry a short coloured <strong>type tag</strong> (INC, SR, CHG, PRB — plain tasks show none), and in SLA-tracked projects a <strong>countdown chip</strong>: "Respond in 2h", "Resolve in 1d 4h", or a red "SLA breached".</p>
     <figure class="shot">
       <img loading="lazy" src="/guide/board.jpg" alt="Board view">
       <figcaption>Board view — type tags, categories, modules and SLA countdowns on each card. The stat cards at the top always reflect the current filter.</figcaption>
@@ -330,8 +331,16 @@
     <p class="lede">Click <strong>New Task</strong>, or the pencil on any existing task, to open the task form.</p>
     <figure class="shot">
       <img loading="lazy" src="/guide/task-form.jpg" alt="Task edit form">
-      <figcaption>The task form — required fields are marked with *. Module is picked from the list; the SLA box appears in SLA-tracked projects.</figcaption>
+      <figcaption>The task form — tabs across the top, status, progress and SLA together, and less-used settings folded under More options.</figcaption>
     </figure>
+
+    <h3>How the form is laid out</h3>
+    <ul>
+      <li>An existing task shows its <strong>title and code</strong> at the top, with tabs: <strong>Details</strong>, <strong>Checklist</strong>, <strong>Time</strong>, <strong>Files</strong> and <strong>Comments</strong>. A small number on a tab shows how many items it holds. A new task has only Details.</li>
+      <li>The first row of Details holds <strong>Status</strong>, <strong>Progress</strong> and, in SLA-tracked projects, the SLA tag — click the tag to see the response and resolve times.</li>
+      <li><strong>Assignees</strong> are picked from a drop-down (Team, Inactive, External contacts) and shown as names; remove one with its ×.</li>
+      <li><strong>More options</strong> (click to open) holds the less-used settings: Code, Tags, Milestone, Repeat, Depends on, Parent task, Duplicate and Add subtask.</li>
+    </ul>
 
     <h3>Required fields when creating a task</h3>
     <ul>
@@ -345,7 +354,7 @@
     </ul>
     <h3>Ticket type, Impact × Urgency and categories</h3>
     <p>Every task has a <strong>Type</strong>. <strong>Task</strong> is the default, so project work carries on exactly as before. For support work pick <strong>Incident</strong> (something is broken), <strong>Service Request</strong> (someone needs something), <strong>Change Request</strong> or <strong>Problem</strong> (the root cause behind repeated incidents). Super Admins can rename these, change their tag and colour, hide ones you don't use, or add new ones in ⋯ menu → <strong>Lists</strong>.</p>
-    <p>Instead of guessing a priority, pick <strong>Impact</strong> (who is affected) and <strong>Urgency</strong> (how soon it's needed) and the priority fills itself in:</p>
+    <p>Instead of guessing a priority, click <strong>pick</strong> (or <strong>change</strong>) next to Priority, then choose <strong>Impact</strong> (who is affected) and <strong>Urgency</strong> (how soon it's needed) and the priority fills itself in:</p>
     <table class="perm-table">
       <tr><th>Impact ↓ / Urgency →</th><th>High</th><th>Medium</th><th>Low</th></tr>
       <tr><td><strong>High</strong> — the whole company or a critical process</td><td>Critical</td><td>High</td><td>Medium</td></tr>
@@ -356,8 +365,8 @@
     <p><strong>Category</strong> and <strong>Subcategory</strong> (e.g. <em>Bug / Error › Posting error</em>) come from one shared list that Super Admins manage in ⋯ menu → <strong>Ticket Categories</strong>. Both are optional.</p>
     <h3>Priority (Critical, High, Medium, Low) and SLA auto-fill</h3>
     <p>Four priority levels — <strong>Critical</strong> (most urgent, red), High, Medium, Low. Sorting by Priority puts Critical first. In an SLA-tracked project (Manage Projects → Track SLA), picking a priority for a new task <em>pre-fills</em> the Duration field from that project's SLA resolution days, so the Due Date computes itself from your Start Date. Defaults: Critical 2 days, High 4 days, Medium 7 days, Low 10 days — tune them per project (Manage Projects → SLA targets) or org-wide (Reports → Edit default targets). Priority names and colours can be changed by a Super Admin in ⋯ menu → <strong>Lists</strong>; the four levels themselves are fixed because SLA targets depend on them.</p>
-    <h3>The SLA box on a ticket</h3>
-    <p>In an SLA-tracked project, an open ticket shows an <strong>SLA</strong> box with its <em>Response by</em> and <em>Resolve by</em> times and how much is left (or <em>Met</em> / <em>Breached</em>). The same countdown appears as a chip on the card and the row. If the project counts working hours only, the clock pauses outside working hours, weekends and holidays (see Work Calendar).</p>
+    <h3>The SLA tag on a ticket</h3>
+    <p>In an SLA-tracked project, an open ticket shows an SLA tag at the top of the form; click it to open the <strong>SLA</strong> box with its <em>Response by</em> and <em>Resolve by</em> times and how much is left (or <em>Met</em> / <em>Breached</em>). The same countdown appears as a chip on the card and the row. If the project counts working hours only, the clock pauses outside working hours, weekends and holidays (see Work Calendar).</p>
     <p><strong>Priority change always rewrites Duration</strong> — escalating a Low ticket to Critical MUST tighten its deadline, so the SLA is re-applied even if you had typed a Duration manually. Typing your own Duration afterwards keeps it until you touch the priority again.</p>
     <h3>Parent-task rollup and dependency warnings</h3>
     <p>A task with subtasks (a parent) rolls its date range up from them: the earliest child Start becomes the parent's Start, the latest child Due becomes the parent's Due, and Duration is the working days between the two. You can still edit a parent's dates by hand, but the moment any child moves the parent snaps back to the recomputed span — the parent's dates aren't a fact of their own, they're a summary of the children.</p>
@@ -379,7 +388,7 @@
     <p>The predecessor list only shows tasks from the <em>same project</em>, with each one's code shown so it's easy to pick the right one. Checking a predecessor will fill in this task's Start Date from the predecessor's Due Date, but only if Start Date is still blank — it's a one-time suggestion, never something that overwrites a date you've already set.</p>
 
     <h3>Duplicating a task</h3>
-    <p>The copy icon on any task creates a fresh copy — same title, assignees, tags, module, priority and dates, but a new code, status reset to <em>New</em>, and progress reset to 0%. From the task form you can also duplicate straight into a <em>different</em> project. Clicking the copy icon doesn't duplicate right away — it turns into a checkmark for a second click to confirm, the same pattern as Move to Trash, so a stray click never creates an accidental copy.</p>
+    <p>The copy icon on any task creates a fresh copy — same title, assignees, tags, module, priority and dates, but a new code, status reset to <em>New</em>, and progress reset to 0%. From the task form (under <strong>More options</strong>) you can also duplicate straight into a <em>different</em> project. Clicking the copy icon doesn't duplicate right away — it turns into a checkmark for a second click to confirm, the same pattern as Move to Trash, so a stray click never creates an accidental copy.</p>
   </section>
 
   <!-- ============ TASK HIERARCHY ============ -->
@@ -388,7 +397,7 @@
     <p class="lede">Break a big task down into real subtasks — each one a full task in its own right, with its own assignee, dates, and status — not just a checklist line.</p>
 
     <h3>How it works</h3>
-    <p>Open the task form and pick a <strong>Parent task</strong> from the dropdown (only tasks in the same project are shown). The Code field auto-suggests a hierarchical code off the parent's own code — e.g. a parent <code>ABC-0001</code> gets subtasks <code>ABC-0001-01</code>, <code>ABC-0001-02</code>, and so on. A subtask can itself have subtasks (<code>ABC-0001-01-01</code>), with no limit on how many levels deep.</p>
+    <p>Open the task form, click <strong>More options</strong> and pick a <strong>Parent task</strong> from the drop-down (only tasks in the same project are shown), or use <strong>+ Add subtask under this task</strong> there. The subtask gets a hierarchical code off the parent's own code when saved — e.g. a parent <code>ABC-0001</code> gets subtasks <code>ABC-0001-01</code>, <code>ABC-0001-02</code>, and so on. A subtask can itself have subtasks (<code>ABC-0001-01-01</code>), with no limit on how many levels deep.</p>
     <p>The fastest way in: open the parent task itself and click <strong>+ Add subtask under this task</strong> at the bottom of its form — it opens a fresh task already scoped to the right project, parent, and suggested code, so there's no hunting through the dropdown.</p>
     <div class="card tip">
       This is entirely optional — most tasks have no parent and no subtasks at all. Use it only where a task genuinely breaks down into a real sequence of sub-work.
@@ -400,7 +409,7 @@
     <h3>Where it shows up</h3>
     <ul>
       <li><strong>List view</strong> — the full picture: each subtask is nested directly beneath its parent, indented, with a collapse arrow to hide/show them.</li>
-      <li><strong>Board view</strong> — since Board is split into status columns, a parent and its subtasks can land in different columns and can't literally nest there. Instead, a subtask carries a small "↳ parent code" chip, and a parent carries a "<em>N/M subtasks</em>" chip. If a project has a lot of subtasks cluttering the board, toggle <strong>Hide subtasks</strong> in the filter bar to show only top-level tasks as cards (a parent's subtask-progress chip still reflects them either way).</li>
+      <li><strong>Board view</strong> — since Board is split into status columns, a parent and its subtasks can land in different columns and can't literally nest there. Instead, a subtask shows "↳ parent code" on its grey line, and a parent shows "<em>N/M subtasks</em>". If a project has a lot of subtasks cluttering the board, toggle <strong>Hide subtasks</strong> in the filter bar to show only top-level tasks as cards (a parent's subtask-progress chip still reflects them either way).</li>
       <li><strong>Timeline</strong> — subtasks are indented under their parent the same way as List, regardless of status.</li>
     </ul>
 
@@ -423,14 +432,14 @@
   <!-- ============ TASK DETAILS ============ -->
   <section class="doc-section" id="task-details" data-group="Working with tasks" data-icon="list-checks" data-label="Checklist, attachments & comments">
     <h2>{{ICON:list-checks}} Checklist, attachments, tags & comments</h2>
-    <p class="lede">Scroll down inside any task to find its checklist, files, and activity — all in the same place.</p>
+    <p class="lede">Open any task and use the tabs at the top — Checklist, Time, Files and Comments — to reach its checklist, time log, attachments and activity.</p>
     <figure class="shot">
       <img loading="lazy" src="/guide/task-details.jpg" alt="Task checklist, attachments and comments panels">
-      <figcaption>Checklist, Attachments, and Comments &amp; Activity — the bottom half of every task.</figcaption>
+      <figcaption>The Comments tab — comments and activity, with Email customer above them.</figcaption>
     </figure>
     <p>Use <strong>Email customer</strong> (above the comments box) to send the task's assigned contact an email with the task code, title, a link to view status and reply, and your message — it also logs a comment on the task marked "to customer". The assigned contact's email (if any) is used automatically, and you can also type in one or more extra addresses by hand (comma-separated) under "Also send to" — handy for tasks with no contact on file yet, e.g. ones created internally rather than through the public intake form. You can attach as many files as you like (image, PDF, or Word) as long as each stays under 10MB and the combined total under 25MB — they're sent as real email attachments and also saved to the task's Attachments. If they reply from that tracking link, their reply appears as a comment marked "via tracking link" (with its own attachment if they included one) and notifies the task's assignees and every Super Admin. The tracking page itself shows the back-and-forth thread of these messages, so the customer sees what was said before they reply. Any attached file shows as a clickable download link in the thread, both here on the task and on the customer's tracking page. If a link ever gets forwarded to the wrong person, Super Admins can hit <strong>Reset link</strong> in the Email customer box to invalidate the old link on the spot — then send a fresh email so the customer gets the new one.</p>
     <h3>Custom Fields</h3>
-    <p>Only shown when the task's project has custom fields defined (see <strong>Managing projects</strong>) — extra text, number, or dropdown fields specific to that project, e.g. a SAP transaction code. Saves as you fill them in.</p>
+    <p>Shown on the Details tab, only when the task's project has custom fields defined (see <strong>Managing projects</strong>) — extra text, number, or dropdown fields specific to that project, e.g. a SAP transaction code. Saves as you fill them in.</p>
     <h3>Checklist</h3>
     <p>Lightweight subtasks — check them off as you go. They don't have their own assignee or due date; they're just steps within the task.</p>
     <p>If a template exists (see <strong>Checklist Templates</strong> below), a small dropdown appears next to the Checklist heading — pick one to add its whole list of steps at once instead of typing them.</p>
@@ -439,7 +448,7 @@
     <h3>Attachments</h3>
     <p>Attach any file up to 25MB. Files are stored securely and every download link is temporary (expires after a few minutes) — nothing is ever publicly accessible.</p>
     <h3>Tags</h3>
-    <p>Free-form labels — type a word and press Enter. Use them however makes sense to your team (e.g. <code>onboarding</code>, <code>urgent</code>, <code>client-facing</code>).</p>
+    <p>Free-form labels, under <strong>More options</strong> in the task form — type a word and press Enter. Use them however makes sense to your team (e.g. <code>onboarding</code>, <code>urgent</code>, <code>client-facing</code>).</p>
     <p>A handy convention for support projects: tag a ticket <code>Cancelled</code>, <code>Duplicate</code>, or <code>Not Applicable</code> before closing it as Done, so it stays searchable and distinguishable from a ticket that was actually resolved — no separate status needed, since a ticket the client raised counts as closed either way.</p>
     <p>Same idea while a ticket is still open: if you're waiting on the client for more detail before you can call it <strong>Ready</strong>, leave it in <strong>New</strong> and tag it <code>Needs Info</code> (or similar) instead of hunting for a status that doesn't exist — a tag surfaces it without adding a column to the board.</p>
     <h3>Comments & Activity</h3>
