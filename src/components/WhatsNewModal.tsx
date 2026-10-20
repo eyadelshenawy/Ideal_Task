@@ -6,6 +6,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Nine new reports, with an Excel export that keeps the formulas",
+    description: "Reports now has tabs. Customers: tickets per customer per month, and the top 5 modules and categories problems come from. SLA & speed: resolution SLA met % per customer per month, average response and resolution time per priority, and the age of open tickets. Team: closed per person, average resolution and overdue %. Time & billing: hours logged per customer per month. Quality: opened vs closed per week and the reopened rate. Pick a period (3, 6 or 12 months) and projects; each card shows its formula, and Export to Excel downloads all nine with real Excel formulas for every total, average and percentage. The original reports are on the Overview tab.",
+  },
+  {
     title: "One Settings window and a simpler top bar",
     description: "Every admin screen — Team, Contacts, Projects, Ticket Categories, Lists, Checklist Templates, Work Calendar, Security Policy, Audit Log and Trash — now opens inside one Settings window (⋯ menu → Settings), picked from the list on its left. Each screen works exactly as before, and you only see the ones your role allows. The ⋯ menu is down to User Guide, What's New, Settings and the Excel options. Your name and the Log out button moved into the circle with your initials at the top right, together with Two-factor (MFA). On a phone the top bar now fits on one row.",
   },

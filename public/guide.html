@@ -477,6 +477,25 @@
       <img loading="lazy" src="/guide/reports.jpg" alt="Reports view">
       <figcaption>Overview stats, last-7-days activity, a per-project completion breakdown and team workload. Time Logged, SLA and Customer satisfaction follow further down.</figcaption>
     </figure>
+    <h3>Report tabs</h3>
+    <p>Tabs across the top: <strong>Overview</strong> (everything described below) plus five more. Pick a <strong>Period</strong> (last 3, 6 or 12 months) and, if you like, one or more projects. <strong>Export to Excel (with formulas)</strong> downloads all nine reports, one sheet each, where every total, average and percentage is an Excel formula you can check. Each card shows its formula under the title.</p>
+    <figure class="shot">
+      <img loading="lazy" src="/guide/reports-sla.jpg" alt="SLA and speed tab">
+      <figcaption>The SLA &amp; speed tab — SLA met per customer, response and resolution times, and the age of open tickets.</figcaption>
+    </figure>
+    <table class="perm-table">
+      <tr><th>Tab</th><th>Report</th><th>Formula</th></tr>
+      <tr><td>Customers</td><td>1 · Tickets per customer per month</td><td>count of tickets created in the month</td></tr>
+      <tr><td>Customers</td><td>5 · Where problems come from (top 5 modules and categories)</td><td>count of tickets created in the period</td></tr>
+      <tr><td>SLA &amp; speed</td><td>2 · Resolution SLA met per customer per month</td><td>met ÷ (met + breached) × 100</td></tr>
+      <tr><td>SLA &amp; speed</td><td>3 · Average response and resolution time per priority</td><td>sum of hours (or days) ÷ number of tickets — response = created → first comment; resolution = created → Done</td></tr>
+      <tr><td>SLA &amp; speed</td><td>4 · Age of open tickets (0–7, 8–30, 31–60, 60+ days)</td><td>today − created date</td></tr>
+      <tr><td>Team</td><td>7 · Team performance</td><td>average resolution = resolution days ÷ closed; overdue % = overdue ÷ open × 100</td></tr>
+      <tr><td>Time &amp; billing</td><td>6 · Hours logged per customer per month</td><td>sum of hours logged in the month</td></tr>
+      <tr><td>Quality</td><td>8 · Opened vs closed per week (last 12 weeks)</td><td>backlog change = opened − closed</td></tr>
+      <tr><td>Quality</td><td>9 · Reopened tickets</td><td>reopened ÷ closed × 100 — a ticket counts as reopened when it is moved back from Done</td></tr>
+    </table>
+    <p>Times are calendar time. Averages are rounded to 1 decimal place and percentages to a whole number. As with the rest of Reports, you only see figures for tasks you're allowed to see.</p>
     <h3>SLA</h3>
     <p>Response/resolution targets only make sense for support/ticket work measured from when a request came in — an implementation project's tasks already have their own Start/Due dates, so SLA is <strong>off by default</strong> for every project. Turn it on per-project from Settings → Projects (see below) for the ones that are actually support contracts; the rest are left out of this section entirely.</p>
     <p>Two targets are tracked automatically, by priority, for any project with tracking on — how quickly someone first commented on a task, and how quickly it was actually closed. Every project shares the same numbers by default (Critical: first response within 4 hours, close within 2 days; High: 24 hours / 4 days; Medium: 48 hours / 7 days; Low: 72 hours / 10 days) — a Super Admin can change these shared defaults via <strong>Edit default targets</strong>, or set different numbers for one specific project via its own <strong>SLA targets</strong> button in Settings → Projects. Either level can also set a cutoff date so tasks created before it (e.g. old backlog imported before this feature existed) are left out of the percentages entirely.</p>
