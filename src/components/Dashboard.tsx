@@ -399,14 +399,13 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
       return;
     }
     if (!draft.id) {
-      if (!draft.code.trim()) return setFormError("Code is required");
       if (!draft.description.trim()) return setFormError("Description is required");
       if (!draft.projectId) return setFormError("Project is required");
       if (draft.assignees.length === 0) return setFormError("At least one assignee is required");
       if (!draft.dueDate) return setFormError(draft.isMilestone ? "Date is required" : "Due date is required");
       if (!draft.isMilestone && !draft.startDate) return setFormError("Start date is required");
     }
-    if (fullEdit && draft.projectId && draft.code.trim()) {
+    if (fullEdit && isSuperAdmin && draft.projectId && draft.code.trim()) {
       const project = projectList.find((p) => p.id === draft.projectId);
       const prefix = `${project?.code ?? ""}-`;
       if (project?.code && !draft.code.trim().toUpperCase().startsWith(prefix.toUpperCase())) {

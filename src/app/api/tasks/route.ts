@@ -10,8 +10,8 @@ import { logActivity } from "@/lib/activity";
 import { createNextOccurrence } from "@/lib/recurrence";
 import { resolveTags } from "@/lib/tags";
 import { visibleTasksWhere } from "@/lib/taskVisibility";
-import { codeMatchesProject } from "@/lib/taskCode";
-import { codeMatchesParent, syncAncestorChain } from "@/lib/taskHierarchy";
+import { codeMatchesProject, nextTaskCode } from "@/lib/taskCode";
+import { codeMatchesParent, nextChildCode, syncAncestorChain } from "@/lib/taskHierarchy";
 import { loadSchedulingCalendar, resolveTaskDates } from "@/lib/scheduling";
 import { checkCategoryPair } from "@/lib/categories";
 
@@ -61,9 +61,6 @@ export async function POST(req: NextRequest) {
     if (!parent.code) {
       return NextResponse.json({ error: "Parent task must have a code before it can have subtasks" }, { status: 400 });
     }
-    if (!codeMatchesParent(data.code, parent.code)) {
-      return NextResponse.json({ error: `Code must start with "${parent.code}-" for this subtask` }, { status: 400 });
-    }
     finalProjectId = parent.projectId;
   }
 
@@ -76,11 +73,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "You don't have admin rights on this project" }, { status: 403 });
   }
 
-  if (finalProjectId && !data.parentId) {
+  // Only a Super Admin picks a code by hand; everyone else (and a Super Admin
+  // who leaves it blank) gets the next number, reserved here on the server so
+  // two people saving at once never collide.
+  const typedCode = access.isSuperAdmin ? data.code : "";
+  if (typedCode && data.parentId) {
+    const parent = await prisma.task.findUnique({ where: { id: data.parentId }, select: { code: true } });
+    if (parent?.code && !codeMatchesParent(typedCode, parent.code)) {
+      return NextResponse.json({ error: `Code must start with "${parent.code}-" for this subtask` }, { status: 400 });
+    }
+  } else if (typedCode && finalProjectId) {
     const project = await prisma.project.findUnique({ where: { id: finalProjectId }, select: { code: true } });
-    if (project && !codeMatchesProject(data.code, project.code)) {
+    if (project && !codeMatchesProject(typedCode, project.code)) {
       return NextResponse.json({ error: `Code must start with "${project.code}-" for this project` }, { status: 400 });
     }
+  }
+  let code = typedCode || null;
+  if (!code && (data.parentId || finalProjectId)) {
+    // Skip any number already taken (e.g. a Super Admin typed it earlier).
+    for (let i = 0; i < 50 && !code; i++) {
+      const next = data.parentId ? await nextChildCode(prisma, data.parentId) : await nextTaskCode(prisma, finalProjectId!);
+      if (next && !(await prisma.task.findFirst({ where: { code: next }, select: { id: true } }))) code = next;
+    }
+    if (!code) return NextResponse.json({ error: "Couldn't assign a code — please try again" }, { status: 500 });
   }
 
   const categoryError = await checkCategoryPair(data.categoryId, data.subcategoryId);
@@ -101,7 +116,7 @@ export async function POST(req: NextRequest) {
   try {
     const task = await prisma.task.create({
       data: {
-        code: data.code || null,
+        code,
         title: data.title,
         description: data.description || null,
         module: data.module || null,
@@ -133,13 +148,14 @@ export async function POST(req: NextRequest) {
     const newAssigneeUserIds = data.assignees.filter((a) => a.type === "user").map((a) => a.id);
     notifyAssignment(task, newAssigneeUserIds).catch((err) => console.error("notifyAssignment failed:", err));
     logActivity(task.id, session.user.id, "Created this task").catch((err) => console.error("logActivity failed:", err));
+    // A hand-typed code still moves the counter on, as before; an assigned one already did.
     if (task.parentId) {
-      prisma.task.update({ where: { id: task.parentId }, data: { childCodeSeq: { increment: 1 } } }).catch((err) => console.error("childCodeSeq bump failed:", err));
+      if (typedCode) prisma.task.update({ where: { id: task.parentId }, data: { childCodeSeq: { increment: 1 } } }).catch((err) => console.error("childCodeSeq bump failed:", err));
       // Awaited (unlike the fire-and-forget calls around it): this changes
       // OTHER tasks' visible status, so the response the client acts on next
       // needs to already reflect it, not catch up on some later refetch.
       await syncAncestorChain(prisma, task.parentId);
-    } else if (task.projectId) {
+    } else if (task.projectId && typedCode) {
       prisma.project.update({ where: { id: task.projectId }, data: { taskCodeSeq: { increment: 1 } } }).catch((err) => console.error("taskCodeSeq bump failed:", err));
     }
     if (task.status === "DONE" && task.recurrenceFreq) {

@@ -335,7 +335,6 @@
 
     <h3>Required fields when creating a task</h3>
     <ul>
-      <li><strong>Code</strong> — a short unique identifier that must start with the project's own code (see "Project codes" below).</li>
       <li><strong>Title</strong></li>
       <li><strong>Description</strong></li>
       <li><strong>Priority</strong></li>
@@ -373,7 +372,8 @@
     </div>
 
     <h3>Project codes & task numbering</h3>
-    <p>Each project has a short code (e.g. <code>APEX</code>), set once when the project is created. When you pick a project on a new task, the Code field is pre-filled with a suggestion like <code>APEX-0004</code> — the numeric suffix is yours to change, but <strong>the code must start with the project's own prefix</strong> (e.g. anything starting with <code>APEX-</code>). The app enforces this on both create and edit; a code that doesn't match is rejected with a clear message.</p>
+    <p>Each project has a short code (e.g. <code>APEX</code>), set once when the project is created. Every ticket gets the next number automatically when it's saved — <code>APEX-0004</code>, <code>APEX-0005</code>… — and a subtask gets its parent's code plus its own number (e.g. <code>APEX-0001-03</code>). The Code field shows the expected number greyed out; the final number is fixed on save, so two people saving at the same time never get the same one.</p>
+    <p><strong>Once a ticket is created its code doesn't change.</strong> Only a Super Admin can type or change a code (it must still start with the project's prefix, e.g. <code>APEX-</code>). Because moving a ticket to another project, or under a different parent, changes its code, only a Super Admin can do that too. Need to record the customer's own reference number? Add it as a tag.</p>
 
     <h3>Depends on (predecessor tasks)</h3>
     <p>The predecessor list only shows tasks from the <em>same project</em>, with each one's code shown so it's easy to pick the right one. Checking a predecessor will fill in this task's Start Date from the predecessor's Due Date, but only if Start Date is still blank — it's a one-time suggestion, never something that overwrites a date you've already set.</p>
