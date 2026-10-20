@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { X, ChevronRight, ChevronDown } from "lucide-react";
 import type { Task, Project, TeamMember, Contact, Priority, Status, RecurrenceFreq, TicketType, MatrixLevel, Category } from "@/types/models";
 import { PRIORITIES, STATUSES, descendantIds, splitModules } from "@/lib/taskHelpers";
 import { TICKET_TYPES, MATRIX_LEVELS, priorityFromMatrix } from "@/lib/ticketMeta";
 import { MODULE_OPTIONS } from "@/lib/listConfig";
 import type { TaskSla } from "@/lib/taskSla";
 import SlaStatusPanel from "./SlaStatusPanel";
+import SlaChip from "./SlaChip";
 import TaskActivityPanel from "./TaskActivityPanel";
 import TaskChecklistPanel from "./TaskChecklistPanel";
 import TaskAttachmentsPanel from "./TaskAttachmentsPanel";
@@ -131,6 +132,13 @@ export default function TaskModal({
   const [newContactName, setNewContactName] = useState("");
   const [contactError, setContactError] = useState("");
   const [newTagText, setNewTagText] = useState("");
+  // Existing tasks open on a tabbed layout; a new task only has Details.
+  const [tab, setTab] = useState<"details" | "checklist" | "time" | "files" | "comments">("details");
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [matrixOpen, setMatrixOpen] = useState(false);
+  const [slaOpen, setSlaOpen] = useState(false);
+  // A save error is shown on Details, so jump there when one arrives.
+  useEffect(() => { if (error) setTab("details"); }, [error]);
 
   // SLA-driven Duration auto-fill for tasks in an SLA-tracked project.
   // Rules (in order of who wins):
@@ -215,6 +223,10 @@ export default function TaskModal({
   // changed after the fact, or a legacy contact with no project at all).
   const projectContacts = contacts.filter((c) => c.projectId === draft.projectId || isAssigned("contact", c.id));
 
+  function assigneeName(a: AssigneeEntry) {
+    return a.type === "user" ? team.find((m) => m.id === a.id)?.name ?? "Unknown" : contacts.find((c) => c.id === a.id)?.name ?? "Unknown";
+  }
+
   function toggleAssignee(type: AssigneeEntry["type"], id: string) {
     setDraft({
       ...draft,
@@ -263,17 +275,111 @@ export default function TaskModal({
     });
   }
 
+  const savedTask = draft.id ? allTasks.find((t) => t.id === draft.id) : undefined;
+  const levelLabel = (v: MatrixLevel | "") => MATRIX_LEVELS.find((l) => l.value === v)?.label;
+  // Tab panels drop their own divider line, since the tab bar already separates them.
+  const panelWrap = "[&>div]:mt-0 [&>div]:border-t-0 [&>div]:pt-0";
+  const field = "w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none";
+  const tabs = [
+    { id: "details" as const, label: "Details" },
+    { id: "checklist" as const, label: "Checklist", count: savedTask?.checklistTotal ? `${savedTask.checklistDone}/${savedTask.checklistTotal}` : "" },
+    { id: "time" as const, label: "Time" },
+    { id: "files" as const, label: "Files", count: savedTask?.attachmentCount ? String(savedTask.attachmentCount) : "" },
+    { id: "comments" as const, label: "Comments", count: savedTask?.commentCount ? String(savedTask.commentCount) : "" },
+  ];
+
+  // Status, progress and the SLA countdown — the things changed most often — sit together at the top.
+  const statusStrip = (
+    <div className="rounded-[10px] bg-brand-bg p-2.5">
+      <div className="flex items-center gap-2 flex-wrap">
+        <select
+          value={draft.status}
+          onChange={(e) => setDraft({ ...draft, status: e.target.value as Status })}
+          aria-label="Status"
+          className="rounded-lg border border-brand-border bg-white px-2 py-1.5 text-sm outline-none"
+        >
+          {STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+        </select>
+        {!draft.isMilestone && (
+          <div className="flex items-center gap-2 flex-1 min-w-[140px]">
+            <input
+              type="range" min={0} max={100} step={5}
+              value={draft.progress || 0}
+              onChange={(e) => setDraft({ ...draft, progress: Number(e.target.value) })}
+              aria-label="Progress"
+              className="flex-1"
+            />
+            <span className="text-[11px] text-brand-sub w-8 text-right">{draft.progress || 0}%</span>
+          </div>
+        )}
+        {sla && (
+          <button type="button" onClick={() => setSlaOpen(!slaOpen)} title="Show SLA details">
+            <SlaChip sla={sla} />
+          </button>
+        )}
+      </div>
+      {sla && slaOpen && <div className="mt-2"><SlaStatusPanel sla={sla} /></div>}
+      {draft.status === "DONE" && (canFullyEdit ? (
+        <div className="mt-2">
+          <label className="text-xs font-semibold text-brand-sub">Completed Date</label>
+          <input
+            type="date"
+            value={draft.completedAt}
+            onChange={(e) => setDraft({ ...draft, completedAt: e.target.value })}
+            className={`${field} bg-white`}
+          />
+          <div className="text-[11px] text-brand-sub mt-1">Auto-set to today when moved to Done — edit if it actually finished on a different day.</div>
+        </div>
+      ) : draft.completedAt && (
+        <div className="text-[11px] text-brand-sub mt-1.5">Completed on {draft.completedAt}</div>
+      ))}
+    </div>
+  );
+
+  const codeField = (
+    <div className={draft.id ? "" : "w-full sm:w-[110px] sm:flex-shrink-0"}>
+      <label className="text-xs font-semibold text-brand-sub">Code *</label>
+      <input
+        value={draft.code}
+        onChange={(e) => setDraft({ ...draft, code: e.target.value })}
+        placeholder="e.g. APEX-0001"
+        className={`${field} font-mono`}
+      />
+    </div>
+  );
+
   return (
     <div className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(20,30,26,0.45)" }}>
       <div className="bg-white rounded-none sm:rounded-2xl w-full max-w-none sm:max-w-[460px] h-full sm:h-auto max-h-none sm:max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-brand-border flex-shrink-0">
-          <h2 className="font-bold text-[16px] text-brand-text">
-            {draft.id ? (canFullyEdit ? "Edit Task" : "Update Status") : "New Task"}
-          </h2>
-          <button onClick={onClose} className="text-brand-sub"><X size={18} /></button>
+        <div className={`px-5 pt-5 flex-shrink-0 border-b border-brand-border ${draft.id ? "" : "pb-4"}`}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="font-bold text-[16px] text-brand-text leading-snug">
+                {draft.id ? (savedTask?.title || draft.title || "Edit Task") : "New Task"}
+              </h2>
+              {draft.id && draft.code && <div className="font-mono text-[11.5px] text-brand-sub mt-0.5">{draft.code}</div>}
+            </div>
+            <button onClick={onClose} className="text-brand-sub flex-shrink-0"><X size={18} /></button>
+          </div>
+          {draft.id && (
+            <div className="flex gap-1 mt-2 -mb-px overflow-x-auto">
+              {tabs.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTab(t.id)}
+                  className={`flex items-center gap-1 px-2.5 py-2 text-[12.5px] whitespace-nowrap border-b-2 ${tab === t.id ? "border-brand-dark text-brand-dark font-bold" : "border-transparent text-brand-sub"}`}
+                >
+                  {t.label}
+                  {t.count && <span className="rounded-md bg-brand-bg px-1.5 text-[10.5px] font-semibold text-brand-sub">{t.count}</span>}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
+        <div className={tab === "details" ? "" : "hidden"}>
         {!canFullyEdit ? (
           <div className="flex flex-col gap-3">
             <div>
@@ -284,46 +390,14 @@ export default function TaskModal({
               </div>
               {draft.description && <div className="text-xs text-brand-sub mt-1">{draft.description}</div>}
             </div>
-            {sla && <SlaStatusPanel sla={sla} />}
-            <div>
-              <label className="text-xs font-semibold text-brand-sub">Status</label>
-              <select
-                value={draft.status}
-                onChange={(e) => setDraft({ ...draft, status: e.target.value as Status })}
-                className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
-              >
-                {STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
-              </select>
-              {draft.status === "DONE" && draft.completedAt && (
-                <div className="text-[11px] text-brand-sub mt-1">Completed on {draft.completedAt}</div>
-              )}
-            </div>
-            {!draft.isMilestone && (
-              <div>
-                <label className="text-xs font-semibold flex items-center justify-between text-brand-sub">
-                  <span>Progress</span><span>{draft.progress || 0}%</span>
-                </label>
-                <input
-                  type="range" min={0} max={100} step={5}
-                  value={draft.progress || 0}
-                  onChange={(e) => setDraft({ ...draft, progress: Number(e.target.value) })}
-                  className="w-full mt-1"
-                />
-              </div>
-            )}
+            {statusStrip}
           </div>
         ) : (
           <div className="flex flex-col gap-3">
+            {statusStrip}
+
             <div className="flex flex-col sm:flex-row gap-2">
-              <div className="w-full sm:w-[110px] sm:flex-shrink-0">
-                <label className="text-xs font-semibold text-brand-sub">Code *</label>
-                <input
-                  value={draft.code}
-                  onChange={(e) => setDraft({ ...draft, code: e.target.value })}
-                  placeholder="e.g. APEX-0001"
-                  className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none font-mono"
-                />
-              </div>
+              {!draft.id && codeField}
               <div className="flex-1">
                 <label className="text-xs font-semibold text-brand-sub">Title *</label>
                 <input
@@ -347,58 +421,57 @@ export default function TaskModal({
               />
             </div>
 
-            <div>
-              <label className="text-xs font-semibold text-brand-sub">Module</label>
-              <div className="flex items-center gap-1.5 flex-wrap mt-1">
-                {moduleList.map((m) => (
-                  <span key={m} className="flex items-center gap-1 rounded-full pl-2 pr-1 py-0.5 text-[11px]" style={{ background: "#E4EEF7", color: "#2A5C82" }}>
-                    {m}
-                    <button type="button" onClick={() => removeModule(m)} className="hover:opacity-70">
-                      <X size={10} />
-                    </button>
-                  </span>
-                ))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs font-semibold text-brand-sub">Project *</label>
                 <select
-                  value=""
-                  onChange={(e) => addModule(e.target.value)}
-                  className="flex-1 min-w-[100px] rounded-lg border border-brand-border px-2 py-1 text-xs outline-none"
+                  value={draft.projectId}
+                  onChange={(e) => {
+                    const projectId = e.target.value;
+                    const project = projects.find((p) => p.id === projectId);
+                    // Only auto-suggest a code for a brand-new task whose Code
+                    // field is still untouched — never overwrite a manual edit
+                    // or an existing task's real code.
+                    const suggestCode = !draft.id && !draft.code.trim() && project;
+                    setDraft({
+                      ...draft,
+                      projectId,
+                      ...(suggestCode ? { code: `${project.code}-${String(project.taskCodeSeq + 1).padStart(4, "0")}` } : {}),
+                    });
+                  }}
+                  className={field}
                 >
-                  <option value="">{modulesToAdd.length ? "Add a module… (optional)" : "No more modules in the list"}</option>
-                  {modulesToAdd.map((m) => <option key={m.id} value={m.name}>{m.name}</option>)}
+                  <option value="" disabled>Select a project…</option>
+                  {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
+                {!isSuperAdmin && (
+                  <div className="text-[11px] text-brand-sub mt-1">
+                    You can only create tasks in projects you administer.
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-brand-sub">Module</label>
+                <div className="flex items-center gap-1 flex-wrap mt-1 rounded-lg border border-brand-border px-1.5 py-1 min-h-[38px]">
+                  {moduleList.map((m) => (
+                    <span key={m} className="flex items-center gap-1 rounded-full pl-2 pr-1 py-0.5 text-[11px]" style={{ background: "#E4EEF7", color: "#2A5C82" }}>
+                      {m}
+                      <button type="button" onClick={() => removeModule(m)} className="hover:opacity-70">
+                        <X size={10} />
+                      </button>
+                    </span>
+                  ))}
+                  <select
+                    value=""
+                    onChange={(e) => addModule(e.target.value)}
+                    className="flex-1 min-w-[70px] bg-transparent px-1 py-1 text-xs outline-none"
+                  >
+                    <option value="">{modulesToAdd.length ? (moduleList.length ? "Add…" : "Add a module… (optional)") : "No more modules in the list"}</option>
+                    {modulesToAdd.map((m) => <option key={m.id} value={m.name}>{m.name}</option>)}
+                  </select>
+                </div>
               </div>
             </div>
-
-            <div>
-              <label className="text-xs font-semibold text-brand-sub">Project *</label>
-              <select
-                value={draft.projectId}
-                onChange={(e) => {
-                  const projectId = e.target.value;
-                  const project = projects.find((p) => p.id === projectId);
-                  // Only auto-suggest a code for a brand-new task whose Code
-                  // field is still untouched — never overwrite a manual edit
-                  // or an existing task's real code.
-                  const suggestCode = !draft.id && !draft.code.trim() && project;
-                  setDraft({
-                    ...draft,
-                    projectId,
-                    ...(suggestCode ? { code: `${project.code}-${String(project.taskCodeSeq + 1).padStart(4, "0")}` } : {}),
-                  });
-                }}
-                className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
-              >
-                <option value="" disabled>Select a project…</option>
-                {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-              {!isSuperAdmin && (
-                <div className="text-[11px] text-brand-sub mt-1">
-                  You can only create tasks in projects you administer.
-                </div>
-              )}
-            </div>
-
-            {sla && <SlaStatusPanel sla={sla} />}
 
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="flex-1">
@@ -406,7 +479,7 @@ export default function TaskModal({
                 <select
                   value={draft.type}
                   onChange={(e) => setDraft({ ...draft, type: e.target.value as TicketType })}
-                  className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
+                  className={field}
                 >
                   {TICKET_TYPES.filter((t) => t.active || t.value === draft.type).map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
@@ -416,7 +489,7 @@ export default function TaskModal({
                 <select
                   value={draft.categoryId}
                   onChange={(e) => setDraft({ ...draft, categoryId: e.target.value, subcategoryId: "" })}
-                  className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
+                  className={field}
                 >
                   <option value="">—</option>
                   {topCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -428,7 +501,7 @@ export default function TaskModal({
                   <select
                     value={draft.subcategoryId}
                     onChange={(e) => setDraft({ ...draft, subcategoryId: e.target.value })}
-                    className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
+                    className={field}
                   >
                     <option value="">—</option>
                     {subcategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -437,103 +510,99 @@ export default function TaskModal({
               )}
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-2">
-              <div className="flex-1">
-                <label className="text-xs font-semibold text-brand-sub">Impact</label>
-                <select
-                  value={draft.impact}
-                  onChange={(e) => setMatrix({ impact: e.target.value as MatrixLevel | "" })}
-                  className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
-                >
-                  <option value="">—</option>
-                  {MATRIX_LEVELS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
-                </select>
-              </div>
-              <div className="flex-1">
-                <label className="text-xs font-semibold text-brand-sub">Urgency</label>
-                <select
-                  value={draft.urgency}
-                  onChange={(e) => setMatrix({ urgency: e.target.value as MatrixLevel | "" })}
-                  className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
-                >
-                  <option value="">—</option>
-                  {MATRIX_LEVELS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
-                </select>
-              </div>
-              <div className="flex-1">
-                <label className="text-xs font-semibold text-brand-sub">Priority *</label>
-                <select
-                  value={draft.priority}
-                  onChange={(e) => setDraft({ ...draft, priority: e.target.value as Priority })}
-                  className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
-                >
-                  {PRIORITIES.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-                </select>
-              </div>
-            </div>
-            <div className="text-[11px] text-brand-sub -mt-2">
-              {matrixPriority
-                ? matrixPriority === draft.priority
-                  ? "Priority set from Impact × Urgency."
-                  : `Matrix suggests ${PRIORITIES.find((p) => p.id === matrixPriority)?.label} — priority was changed by hand.`
-                : "Pick Impact and Urgency to set the priority automatically."}
-            </div>
-
             <div>
-              <label className="text-xs font-semibold text-brand-sub">Tags</label>
-              <div className="flex items-center gap-1.5 flex-wrap mt-1">
-                {draft.tags.map((tag) => (
-                  <span key={tag} className="flex items-center gap-1 rounded-full pl-2 pr-1 py-0.5 text-[11px] bg-brand-bg text-brand-text border border-brand-border">
-                    {tag}
-                    <button type="button" onClick={() => removeTag(tag)} className="text-brand-sub hover:text-brand-text">
-                      <X size={10} />
-                    </button>
-                  </span>
-                ))}
-                <input
-                  value={newTagText}
-                  onChange={(e) => setNewTagText(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
-                  onBlur={addTag}
-                  placeholder="Type a tag, press Enter…"
-                  className="flex-1 min-w-[100px] rounded-lg border border-brand-border px-2 py-1 text-xs outline-none"
-                />
+              <div className="flex flex-col sm:flex-row sm:items-end gap-2">
+                <div className="flex-1">
+                  <label className="text-xs font-semibold text-brand-sub">Priority *</label>
+                  <select
+                    value={draft.priority}
+                    onChange={(e) => setDraft({ ...draft, priority: e.target.value as Priority })}
+                    className={field}
+                  >
+                    {PRIORITIES.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+                  </select>
+                </div>
+                {/* Impact and Urgency stay one click away; picking both still fills Priority. */}
+                <div className="flex-1 text-[11.5px] text-brand-sub sm:pb-2.5">
+                  {draft.impact && draft.urgency ? `${levelLabel(draft.impact)} impact × ${levelLabel(draft.urgency)} urgency ` : "Set from Impact × Urgency "}
+                  <button type="button" onClick={() => setMatrixOpen(!matrixOpen)} className="text-brand-dark underline">
+                    {matrixOpen ? "hide" : draft.impact || draft.urgency ? "change" : "pick"}
+                  </button>
+                </div>
               </div>
+              {matrixOpen && (
+                <div className="flex gap-2 mt-2">
+                  <div className="flex-1">
+                    <label className="text-xs font-semibold text-brand-sub">Impact</label>
+                    <select
+                      value={draft.impact}
+                      onChange={(e) => setMatrix({ impact: e.target.value as MatrixLevel | "" })}
+                      className={field}
+                    >
+                      <option value="">—</option>
+                      {MATRIX_LEVELS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-xs font-semibold text-brand-sub">Urgency</label>
+                    <select
+                      value={draft.urgency}
+                      onChange={(e) => setMatrix({ urgency: e.target.value as MatrixLevel | "" })}
+                      className={field}
+                    >
+                      <option value="">—</option>
+                      {MATRIX_LEVELS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+                    </select>
+                  </div>
+                </div>
+              )}
+              {matrixPriority && matrixPriority !== draft.priority && (
+                <div className="text-[11px] text-brand-sub mt-1">
+                  Matrix suggests {PRIORITIES.find((p) => p.id === matrixPriority)?.label} — priority was changed by hand.
+                </div>
+              )}
             </div>
 
             <div>
               <label className="text-xs font-semibold text-brand-sub">Assignees *</label>
-              <div className="border border-brand-border rounded-[10px] max-h-[160px] overflow-y-auto p-2 mt-1">
-                {activeMembers.length === 0 && inactiveMembers.length === 0 && projectContacts.length === 0 && (
-                  <div className="text-xs text-brand-sub">No team members or contacts yet</div>
-                )}
-                {activeMembers.length > 0 && (
-                  <div className="text-[10px] font-bold text-brand-sub uppercase tracking-wide mt-0.5 mb-0.5">Team</div>
-                )}
-                {activeMembers.map((m) => (
-                  <label key={m.id} className="flex items-center gap-2 text-xs py-0.5 text-brand-text">
-                    <input type="checkbox" checked={isAssigned("user", m.id)} onChange={() => toggleAssignee("user", m.id)} />
-                    {m.name}
-                  </label>
+              <div className="flex items-center gap-1 flex-wrap mt-1 rounded-lg border border-brand-border px-1.5 py-1 min-h-[38px]">
+                {draft.assignees.map((a) => (
+                  <span key={`${a.type}-${a.id}`} className="flex items-center gap-1 rounded-full pl-2 pr-1 py-0.5 text-[11px]" style={{ background: "#EAF3EE", color: "#0A5A46" }}>
+                    {assigneeName(a)}
+                    <button type="button" onClick={() => toggleAssignee(a.type, a.id)} className="hover:opacity-70">
+                      <X size={10} />
+                    </button>
+                  </span>
                 ))}
-                {inactiveMembers.length > 0 && (
-                  <div className="text-[10px] font-bold text-brand-sub uppercase tracking-wide mt-1.5 mb-0.5">Inactive</div>
-                )}
-                {inactiveMembers.map((m) => (
-                  <label key={m.id} className="flex items-center gap-2 text-xs py-0.5 text-brand-text">
-                    <input type="checkbox" checked={isAssigned("user", m.id)} onChange={() => toggleAssignee("user", m.id)} />
-                    {m.name}
-                  </label>
-                ))}
-                {projectContacts.length > 0 && (
-                  <div className="text-[10px] font-bold text-brand-sub uppercase tracking-wide mt-1.5 mb-0.5">External contacts</div>
-                )}
-                {projectContacts.map((c) => (
-                  <label key={c.id} className="flex items-center gap-2 text-xs py-0.5 text-brand-text">
-                    <input type="checkbox" checked={isAssigned("contact", c.id)} onChange={() => toggleAssignee("contact", c.id)} />
-                    {c.name}
-                  </label>
-                ))}
+                <select
+                  value=""
+                  onChange={(e) => {
+                    const [type, id] = e.target.value.split(":") as [AssigneeEntry["type"], string];
+                    if (id) toggleAssignee(type, id);
+                  }}
+                  className="flex-1 min-w-[90px] bg-transparent px-1 py-1 text-xs outline-none"
+                >
+                  <option value="">
+                    {activeMembers.length === 0 && inactiveMembers.length === 0 && projectContacts.length === 0
+                      ? "No team members or contacts yet"
+                      : draft.assignees.length ? "Add…" : "Pick who works on it…"}
+                  </option>
+                  {activeMembers.some((m) => !isAssigned("user", m.id)) && (
+                    <optgroup label="Team">
+                      {activeMembers.filter((m) => !isAssigned("user", m.id)).map((m) => <option key={m.id} value={`user:${m.id}`}>{m.name}</option>)}
+                    </optgroup>
+                  )}
+                  {inactiveMembers.some((m) => !isAssigned("user", m.id)) && (
+                    <optgroup label="Inactive">
+                      {inactiveMembers.filter((m) => !isAssigned("user", m.id)).map((m) => <option key={m.id} value={`user:${m.id}`}>{m.name}</option>)}
+                    </optgroup>
+                  )}
+                  {projectContacts.some((c) => !isAssigned("contact", c.id)) && (
+                    <optgroup label="External contacts">
+                      {projectContacts.filter((c) => !isAssigned("contact", c.id)).map((c) => <option key={c.id} value={`contact:${c.id}`}>{c.name}</option>)}
+                    </optgroup>
+                  )}
+                </select>
               </div>
               {!addingContact ? (
                 <button
@@ -570,15 +639,6 @@ export default function TaskModal({
               {contactError && <div className="text-[11px] text-red-600 mt-1">{contactError}</div>}
             </div>
 
-            <label className="flex items-center gap-2 text-xs font-semibold text-brand-sub">
-              <input
-                type="checkbox"
-                checked={draft.isMilestone}
-                onChange={(e) => setDraft({ ...draft, isMilestone: e.target.checked })}
-              />
-              This is a milestone (single-date marker, no duration)
-            </label>
-
             <div className={draft.isMilestone ? "" : "grid grid-cols-1 sm:grid-cols-3 gap-3"}>
               {!draft.isMilestone && (
                 <div>
@@ -587,7 +647,7 @@ export default function TaskModal({
                     type="date"
                     value={draft.startDate}
                     onChange={(e) => setDraft({ ...draft, startDate: e.target.value, dueDate: "" })}
-                    className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
+                    className={field}
                   />
                 </div>
               )}
@@ -602,7 +662,7 @@ export default function TaskModal({
                     placeholder="e.g. 5"
                     value={draft.durationDays}
                     onChange={(e) => setDraft({ ...draft, durationDays: e.target.value, dueDate: "" })}
-                    className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
+                    className={field}
                   />
                 </div>
               )}
@@ -614,12 +674,12 @@ export default function TaskModal({
                   type="date"
                   value={draft.dueDate}
                   onChange={(e) => setDraft({ ...draft, dueDate: e.target.value, durationDays: "" })}
-                  className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
+                  className={field}
                 />
               </div>
             </div>
             {!draft.isMilestone && (
-              <div className="text-[10.5px] text-brand-sub mt-1">
+              <div className="text-[10.5px] text-brand-sub -mt-2">
                 Fill any two of Start / Duration / Due — the third is computed on save (skips weekends and holidays set in Work Calendar).
               </div>
             )}
@@ -641,118 +701,159 @@ export default function TaskModal({
               );
             })()}
 
-            <div>
-              <label className="text-xs font-semibold text-brand-sub">Status</label>
-              <select
-                value={draft.status}
-                onChange={(e) => setDraft({ ...draft, status: e.target.value as Status })}
-                className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
-              >
-                {STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
-              </select>
-            </div>
+            {draft.id && draft.projectId && <TaskCustomFieldsPanel taskId={draft.id} />}
 
-            {draft.status === "DONE" && (
-              <div>
-                <label className="text-xs font-semibold text-brand-sub">Completed Date</label>
-                <input
-                  type="date"
-                  value={draft.completedAt}
-                  onChange={(e) => setDraft({ ...draft, completedAt: e.target.value })}
-                  className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
-                />
-                <div className="text-[11px] text-brand-sub mt-1">Auto-set to today when moved to Done — edit if it actually finished on a different day.</div>
-              </div>
-            )}
-
-            {!draft.isMilestone && (
-              <div>
-                <label className="text-xs font-semibold flex items-center justify-between text-brand-sub">
-                  <span>Progress</span><span>{draft.progress || 0}%</span>
-                </label>
-                <input
-                  type="range" min={0} max={100} step={5}
-                  value={draft.progress || 0}
-                  onChange={(e) => setDraft({ ...draft, progress: Number(e.target.value) })}
-                  className="w-full mt-1"
-                />
-              </div>
-            )}
-
-            <div>
-              <label className="text-xs font-semibold text-brand-sub">Repeat</label>
-              <div className="flex gap-2 mt-1">
-                <select
-                  value={draft.recurrenceFreq}
-                  onChange={(e) => setDraft({ ...draft, recurrenceFreq: e.target.value as RecurrenceFreq | "" })}
-                  className="flex-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
-                >
-                  <option value="">Doesn&apos;t repeat</option>
-                  <option value="DAILY">Daily</option>
-                  <option value="WEEKLY">Weekly</option>
-                  <option value="MONTHLY">Monthly</option>
-                </select>
-                {draft.recurrenceFreq && (
-                  <input
-                    type="date"
-                    value={draft.recurrenceEndDate}
-                    onChange={(e) => setDraft({ ...draft, recurrenceEndDate: e.target.value })}
-                    title="Stop repeating after (optional)"
-                    className="flex-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
-                  />
-                )}
-              </div>
-              {draft.recurrenceFreq && (
-                <div className="text-[11px] text-brand-sub mt-1">
-                  Marking this task Done will auto-create the next occurrence, due one {draft.recurrenceFreq === "DAILY" ? "day" : draft.recurrenceFreq === "WEEKLY" ? "week" : "month"} after this one{draft.recurrenceEndDate ? ` (until ${draft.recurrenceEndDate})` : ""}.
-                </div>
+            {/* Less-used settings stay folded away until needed. */}
+            <div className="border-t border-dashed border-brand-border pt-2.5 flex flex-wrap items-center gap-x-1">
+              <button type="button" onClick={() => setMoreOpen(!moreOpen)} className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-brand-dark">
+                {moreOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />} More options
+              </button>
+              {!moreOpen && (
+                <span className="text-[11px] text-brand-sub">
+                  — {draft.id ? "code, " : ""}tags, milestone, repeat, depends on, parent task{draft.id ? ", duplicate" : ""}
+                </span>
               )}
             </div>
 
-            <div>
-              <label className="text-xs font-semibold text-brand-sub">Depends on (predecessor tasks)</label>
-              <div className="border border-brand-border rounded-[10px] max-h-[120px] overflow-y-auto p-2 mt-1">
-                {otherTasks.length === 0 && (
-                  <div className="text-xs text-brand-sub">
-                    {draft.projectId ? "No other tasks in this project yet" : "Pick a project first"}
+            {moreOpen && (
+              <div className="flex flex-col gap-3">
+                {draft.id && codeField}
+
+                <div>
+                  <label className="text-xs font-semibold text-brand-sub">Tags</label>
+                  <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                    {draft.tags.map((tag) => (
+                      <span key={tag} className="flex items-center gap-1 rounded-full pl-2 pr-1 py-0.5 text-[11px] bg-brand-bg text-brand-text border border-brand-border">
+                        {tag}
+                        <button type="button" onClick={() => removeTag(tag)} className="text-brand-sub hover:text-brand-text">
+                          <X size={10} />
+                        </button>
+                      </span>
+                    ))}
+                    <input
+                      value={newTagText}
+                      onChange={(e) => setNewTagText(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
+                      onBlur={addTag}
+                      placeholder="Type a tag, press Enter…"
+                      className="flex-1 min-w-[100px] rounded-lg border border-brand-border px-2 py-1 text-xs outline-none"
+                    />
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-2 text-xs font-semibold text-brand-sub">
+                  <input
+                    type="checkbox"
+                    checked={draft.isMilestone}
+                    onChange={(e) => setDraft({ ...draft, isMilestone: e.target.checked })}
+                  />
+                  This is a milestone (single-date marker, no duration)
+                </label>
+
+                <div>
+                  <label className="text-xs font-semibold text-brand-sub">Repeat</label>
+                  <div className="flex gap-2 mt-1">
+                    <select
+                      value={draft.recurrenceFreq}
+                      onChange={(e) => setDraft({ ...draft, recurrenceFreq: e.target.value as RecurrenceFreq | "" })}
+                      className="flex-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
+                    >
+                      <option value="">Doesn&apos;t repeat</option>
+                      <option value="DAILY">Daily</option>
+                      <option value="WEEKLY">Weekly</option>
+                      <option value="MONTHLY">Monthly</option>
+                    </select>
+                    {draft.recurrenceFreq && (
+                      <input
+                        type="date"
+                        value={draft.recurrenceEndDate}
+                        onChange={(e) => setDraft({ ...draft, recurrenceEndDate: e.target.value })}
+                        title="Stop repeating after (optional)"
+                        className="flex-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
+                      />
+                    )}
+                  </div>
+                  {draft.recurrenceFreq && (
+                    <div className="text-[11px] text-brand-sub mt-1">
+                      Marking this task Done will auto-create the next occurrence, due one {draft.recurrenceFreq === "DAILY" ? "day" : draft.recurrenceFreq === "WEEKLY" ? "week" : "month"} after this one{draft.recurrenceEndDate ? ` (until ${draft.recurrenceEndDate})` : ""}.
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-brand-sub">Depends on (predecessor tasks)</label>
+                  <div className="border border-brand-border rounded-[10px] max-h-[120px] overflow-y-auto p-2 mt-1">
+                    {otherTasks.length === 0 && (
+                      <div className="text-xs text-brand-sub">
+                        {draft.projectId ? "No other tasks in this project yet" : "Pick a project first"}
+                      </div>
+                    )}
+                    {otherTasks.map((t) => (
+                      <label key={t.id} className="flex items-center gap-2 text-xs py-0.5 text-brand-text">
+                        <input
+                          type="checkbox"
+                          checked={draft.dependsOn.includes(t.id)}
+                          onChange={() => toggleDepend(t.id)}
+                        />
+                        {t.code && <span className="font-mono text-[11px] text-brand-sub">{t.code}</span>}
+                        {t.title}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-brand-sub">Parent task (make this a subtask)</label>
+                  <select
+                    value={draft.parentId}
+                    onChange={(e) => selectParent(e.target.value)}
+                    className={field}
+                  >
+                    <option value="">No parent — top-level task</option>
+                    {parentCandidates.map((t) => (
+                      <option key={t.id} value={t.id}>{t.code ? `${t.code} — ` : ""}{t.title}</option>
+                    ))}
+                  </select>
+                  {draft.parentId && (
+                    <div className="text-[11px] text-brand-sub mt-1">
+                      Lives under its parent in List view; auto-marks the parent Done once every subtask is.
+                    </div>
+                  )}
+                </div>
+
+                {draft.id && onDuplicate && (
+                  <div className="flex items-center gap-1.5">
+                    <select
+                      value={duplicateProjectId}
+                      onChange={(e) => setDuplicateProjectId(e.target.value)}
+                      className="flex-1 rounded-lg border border-brand-border px-2 py-1.5 text-xs outline-none"
+                    >
+                      <option value="">Duplicate into same project…</option>
+                      {projects.map((p) => <option key={p.id} value={p.id}>Duplicate into {p.name}</option>)}
+                    </select>
+                    <button
+                      onClick={() => onDuplicate(draft.id!, duplicateProjectId || undefined)}
+                      className="rounded-lg px-3 py-1.5 text-xs font-semibold border border-brand-border text-brand-text"
+                    >
+                      Duplicate
+                    </button>
                   </div>
                 )}
-                {otherTasks.map((t) => (
-                  <label key={t.id} className="flex items-center gap-2 text-xs py-0.5 text-brand-text">
-                    <input
-                      type="checkbox"
-                      checked={draft.dependsOn.includes(t.id)}
-                      onChange={() => toggleDepend(t.id)}
-                    />
-                    {t.code && <span className="font-mono text-[11px] text-brand-sub">{t.code}</span>}
-                    {t.title}
-                  </label>
-                ))}
-              </div>
-            </div>
 
-            <div>
-              <label className="text-xs font-semibold text-brand-sub">Parent task (make this a subtask)</label>
-              <select
-                value={draft.parentId}
-                onChange={(e) => selectParent(e.target.value)}
-                className="w-full mt-1 rounded-lg border border-brand-border px-2 py-2 text-sm outline-none"
-              >
-                <option value="">No parent — top-level task</option>
-                {parentCandidates.map((t) => (
-                  <option key={t.id} value={t.id}>{t.code ? `${t.code} — ` : ""}{t.title}</option>
-                ))}
-              </select>
-              {draft.parentId && (
-                <div className="text-[11px] text-brand-sub mt-1">
-                  Lives under its parent in List view; auto-marks the parent Done once every subtask is.
-                </div>
-              )}
-            </div>
+                {savedTask && onAddSubtask && (
+                  <button
+                    onClick={() => onAddSubtask(savedTask)}
+                    className="w-full rounded-lg px-3 py-1.5 text-xs font-semibold border border-brand-border text-brand-text"
+                  >
+                    + Add subtask under this task
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
 
-        {draft.id && onDuplicate && (
+        {!canFullyEdit && draft.id && onDuplicate && (
           <div className="flex items-center gap-1.5 mt-3">
             <select
               value={duplicateProjectId}
@@ -770,25 +871,14 @@ export default function TaskModal({
             </button>
           </div>
         )}
+        {!canFullyEdit && draft.id && draft.projectId && <TaskCustomFieldsPanel taskId={draft.id} />}
+        </div>
 
-        {draft.id && canFullyEdit && onAddSubtask && (() => {
-          const thisTask = allTasks.find((t) => t.id === draft.id);
-          if (!thisTask) return null;
-          return (
-            <button
-              onClick={() => onAddSubtask(thisTask)}
-              className="w-full mt-2 rounded-lg px-3 py-1.5 text-xs font-semibold border border-brand-border text-brand-text"
-            >
-              + Add subtask under this task
-            </button>
-          );
-        })()}
-
-        {draft.id && draft.projectId && <TaskCustomFieldsPanel taskId={draft.id} />}
-        {draft.id && <TaskChecklistPanel taskId={draft.id} />}
-        {draft.id && <TaskTimePanel taskId={draft.id} currentUserId={currentUserId} canManageOthers={canFullyEdit} team={team} />}
-        {draft.id && <TaskAttachmentsPanel taskId={draft.id} />}
-        {draft.id && <TaskActivityPanel taskId={draft.id} currentUserId={currentUserId} isSuperAdmin={isSuperAdmin} />}
+        {/* Panels stay mounted while hidden, so a half-typed comment survives switching tabs. */}
+        {draft.id && <div className={tab === "checklist" ? panelWrap : "hidden"}><TaskChecklistPanel taskId={draft.id} /></div>}
+        {draft.id && <div className={tab === "time" ? panelWrap : "hidden"}><TaskTimePanel taskId={draft.id} currentUserId={currentUserId} canManageOthers={canFullyEdit} team={team} /></div>}
+        {draft.id && <div className={tab === "files" ? panelWrap : "hidden"}><TaskAttachmentsPanel taskId={draft.id} /></div>}
+        {draft.id && <div className={tab === "comments" ? panelWrap : "hidden"}><TaskActivityPanel taskId={draft.id} currentUserId={currentUserId} isSuperAdmin={isSuperAdmin} /></div>}
         </div>
 
         <div className="flex items-center gap-2 px-5 py-4 border-t border-brand-border flex-shrink-0">
