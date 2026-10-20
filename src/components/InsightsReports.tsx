@@ -111,7 +111,7 @@ export default function InsightsReports({ tab, data }: { tab: InsightsTab; data:
           />
           <div className="text-[10.5px] text-brand-sub mt-1.5">SLA-tracked projects only, by the month a ticket was created; tickets still within their time aren&apos;t counted yet.</div>
         </Card>
-        <Card n={3} title="Average response and resolution time" formula="sum of hours (or days) ÷ number of tickets">
+        <Card n={3} title="Average response and resolution time" formula="sum of hours (or working days) ÷ number of tickets">
           <table className="w-full text-[11.5px]">
             <thead><tr className="text-brand-sub"><th className="text-left font-semibold py-1">Priority</th><th className="text-right font-semibold">Response</th><th className="text-right font-semibold">Resolution</th></tr></thead>
             <tbody>
@@ -124,9 +124,9 @@ export default function InsightsReports({ tab, data }: { tab: InsightsTab; data:
               ))}
             </tbody>
           </table>
-          <div className="text-[10.5px] text-brand-sub mt-1.5">Response = created → first comment (hours). Resolution = created → Done (days). Calendar time.</div>
+          <div className="text-[10.5px] text-brand-sub mt-1.5">Response = created → first comment (hours, calendar time). Resolution = created → Done (working days).</div>
         </Card>
-        <Card n={4} title="Age of open tickets" formula="today − created date">
+        <Card n={4} title="Age of open tickets" formula="working days from created date to today">
           <Bars rows={data.ageing.map((a) => ({ name: a.label, count: a.count }))} color="#E0892E" />
         </Card>
       </div>
@@ -135,7 +135,7 @@ export default function InsightsReports({ tab, data }: { tab: InsightsTab; data:
 
   if (tab === "team") {
     return (
-      <Card n={7} title="Team performance" formula="average resolution = resolution days ÷ closed · overdue % = overdue ÷ open × 100">
+      <Card n={7} title="Team performance" formula="average resolution = resolution working days ÷ closed · overdue % = overdue ÷ open × 100">
         {data.team.length === 0 ? <Empty /> : (
           <table className="w-full text-[11.5px]">
             <thead><tr className="text-brand-sub"><th className="text-left font-semibold py-1">Person</th><th className="text-right font-semibold">Closed</th><th className="text-right font-semibold">Avg resolution</th><th className="text-right font-semibold">Open now</th><th className="text-right font-semibold">Overdue %</th></tr></thead>

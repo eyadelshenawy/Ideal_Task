@@ -42,7 +42,7 @@ export async function exportInsightsToExcel(data: Insights, periodLabel: string)
   }));
 
   // 3 · Average response and resolution time
-  ws = sheet("Response & resolution", ["Priority", "Total response hours", "Tickets responded", "Avg response (hours)", "Total resolution days", "Tickets resolved", "Avg resolution (days)"]);
+  ws = sheet("Response & resolution", ["Priority", "Total response hours", "Tickets responded", "Avg response (hours)", "Total resolution working days", "Tickets resolved", "Avg resolution (working days)"]);
   data.speed.forEach((s) => {
     const row = ws.addRow([s.label, Math.round(s.responseHours * 10) / 10, s.responseCount, null, s.resolutionDays, s.resolutionCount]);
     const n = row.number;
@@ -51,7 +51,7 @@ export async function exportInsightsToExcel(data: Insights, periodLabel: string)
   });
 
   // 4 · Age of open tickets
-  ws = sheet("Age of open tickets", ["Age (today − created date)", "Open tickets"]);
+  ws = sheet("Age of open tickets", ["Age (working days from created date to today)", "Open tickets"]);
   const ageStart = ws.rowCount + 1;
   data.ageing.forEach((a) => ws.addRow([a.label, a.count]));
   ws.addRow(["Total", { formula: `SUM(B${ageStart}:B${ws.rowCount})` }]).font = { bold: true };
@@ -78,7 +78,7 @@ export async function exportInsightsToExcel(data: Insights, periodLabel: string)
   }
 
   // 7 · Team performance
-  ws = sheet("Team performance", ["Person", "Closed", "Total resolution days", "Avg resolution (days)", "Open now", "Overdue now", "Overdue %"]);
+  ws = sheet("Team performance", ["Person", "Closed", "Total resolution working days", "Avg resolution (working days)", "Open now", "Overdue now", "Overdue %"]);
   data.team.forEach((r) => {
     const row = ws.addRow([r.name, r.closed, r.resolutionDays, null, r.open, r.overdue]);
     const n = row.number;
