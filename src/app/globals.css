@@ -5,3 +5,20 @@
 body {
   font-family: "Segoe UI", Tahoma, Arial, sans-serif;
 }
+
+/* Settings: an admin screen's own modal fills the right-hand pane instead of the page. */
+.settings-pane > .fixed {
+  position: absolute !important;
+  background: transparent !important;
+  padding: 0 !important;
+  z-index: 1 !important;
+  align-items: stretch !important;
+}
+.settings-pane > .fixed > div {
+  max-width: none !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-height: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
