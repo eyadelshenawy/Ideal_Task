@@ -52,15 +52,24 @@ export default function TaskCard({
   const children = allTasks.filter((t) => t.parentId === task.id);
   const doneChildren = children.filter((t) => t.status === "DONE").length;
   const modules = splitModules(task.module);
+  // Project, modules, category, tags and parent/subtask info share one quiet grey line.
+  const meta = [
+    project?.name,
+    ...modules,
+    categoryName,
+    ...task.tags.map((tag) => `#${tag}`),
+    parent ? `↳ ${parent.code || parent.title}` : null,
+    children.length > 0 ? `${doneChildren}/${children.length} subtasks` : null,
+  ].filter(Boolean) as string[];
 
   return (
     <div
       draggable={draggable}
       onDragStart={() => onDragStart?.(task.id)}
-      className="bg-white border border-brand-border rounded-[10px] px-3 py-2.5 mb-2.5"
+      className="group bg-white border border-brand-border rounded-[10px] px-3 py-2.5 mb-2.5"
       style={{ borderRight: `4px solid ${priority.color}`, cursor: draggable ? "grab" : undefined }}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-center justify-between gap-2 min-h-[22px]">
         <div className="flex items-center gap-1.5 min-w-0">
           {selectMode && (
             <input
@@ -71,13 +80,17 @@ export default function TaskCard({
             />
           )}
           {task.isMilestone && <Diamond size={12} className="text-brand-dark flex-shrink-0" />}
-          <div className="font-semibold text-[13.5px] text-brand-text leading-snug line-clamp-2" title={task.title}>
-            {task.code && <span className="font-mono text-[11px] text-brand-sub mr-1">{task.code}</span>}
-            {task.title}
-          </div>
+          {task.code && <span className="font-mono text-[11px] text-brand-sub truncate">{task.code}</span>}
         </div>
         {!selectMode && (
-          <div className="flex items-center gap-1 flex-shrink-0">
+          // On a computer the icons appear when the mouse is over the card; touch screens always show them.
+          <div
+            className={`flex items-center gap-1 flex-shrink-0 transition-opacity ${
+              confirmingDelete || confirmingDuplicate
+                ? ""
+                : "[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 group-focus-within:opacity-100"
+            }`}
+          >
             <button onClick={() => onEdit(task)} title="Edit" className="p-1 rounded hover:bg-gray-100 text-brand-sub">
               <Pencil size={14} />
             </button>
@@ -105,27 +118,13 @@ export default function TaskCard({
         )}
       </div>
 
+      <div className="font-semibold text-[13.5px] text-brand-text leading-snug line-clamp-2" title={task.title}>
+        {task.title}
+      </div>
+
       <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
         <TicketTypeChip type={task.type} />
         {sla && task.status !== "DONE" && <SlaChip sla={sla} />}
-        {project && <Chip small style={{ background: "#EEF2F0", color: "#5B6B64" }}>{project.name}</Chip>}
-        {modules.map((m) => (
-          <Chip key={m} small style={{ background: "#E4EEF7", color: "#2A5C82" }}>{m}</Chip>
-        ))}
-        {categoryName && <Chip small style={{ background: "#F3EFE6", color: "#6B5A2E" }}>{categoryName}</Chip>}
-        {task.tags.map((tag) => (
-          <Chip key={tag} small style={{ background: "#EDE7F5", color: "#5B4A8A" }}>{tag}</Chip>
-        ))}
-        {parent && (
-          <Chip small style={{ background: "#F0F0F0", color: "#6B6B6B" }}>
-            ↳ {parent.code || parent.title}
-          </Chip>
-        )}
-        {children.length > 0 && (
-          <Chip small style={{ background: "#EAF3EE", color: "#0A5A46" }}>
-            {doneChildren}/{children.length} subtasks
-          </Chip>
-        )}
         {blocked && (
           <Chip small style={{ background: "#FBE7E5", color: "#9A3530" }}>
             <span className="flex items-center gap-1"><AlertTriangle size={10} /> Blocked</span>
@@ -133,8 +132,35 @@ export default function TaskCard({
         )}
       </div>
 
-      {(task.attachmentCount > 0 || task.commentCount > 0 || task.checklistTotal > 0) && (
-        <div className="flex items-center gap-2.5 mt-1.5 text-[11px] text-brand-sub">
+      {meta.length > 0 && (
+        <div className="mt-1.5 text-[11.5px] text-brand-sub leading-snug">{meta.join(" · ")}</div>
+      )}
+
+      {!task.isMilestone && <ProgressBar value={task.progress} color={status.color} />}
+
+      <div className="flex items-center justify-between mt-2.5">
+        <div className="flex items-center gap-2.5 text-[11px] text-brand-sub">
+          {/* Status arrows only on touch screens — on a computer, drag the card instead. */}
+          <div className="flex items-center gap-0.5 [@media(hover:hover)]:hidden">
+            <button
+              onClick={() => onMove(task, -1)}
+              disabled={statusIdx === 0}
+              title="Move to previous status"
+              className="p-0.5"
+              style={{ color: statusIdx === 0 ? "#D5DAD7" : "#5B6B64" }}
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              onClick={() => onMove(task, 1)}
+              disabled={statusIdx === STATUSES.length - 1}
+              title="Move to next status"
+              className="p-0.5"
+              style={{ color: statusIdx === STATUSES.length - 1 ? "#D5DAD7" : "#5B6B64" }}
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
           {task.attachmentCount > 0 && (
             <span className="flex items-center gap-0.5"><Paperclip size={11} /> {task.attachmentCount}</span>
           )}
@@ -144,31 +170,6 @@ export default function TaskCard({
           {task.checklistTotal > 0 && (
             <span className="flex items-center gap-0.5"><ListChecks size={11} /> {task.checklistDone}/{task.checklistTotal}</span>
           )}
-        </div>
-      )}
-
-      {!task.isMilestone && <ProgressBar value={task.progress} color={status.color} />}
-
-      <div className="flex items-center justify-between mt-2.5">
-        <div className="flex items-center gap-0.5">
-          <button
-            onClick={() => onMove(task, -1)}
-            disabled={statusIdx === 0}
-            title="Move to previous status"
-            className="p-0.5"
-            style={{ color: statusIdx === 0 ? "#D5DAD7" : "#5B6B64" }}
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <button
-            onClick={() => onMove(task, 1)}
-            disabled={statusIdx === STATUSES.length - 1}
-            title="Move to next status"
-            className="p-0.5"
-            style={{ color: statusIdx === STATUSES.length - 1 ? "#D5DAD7" : "#5B6B64" }}
-          >
-            <ChevronRight size={16} />
-          </button>
         </div>
         <div className="flex items-center gap-2">
           {badge && <Chip small style={toneStyle(badge.tone)}>{badge.label}</Chip>}
