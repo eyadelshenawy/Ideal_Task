@@ -6,6 +6,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Ticket codes are now assigned automatically and can't be changed",
+    description: "When you save a new ticket, the app gives it the next number for its project (e.g. APEX-0008), or the next subtask number under its parent (e.g. APEX-0001-03). The Code field shows the expected number greyed out. Once saved, a ticket's code stays fixed — only a Super Admin can change it, and so only a Super Admin can move a ticket to another project or under a different parent (both change the code). To record a customer's own reference number, add it as a tag.",
+  },
+  {
     title: "A shorter, tidier task form",
     description: "Opening a task now shows its title and code at the top, with tabs for Details, Checklist, Time, Files and Comments instead of one long page. Status, progress and the SLA countdown sit together at the top of Details (click the SLA tag for the response and resolve times). Priority shows on its own, with Impact × Urgency one click away under \"change\". Assignees are picked from a drop-down and shown as names you can remove. Less-used settings — code, tags, milestone, repeat, depends on, parent task and duplicate — are folded under More options. A new task opens on the same Details layout. Nothing was removed: every field is still there.",
   },

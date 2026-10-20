@@ -115,6 +115,11 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
     }
   }
 
+  // A ticket's code is fixed once created; only a Super Admin may change it.
+  if (!access.isSuperAdmin && data.code !== undefined && (data.code || null) !== existing.code) {
+    return NextResponse.json({ error: "Only a Super Admin can change a ticket's code" }, { status: 403 });
+  }
+
   const finalParentId = data.parentId !== undefined ? data.parentId : existing.parentId;
 
   if (data.parentId !== undefined && data.parentId !== null) {
@@ -151,6 +156,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
         return NextResponse.json({ error: "Parent task must have a code before it can have subtasks" }, { status: 400 });
       }
       if (!codeMatchesParent(finalCode, parent.code)) {
+        if (!access.isSuperAdmin) return NextResponse.json({ error: "Only a Super Admin can move this ticket under that parent, because its code has to change" }, { status: 403 });
         return NextResponse.json({ error: `Code must start with "${parent.code}-" for this subtask` }, { status: 400 });
       }
       if (finalProjectId !== parent.projectId) {
@@ -159,6 +165,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
     } else if (finalProjectId) {
       const project = await prisma.project.findUnique({ where: { id: finalProjectId }, select: { code: true } });
       if (project && !codeMatchesProject(finalCode, project.code)) {
+        if (!access.isSuperAdmin) return NextResponse.json({ error: "Only a Super Admin can move this ticket to that project, because its code has to change" }, { status: 403 });
         return NextResponse.json({ error: `Code must start with "${project.code}-" for this project` }, { status: 400 });
       }
     }

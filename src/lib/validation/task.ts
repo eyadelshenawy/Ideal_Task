@@ -48,12 +48,12 @@ const taskFields = z.object({
   tags: z.array(z.string().trim().min(1).max(40)).default([]),
 });
 
-// Creating a task requires: Code, Title, Project, at least one Assignee, and
+// Creating a task requires: Title, Project, at least one Assignee, and
 // dates — Due Date always, Start Date too unless it's a Milestone (a
-// milestone is a single-date marker, no range).
+// milestone is a single-date marker, no range). The code is assigned by the
+// server unless a Super Admin types one.
 export const taskCreateSchema = taskFields
   .extend({
-    code: z.string().trim().min(1, "Code is required"),
     projectId: z.string().min(1, "Project is required"),
     assignees: assigneesSchema.min(1, "At least one assignee is required"),
     description: z.string().trim().min(1, "Description is required"),

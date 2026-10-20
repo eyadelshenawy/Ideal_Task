@@ -336,15 +336,24 @@ export default function TaskModal({
     </div>
   );
 
+  // Only a Super Admin types a code; for everyone else it's shown greyed out
+  // and the server assigns the next number on save.
   const codeField = (
     <div className={draft.id ? "" : "w-full sm:w-[110px] sm:flex-shrink-0"}>
-      <label className="text-xs font-semibold text-brand-sub">Code *</label>
+      <label className="text-xs font-semibold text-brand-sub">Code{isSuperAdmin ? " *" : ""}</label>
       <input
         value={draft.code}
         onChange={(e) => setDraft({ ...draft, code: e.target.value })}
-        placeholder="e.g. APEX-0001"
-        className={`${field} font-mono`}
+        readOnly={!isSuperAdmin}
+        placeholder={isSuperAdmin ? "e.g. APEX-0001" : "Set on save"}
+        title={isSuperAdmin ? undefined : draft.id ? "Only a Super Admin can change the code" : "Assigned automatically when you save"}
+        className={`${field} font-mono ${isSuperAdmin ? "" : "bg-brand-bg text-brand-sub cursor-not-allowed"}`}
       />
+      {!isSuperAdmin && (
+        <div className="text-[10.5px] text-brand-sub mt-1">
+          {draft.id ? "Only a Super Admin can change the code." : "Assigned on save."}
+        </div>
+      )}
     </div>
   );
 
