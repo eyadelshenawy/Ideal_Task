@@ -48,7 +48,7 @@ export default function NotificationBell({ onOpenTask }: { onOpenTask: (taskId: 
       <button
         onClick={() => setOpen((v) => !v)}
         title="Notifications"
-        className="relative p-2 rounded-lg text-white"
+        className="relative p-1.5 sm:p-2 rounded-lg text-white"
         style={{ background: open ? "#fff" : "rgba(255,255,255,0.12)", color: open ? "#0A5A46" : "#fff" }}
       >
         <Bell size={15} />

@@ -187,10 +187,10 @@
     <p class="lede">A shared task manager built for IDEAL for Digital Transformation — projects, tasks, deadlines, and who's doing what, all in one place, with email reminders so nothing falls through the cracks.</p>
     <p>Every task belongs to a <strong>project</strong>, has one or more <strong>assignees</strong> (team members or outside contacts), a <strong>priority</strong>, a <strong>status</strong>, and dates. From there you can attach files, leave comments, check off subtasks, tag it, duplicate it, or set it to repeat automatically.</p>
     <p>Support work is handled as <strong>tickets</strong>: each one has a type (Incident, Service Request…), an Impact × Urgency priority, a category, and — in SLA-tracked projects — a live countdown to its response and resolution deadlines. Customers can raise tickets through a public form, follow them on a tracking page, and rate the service once a ticket is closed.</p>
-    <p>Click <strong>What's New</strong> in the ⋯ menu (top right) any time for a quick summary of recently added features. The same menu holds every admin screen.</p>
+    <p>Click <strong>What's New</strong> in the ⋯ menu (top right) any time for a quick summary of recently added features. The same menu opens <strong>Settings</strong> — one window holding every admin screen (Team, Contacts, Projects, Ticket Categories, Lists, Checklist Templates, Work Calendar, Security Policy, Audit Log, Trash), picked from the list on its left; you only see the ones your role allows. Your own account sits under the circle with your initials (top right): your name and email, <strong>Two-factor (MFA)</strong> and <strong>Log out</strong>.</p>
     <figure class="shot">
       <img loading="lazy" src="/guide/menu.jpg" alt="The ⋯ menu">
-      <figcaption>The ⋯ menu — What's New, the User Guide, and (for Super Admins) every admin screen.</figcaption>
+      <figcaption>The ⋯ menu — User Guide, What's New, Settings and (for Super Admins) Excel import and export.</figcaption>
     </figure>
     <div class="pill-row">
       <span class="pill">Board / List / Timeline views</span>
@@ -230,7 +230,7 @@
     <h2>{{ICON:lock}} Account security</h2>
     <p class="lede">Three protections apply to every account: an optional second step at sign-in, automatic sign-out when you walk away, and password rules.</p>
     <h3>Two-factor sign-in (MFA)</h3>
-    <p>Open the ⋯ menu → <strong>Two-factor (MFA)</strong> → <strong>Enable two-factor</strong>. Scan the QR code with an Authenticator app (Google Authenticator, Microsoft Authenticator, 1Password…) — or type the secret shown under it — then enter the 6-digit code the app shows to confirm. From then on, signing in asks for a fresh code after your password. Your account stays safe even if your password leaks.</p>
+    <p>Open the the circle with your initials (top right) → <strong>Two-factor (MFA)</strong> → <strong>Enable two-factor</strong>. Scan the QR code with an Authenticator app (Google Authenticator, Microsoft Authenticator, 1Password…) — or type the secret shown under it — then enter the 6-digit code the app shows to confirm. From then on, signing in asks for a fresh code after your password. Your account stays safe even if your password leaks.</p>
     <figure class="shot">
       <img loading="lazy" src="/guide/mfa-qr.jpg" alt="Two-factor set-up">
       <figcaption>Setting up two-factor sign-in — scan the QR code, then type the 6-digit code to confirm.</figcaption>
@@ -244,7 +244,7 @@
       <li>A new password can't be the same as the current one.</li>
       <li>Passwords expire after 90 days — at your next sign-in after that you're asked to choose a new one before continuing.</li>
     </ul>
-    <div class="card tip">Super Admins can change the sign-out time, the expiry period and the password rules in ⋯ menu → <strong>Security Policy</strong> (see Administration).</div>
+    <div class="card tip">Super Admins can change the sign-out time, the expiry period and the password rules in ⋯ menu → <strong>Settings</strong> → <strong>Security Policy</strong> (see Administration).</div>
   </section>
 
   <!-- ============ ROLES ============ -->
@@ -258,7 +258,7 @@
       <tr><td><strong>Member</strong></td><td>Only tasks assigned to them</td><td>Status &amp; progress only, on their own tasks</td></tr>
     </table>
     <div class="card role">
-      <strong>Project Admin is a grant, not a global role.</strong> A Super Admin hands out project-admin rights per project from <em>Manage Team</em> (the folder icon next to a member's name). Someone can be a Project Admin on "Apex Pharmaceutical" and a plain Member everywhere else.
+      <strong>Project Admin is a grant, not a global role.</strong> A Super Admin hands out project-admin rights per project from <em>Settings → Team</em> (the folder icon next to a member's name). Someone can be a Project Admin on "Apex Pharmaceutical" and a plain Member everywhere else.
     </div>
     <div class="card tip">
       <strong>Only a Super Admin can create new projects or add new team members.</strong> Everyone else works within what's already been set up for them.
@@ -353,7 +353,7 @@
       <li><strong>Start Date</strong> — required <em>unless</em> the task is a Milestone, in which case only one date (Due Date) applies, since a milestone is a single-day marker rather than a date range.</li>
     </ul>
     <h3>Ticket type, Impact × Urgency and categories</h3>
-    <p>Every task has a <strong>Type</strong>. <strong>Task</strong> is the default, so project work carries on exactly as before. For support work pick <strong>Incident</strong> (something is broken), <strong>Service Request</strong> (someone needs something), <strong>Change Request</strong> or <strong>Problem</strong> (the root cause behind repeated incidents). Super Admins can rename these, change their tag and colour, hide ones you don't use, or add new ones in ⋯ menu → <strong>Lists</strong>.</p>
+    <p>Every task has a <strong>Type</strong>. <strong>Task</strong> is the default, so project work carries on exactly as before. For support work pick <strong>Incident</strong> (something is broken), <strong>Service Request</strong> (someone needs something), <strong>Change Request</strong> or <strong>Problem</strong> (the root cause behind repeated incidents). Super Admins can rename these, change their tag and colour, hide ones you don't use, or add new ones in ⋯ menu → <strong>Settings</strong> → <strong>Lists</strong>.</p>
     <p>Instead of guessing a priority, click <strong>pick</strong> (or <strong>change</strong>) next to Priority, then choose <strong>Impact</strong> (who is affected) and <strong>Urgency</strong> (how soon it's needed) and the priority fills itself in:</p>
     <table class="perm-table">
       <tr><th>Impact ↓ / Urgency →</th><th>High</th><th>Medium</th><th>Low</th></tr>
@@ -362,9 +362,9 @@
       <tr><td><strong>Low</strong> — one person</td><td>Medium</td><td>Low</td><td>Low</td></tr>
     </table>
     <p>Rule: Priority = the cell where the Impact row meets the Urgency column. You can still change the priority by hand — the form then notes that it differs from what the matrix suggests.</p>
-    <p><strong>Category</strong> and <strong>Subcategory</strong> (e.g. <em>Bug / Error › Posting error</em>) come from one shared list that Super Admins manage in ⋯ menu → <strong>Ticket Categories</strong>. Both are optional.</p>
+    <p><strong>Category</strong> and <strong>Subcategory</strong> (e.g. <em>Bug / Error › Posting error</em>) come from one shared list that Super Admins manage in ⋯ menu → <strong>Settings</strong> → <strong>Ticket Categories</strong>. Both are optional.</p>
     <h3>Priority (Critical, High, Medium, Low) and SLA auto-fill</h3>
-    <p>Four priority levels — <strong>Critical</strong> (most urgent, red), High, Medium, Low. Sorting by Priority puts Critical first. In an SLA-tracked project (Manage Projects → Track SLA), picking a priority for a new task <em>pre-fills</em> the Duration field from that project's SLA resolution days, so the Due Date computes itself from your Start Date. Defaults: Critical 2 days, High 4 days, Medium 7 days, Low 10 days — tune them per project (Manage Projects → SLA targets) or org-wide (Reports → Edit default targets). Priority names and colours can be changed by a Super Admin in ⋯ menu → <strong>Lists</strong>; the four levels themselves are fixed because SLA targets depend on them.</p>
+    <p>Four priority levels — <strong>Critical</strong> (most urgent, red), High, Medium, Low. Sorting by Priority puts Critical first. In an SLA-tracked project (Settings → Projects → Track SLA), picking a priority for a new task <em>pre-fills</em> the Duration field from that project's SLA resolution days, so the Due Date computes itself from your Start Date. Defaults: Critical 2 days, High 4 days, Medium 7 days, Low 10 days — tune them per project (Manage Projects → SLA targets) or org-wide (Reports → Edit default targets). Priority names and colours can be changed by a Super Admin in ⋯ menu → <strong>Settings</strong> → <strong>Lists</strong>; the four levels themselves are fixed because SLA targets depend on them.</p>
     <h3>The SLA tag on a ticket</h3>
     <p>In an SLA-tracked project, an open ticket shows an SLA tag at the top of the form; click it to open the <strong>SLA</strong> box with its <em>Response by</em> and <em>Resolve by</em> times and how much is left (or <em>Met</em> / <em>Breached</em>). The same countdown appears as a chip on the card and the row. If the project counts working hours only, the clock pauses outside working hours, weekends and holidays (see Work Calendar).</p>
     <p><strong>Priority change always rewrites Duration</strong> — escalating a Low ticket to Critical MUST tighten its deadline, so the SLA is re-applied even if you had typed a Duration manually. Typing your own Duration afterwards keeps it until you touch the priority again.</p>
@@ -375,7 +375,7 @@
     <p>Every non-milestone task also has a <strong>Duration</strong> field (in working days) next to Start Date and Due Date. Fill in any two of the three — the app computes the third on save, skipping weekends and any holidays configured in the Work Calendar. So &quot;Start = 2026-09-06, Duration = 5&quot; auto-fills the Due Date to the fifth working day; conversely &quot;Start = 2026-09-06, Due = 2026-09-10&quot; auto-fills Duration to 5. Editing Duration clears Due (and vice-versa) so the next save recomputes cleanly.</p>
     <p>The <strong>Work Calendar</strong> lives in the admin menu (Super Admin only). It has two parts: a small toggle strip picking which weekdays count as working days (default: Sun–Thu on, Fri and Sat off), and a list of specific holiday dates your team observes (Eid, national holidays, company shutdowns). Both feed into every date calculation across the app — creating a task, editing one, importing Excel, cloning a project template. Everyone sees the same calendar; only Super Admins can change it.</p>
     <p>Duration is the <em>same</em> permission tier as dates: only Super Admins and Project Admins can edit it. Everyone else still gets Status and Progress only.</p>
-    <p><strong>Module</strong> (which SAP module or part of the system the task belongs to, e.g. <code>FI</code>, <code>MM</code>) is optional and shows as a small chip on the task. Pick it from the <strong>Add a module…</strong> drop-down; a task can have more than one (e.g. <code>FI</code> and <code>CO</code>) — remove one with its ×. The list itself is managed by Super Admins in ⋯ menu → <strong>Lists</strong>, so everyone uses the same spelling.</p>
+    <p><strong>Module</strong> (which SAP module or part of the system the task belongs to, e.g. <code>FI</code>, <code>MM</code>) is optional and shows as a small chip on the task. Pick it from the <strong>Add a module…</strong> drop-down; a task can have more than one (e.g. <code>FI</code> and <code>CO</code>) — remove one with its ×. The list itself is managed by Super Admins in ⋯ menu → <strong>Settings</strong> → <strong>Lists</strong>, so everyone uses the same spelling.</p>
     <div class="card tip">
       Editing an <em>existing</em> task never blocks you on the mandatory-field rules above — they only apply at creation, so older tasks that predate a rule are never locked out of being edited.
     </div>
@@ -497,8 +497,8 @@
     </table>
     <p>Times are calendar time. Averages are rounded to 1 decimal place and percentages to a whole number. As with the rest of Reports, you only see figures for tasks you're allowed to see.</p>
     <h3>SLA</h3>
-    <p>Response/resolution targets only make sense for support/ticket work measured from when a request came in — an implementation project's tasks already have their own Start/Due dates, so SLA is <strong>off by default</strong> for every project. Turn it on per-project from Manage Projects (see below) for the ones that are actually support contracts; the rest are left out of this section entirely.</p>
-    <p>Two targets are tracked automatically, by priority, for any project with tracking on — how quickly someone first commented on a task, and how quickly it was actually closed. Every project shares the same numbers by default (Critical: first response within 4 hours, close within 2 days; High: 24 hours / 4 days; Medium: 48 hours / 7 days; Low: 72 hours / 10 days) — a Super Admin can change these shared defaults via <strong>Edit default targets</strong>, or set different numbers for one specific project via its own <strong>SLA targets</strong> button in Manage Projects. Either level can also set a cutoff date so tasks created before it (e.g. old backlog imported before this feature existed) are left out of the percentages entirely.</p>
+    <p>Response/resolution targets only make sense for support/ticket work measured from when a request came in — an implementation project's tasks already have their own Start/Due dates, so SLA is <strong>off by default</strong> for every project. Turn it on per-project from Settings → Projects (see below) for the ones that are actually support contracts; the rest are left out of this section entirely.</p>
+    <p>Two targets are tracked automatically, by priority, for any project with tracking on — how quickly someone first commented on a task, and how quickly it was actually closed. Every project shares the same numbers by default (Critical: first response within 4 hours, close within 2 days; High: 24 hours / 4 days; Medium: 48 hours / 7 days; Low: 72 hours / 10 days) — a Super Admin can change these shared defaults via <strong>Edit default targets</strong>, or set different numbers for one specific project via its own <strong>SLA targets</strong> button in Settings → Projects. Either level can also set a cutoff date so tasks created before it (e.g. old backlog imported before this feature existed) are left out of the percentages entirely.</p>
     <p>Formula: <strong>SLA met %</strong> = tickets that met the target ÷ (tickets that met it + tickets that breached it) × 100, rounded to a whole number. The percentages only count tasks that have a definite outcome yet (met or breached) — a task still comfortably inside its window doesn't count against either side until it's actually late. The list below it names every task currently breaching either target, so you know exactly what needs attention.</p>
     <h3>Customer satisfaction</h3>
     <p>When a ticket in an SLA-tracked project is marked Done for the first time, and it has an outside contact with an email address, that contact gets one email asking them to rate how it was handled from 1 to 5 stars. One click on a star records the answer; they can add a comment on the page that opens. The rating shows in the ticket's activity, and its assignees get a notification. It's never sent twice for the same ticket.</p>
@@ -566,9 +566,9 @@
   <!-- ============ ADMIN ============ -->
   <section class="doc-section" id="team-mgmt" data-group="Administration" data-icon="users" data-label="Managing the team">
     <h2>{{ICON:users}} Managing the team</h2>
-    <p class="lede">Super Admin only. Open the ⋯ menu → <strong>Manage Team</strong>.</p>
+    <p class="lede">Super Admin only. Open the ⋯ menu → <strong>Settings</strong> → <strong>Team</strong>.</p>
     <figure class="shot">
-      <img loading="lazy" src="/guide/team.jpg" alt="Manage Team modal">
+      <img loading="lazy" src="/guide/team.jpg" alt="Settings — Team">
       <figcaption>Add members, toggle them inactive, grant project-admin rights, or reset a password. (Names and emails shown here are sample data.)</figcaption>
     </figure>
     <ul>
@@ -583,15 +583,15 @@
 
   <section class="doc-section" id="checklist-templates" data-group="Administration" data-icon="clipboard-list" data-label="Checklist Templates">
     <h2>{{ICON:clipboard-list}} Checklist Templates</h2>
-    <p class="lede">Super Admin only. Open the ⋯ menu → <strong>Checklist Templates</strong>.</p>
+    <p class="lede">Super Admin only. Open the ⋯ menu → <strong>Settings</strong> → <strong>Checklist Templates</strong>.</p>
     <p>A named, reusable set of steps — e.g. &quot;SAP PO ticket diagnosis&quot; with five standard steps — that anyone can apply to any task's checklist in one click from that task's Checklist section, instead of typing the same steps out every time. Useful for recurring ticket types or a standard set of steps at the start of a project phase. Deleting a template doesn't remove steps already applied to a task's checklist — it only stops it from being offered for new ones.</p>
   </section>
 
   <section class="doc-section" id="project-mgmt" data-group="Administration" data-icon="folder" data-label="Managing projects">
     <h2>{{ICON:folder}} Managing projects</h2>
-    <p class="lede">Super Admin only. Open the ⋯ menu → <strong>Manage Projects</strong>.</p>
+    <p class="lede">Super Admin only. Open the ⋯ menu → <strong>Settings</strong> → <strong>Projects</strong>.</p>
     <figure class="shot">
-      <img loading="lazy" src="/guide/projects.jpg" alt="Manage Projects modal">
+      <img loading="lazy" src="/guide/projects.jpg" alt="Settings — Projects">
       <figcaption>Every project needs a short unique code — it's what task codes are built from. Links, templates, reports, custom fields and SLA settings sit under each project.</figcaption>
     </figure>
     <p>Deleting a project moves it to Trash rather than removing it outright — its tasks are kept as-is and everything can be restored together.</p>
@@ -615,7 +615,7 @@
     </figure>
     <h3>Use as template</h3>
     <p>Click <strong>Use as template</strong> under any project to clone its entire task structure — including subtasks — into a brand-new project. Give the copy a name, a code, and a new start date; every task's dates shift <em>by working days</em> using the org's Work Calendar (so a task cloned during Eid week gets pushed past the holidays automatically), and Duration is preserved on each row. Task codes carry the source's readable suffix onto the new prefix — <code>ONBOARD-W1</code> becomes <code>ADEL-W1</code> under a project coded <code>ADEL</code> — and <em>Depends On</em> links survive the clone, remapped to the new tasks, so a template's sequencing keeps working on every hire. The per-project SLA targets (if the source has any) copy across too, so a Support-project template doesn't quietly reset to org defaults. Assignees, comments, attachments, and time logs are deliberately left behind — a clone is a fresh structural skeleton (handy for a repeatable phase breakdown like Explore/Realize/Deploy/Run, or an Onboarding/Training program), not a snapshot of one engagement's history.</p>
-    <p><strong>Keeping the template out of the way.</strong> If a project exists only as a shape to clone from — never worked on directly — hit <strong>Mark as template</strong> under it. It (and every task in it) disappears from the main Dashboard and only shows up in the dedicated <strong>Templates</strong> section inside Manage Projects, where you can clone from it or restore it back to active later.</p>
+    <p><strong>Keeping the template out of the way.</strong> If a project exists only as a shape to clone from — never worked on directly — hit <strong>Mark as template</strong> under it. It (and every task in it) disappears from the main Dashboard and only shows up in the dedicated <strong>Templates</strong> section inside Settings → Projects, where you can clone from it or restore it back to active later.</p>
     <h3>Client report</h3>
     <p>Click <strong>Client report</strong> under any project to open a one-page, print-ready status snapshot — overall completion, open/done/overdue counts, and (for SLA-tracked projects) a response/resolution breakdown. It opens in a new tab; use your browser's print dialog and choose "Save as PDF" to get a file you can email a client. Unlike the public status link, this page requires being signed in — it's a snapshot you generate and send yourself, not a standing link.</p>
     <h3>Custom fields</h3>
@@ -628,10 +628,10 @@
 
   <section class="doc-section" id="contacts-mgmt" data-group="Administration" data-icon="user-plus" data-label="Managing contacts">
     <h2>{{ICON:user-plus}} Managing contacts</h2>
-    <p class="lede">Contacts are external people — no login, no account — that you can still assign tasks to.</p>
+    <p class="lede">Contacts are external people — no login, no account — that you can still assign tasks to. Open the ⋯ menu → <strong>Settings</strong> → <strong>Contacts</strong>.</p>
     <p>Each contact belongs to one project — pick it from the dropdown next to the contact's name. That way a client's people only show up as assignable options on their own project's tasks, not everyone else's. A contact submitted through a ticket intake form is scoped to that project automatically.</p>
     <figure class="shot">
-      <img loading="lazy" src="/guide/contacts.jpg" alt="Manage Contacts modal">
+      <img loading="lazy" src="/guide/contacts.jpg" alt="Settings — Contacts">
       <figcaption>Deleting a contact just unassigns them from any tasks — those tasks are kept.</figcaption>
     </figure>
   </section>
@@ -648,7 +648,7 @@
 
   <section class="doc-section" id="trash" data-group="Administration" data-icon="trash" data-label="Trash & restore">
     <h2>{{ICON:trash}} Trash & restore</h2>
-    <p class="lede">Deleted tasks and projects land here first, not gone for good.</p>
+    <p class="lede">Deleted tasks and projects land here first, not gone for good. Open the ⋯ menu → <strong>Settings</strong> → <strong>Trash</strong>.</p>
     <figure class="shot">
       <img loading="lazy" src="/guide/trash.jpg" alt="Trash modal">
       <figcaption>Restore an item with its arrow, or tick several and restore them together. Empty Trash removes everything permanently.</figcaption>
@@ -657,7 +657,7 @@
 
   <section class="doc-section" id="categories" data-group="Administration" data-icon="folder" data-label="Ticket Categories">
     <h2>{{ICON:folder}} Ticket Categories</h2>
-    <p class="lede">Super Admin only. Open the ⋯ menu → <strong>Ticket Categories</strong>.</p>
+    <p class="lede">Super Admin only. Open the ⋯ menu → <strong>Settings</strong> → <strong>Ticket Categories</strong>.</p>
     <figure class="shot">
       <img loading="lazy" src="/guide/categories.jpg" alt="Ticket Categories">
       <figcaption>One shared list for every project. Click a category to see and add its subcategories.</figcaption>
@@ -667,7 +667,7 @@
 
   <section class="doc-section" id="lists" data-group="Administration" data-icon="list-checks" data-label="Lists (modules, types, priorities)">
     <h2>{{ICON:list-checks}} Lists — modules, ticket types and priorities</h2>
-    <p class="lede">Super Admin only. Open the ⋯ menu → <strong>Lists</strong>. Change these lists here whenever you need to — no code changes required.</p>
+    <p class="lede">Super Admin only. Open the ⋯ menu → <strong>Settings</strong> → <strong>Lists</strong>. Change these lists here whenever you need to — no code changes required.</p>
     <figure class="shot">
       <img loading="lazy" src="/guide/lists.jpg" alt="Lists — Modules tab">
       <figcaption>The Modules tab — each module shows how many tasks use it.</figcaption>
@@ -689,7 +689,7 @@
 
   <section class="doc-section" id="work-calendar" data-group="Administration" data-icon="clipboard-list" data-label="Work Calendar">
     <h2>{{ICON:clipboard-list}} Work Calendar</h2>
-    <p class="lede">Open the ⋯ menu → <strong>Work Calendar</strong>. Everyone can view it; only Super Admins can change it.</p>
+    <p class="lede">Open the ⋯ menu → <strong>Settings</strong> → <strong>Work Calendar</strong>. Everyone can view it; only Super Admins can change it.</p>
     <figure class="shot">
       <img loading="lazy" src="/guide/calendar.jpg" alt="Work Calendar">
       <figcaption>Working days, working hours with time zone, and holidays.</figcaption>
@@ -704,7 +704,7 @@
 
   <section class="doc-section" id="security-policy" data-group="Administration" data-icon="shield" data-label="Security Policy">
     <h2>{{ICON:shield}} Security Policy</h2>
-    <p class="lede">Super Admin only. Open the ⋯ menu → <strong>Security Policy</strong>.</p>
+    <p class="lede">Super Admin only. Open the ⋯ menu → <strong>Settings</strong> → <strong>Security Policy</strong>.</p>
     <figure class="shot">
       <img loading="lazy" src="/guide/security-policy.jpg" alt="Security Policy">
       <figcaption>Org-wide sign-out and password rules.</figcaption>
@@ -785,7 +785,7 @@
 
     <details class="faq">
       <summary>I deleted a task by mistake — is it gone?</summary>
-      <div class="faq-body">No — open the ⋯ menu → Trash. Deleted tasks and projects sit there for 30 days before they're removed for good, and can be restored any time before that.</div>
+      <div class="faq-body">No — open the ⋯ menu → Settings → Trash. Deleted tasks and projects sit there for 30 days before they're removed for good, and can be restored any time before that.</div>
     </details>
     <details class="faq">
       <summary>Why can't I edit a task's title or dates, only its status?</summary>
@@ -817,7 +817,7 @@
     </details>
     <details class="faq">
       <summary>I lost the phone with my Authenticator app — how do I sign in?</summary>
-      <div class="faq-body">If you still have a trusted device (one you ticked “Trust this device for 30 days” on), sign in there, switch two-factor off, then set it up again on your new phone. Otherwise ask a Super Admin: in Manage Team, the shield-off icon next to your name switches two-factor off (click it twice to confirm). You then sign in with your password alone and can set it up again on the new phone.</div>
+      <div class="faq-body">If you still have a trusted device (one you ticked “Trust this device for 30 days” on), sign in there, switch two-factor off, then set it up again on your new phone. Otherwise ask a Super Admin: in Settings → Team, the shield-off icon next to your name switches two-factor off (click it twice to confirm). You then sign in with your password alone and can set it up again on the new phone.</div>
     </details>
     <details class="faq">
       <summary>Why did the app sign me out?</summary>
@@ -825,7 +825,7 @@
     </details>
     <details class="faq">
       <summary>A module I need isn't in the drop-down — what do I do?</summary>
-      <div class="faq-body">Ask a Super Admin to add it in ⋯ menu → Lists → Modules. Keeping one shared list means everyone uses the same spelling, so filters and reports stay accurate.</div>
+      <div class="faq-body">Ask a Super Admin to add it in ⋯ menu → Settings → Lists → Modules. Keeping one shared list means everyone uses the same spelling, so filters and reports stay accurate.</div>
     </details>
   </section>
 

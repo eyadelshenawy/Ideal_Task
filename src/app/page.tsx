@@ -20,6 +20,7 @@ export default async function HomePage() {
     <Dashboard
       userId={session.user.id}
       userName={session.user.name ?? ""}
+      userEmail={session.user.email ?? ""}
       isSuperAdmin={access.isSuperAdmin}
       administeredProjectIds={access.administeredProjectIds}
       mfaInitiallyEnabled={me?.totpEnabled ?? false}
