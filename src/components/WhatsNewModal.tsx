@@ -6,6 +6,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Nine new reports, with an Excel export that keeps the formulas",
+    description: "Reports now has tabs. Customers: tickets per customer per month, and the top 5 modules and categories problems come from. SLA & speed: resolution SLA met % per customer per month, average response and resolution time per priority, and the age of open tickets. Team: closed per person, average resolution and overdue %. Time & billing: hours logged per customer per month. Quality: opened vs closed per week and the reopened rate. Pick a period (3, 6 or 12 months) and projects; each card shows its formula, and Export to Excel downloads all nine with real Excel formulas for every total, average and percentage. The original reports are on the Overview tab.",
+  },
+  {
     title: "A cleaner Timeline with Days and Weeks",
     description: "The Timeline drops the day-by-day grid lines (weekends are still lightly shaded), uses slimmer rows, and shows the assignees' initials beside each bar. It now opens scrolled to today, with a Today button to jump back. A new Days / Weeks switch shows one column per week, so a long project fits on one screen. Clicking a bar or a task name still opens the task, and dependency arrows are unchanged.",
   },

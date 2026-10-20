@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import useSWR from "swr";
-import type { Task, Project, TeamMember } from "@/types/models";
+import type { Task, Project, TeamMember, Category } from "@/types/models";
 import { todayStr, addDays, PRIORITIES } from "@/lib/taskHelpers";
 import type { SlaConfigDto } from "@/lib/slaConfig";
 import { computeTaskSla, type SlaAll } from "@/lib/taskSla";
@@ -11,6 +11,20 @@ import ProgressBar from "./ui/ProgressBar";
 import Chip from "./ui/Chip";
 import SlaSettingsModal from "./SlaSettingsModal";
 import BulkTimeModal from "./BulkTimeModal";
+import InsightsReports, { type InsightsTab } from "./InsightsReports";
+import MultiSelectFilter from "./ui/MultiSelectFilter";
+import { computeInsights, lastMonths, type InsightsRaw } from "@/lib/reportInsights";
+import { exportInsightsToExcel } from "@/lib/insightsExcel";
+import { Download, Loader2 } from "lucide-react";
+
+const TABS: { id: "overview" | InsightsTab; label: string }[] = [
+  { id: "overview", label: "Overview" },
+  { id: "customers", label: "Customers" },
+  { id: "sla", label: "SLA & speed" },
+  { id: "team", label: "Team" },
+  { id: "time", label: "Time & billing" },
+  { id: "quality", label: "Quality" },
+];
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -18,6 +32,7 @@ interface ReportsViewProps {
   tasks: Task[];
   projects: Project[];
   team: TeamMember[];
+  categories: Category[];
   isSuperAdmin: boolean;
   currentUserId: string;
   onOpenTask: (taskId: string) => void;
@@ -35,7 +50,11 @@ function isOverdue(task: Task, today: string): boolean {
   return !!task.dueDate && task.dueDate < today && task.status !== "DONE";
 }
 
-export default function ReportsView({ tasks, projects, team, isSuperAdmin, currentUserId, onOpenTask }: ReportsViewProps) {
+export default function ReportsView({ tasks, projects, team, categories, isSuperAdmin, currentUserId, onOpenTask }: ReportsViewProps) {
+  const [tab, setTab] = useState<"overview" | InsightsTab>("overview");
+  const [monthCount, setMonthCount] = useState(6);
+  const [insightProjectIds, setInsightProjectIds] = useState<string[]>([]);
+  const [exporting, setExporting] = useState(false);
   const [slaSettingsOpen, setSlaSettingsOpen] = useState(false);
   const [bulkTimeOpen, setBulkTimeOpen] = useState(false);
   const [timeFrom, setTimeFrom] = useState(addDays(todayStr(), -6));
@@ -49,6 +68,17 @@ export default function ReportsView({ tasks, projects, team, isSuperAdmin, curre
   const { data: firstCommentAt } = useSWR<Record<string, string>>("/api/reports/sla", fetcher);
   const { data: slaAll } = useSWR<SlaAll>("/api/settings/sla/all", fetcher);
   const { data: csat } = useSWR<CsatSummary>("/api/reports/csat", fetcher);
+  const insightsFrom = `${lastMonths(today, monthCount)[0].key}-01`;
+  const { data: insightsRaw } = useSWR<InsightsRaw>(tab === "overview" ? null : `/api/reports/insights?from=${insightsFrom}`, fetcher);
+  const insights = useMemo(() => {
+    if (tab === "overview") return null;
+    const catName = new Map(categories.map((c) => [c.id, c.name]));
+    return computeInsights({
+      tasks, projects, team, slaAll, firstCommentAt, raw: insightsRaw, today, monthCount,
+      projectIds: insightProjectIds,
+      categoryName: (id) => (id ? catName.get(id) ?? null : null),
+    });
+  }, [tab, tasks, projects, team, categories, slaAll, firstCommentAt, insightsRaw, today, monthCount, insightProjectIds]);
 
   const sla = useMemo(() => {
     if (!firstCommentAt || !slaAll) return null;
@@ -136,8 +166,63 @@ export default function ReportsView({ tasks, projects, team, isSuperAdmin, curre
       .map((r) => ({ ...r, barPct: Math.round((r.hours / maxHours) * 100) }));
   }, [team, timeTotals]);
 
+  const tabBar = (
+    <div className="flex gap-1.5 flex-wrap">
+      {TABS.map((t) => (
+        <button
+          key={t.id}
+          onClick={() => setTab(t.id)}
+          className="rounded-lg px-3 py-1.5 text-xs border"
+          style={{ background: tab === t.id ? "#0A5A46" : "#fff", color: tab === t.id ? "#fff" : "#16261F", borderColor: tab === t.id ? "#0A5A46" : "#E1E7E4" }}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (tab !== "overview") {
+    const periodLabel = `last ${monthCount} months`;
+    return (
+      <div className="flex flex-col gap-3">
+        {tabBar}
+        <div className="flex items-center gap-2 flex-wrap">
+          <select
+            value={monthCount}
+            onChange={(e) => setMonthCount(Number(e.target.value))}
+            className="rounded-lg px-2 py-1.5 text-xs bg-white border border-brand-border"
+          >
+            <option value={3}>Period: last 3 months</option>
+            <option value={6}>Period: last 6 months</option>
+            <option value={12}>Period: last 12 months</option>
+          </select>
+          <MultiSelectFilter
+            allLabel="All Projects" pluralNoun="projects" width={260}
+            options={projects.map((p) => ({ value: p.id, label: p.name }))}
+            selected={insightProjectIds}
+            onChange={setInsightProjectIds}
+          />
+          <button
+            onClick={async () => { if (!insights) return; setExporting(true); try { await exportInsightsToExcel(insights, periodLabel); } finally { setExporting(false); } }}
+            disabled={!insights || !insightsRaw || exporting}
+            className="sm:ml-auto flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs bg-white border border-brand-border text-brand-text disabled:opacity-60"
+            title="All nine reports, with the formulas behind every total, average and percentage"
+          >
+            {exporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} Export to Excel (with formulas)
+          </button>
+        </div>
+        {!insights || !insightsRaw ? (
+          <div className="text-xs text-brand-sub py-6 text-center">Loading…</div>
+        ) : (
+          <InsightsReports tab={tab} data={insights} />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
+      {tabBar}
       <div>
         <div className="text-xs font-bold text-brand-sub uppercase tracking-wide mb-2">Overview</div>
         <div className="flex gap-2 flex-wrap">

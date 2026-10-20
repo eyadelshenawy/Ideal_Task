@@ -1039,7 +1039,7 @@ export default function Dashboard({ userId, userName, isSuperAdmin, administered
       <div className="px-3 sm:px-4 py-2 sm:py-3">
         <PushPermissionBanner />
         {view === "reports" ? (
-          <ReportsView tasks={taskList} projects={projectList} team={teamList} isSuperAdmin={isSuperAdmin} currentUserId={userId} onOpenTask={openTaskById} />
+          <ReportsView tasks={taskList} projects={projectList} team={teamList} categories={categoryList} isSuperAdmin={isSuperAdmin} currentUserId={userId} onOpenTask={openTaskById} />
         ) : view === "attention" ? (
           <NeedsAttentionView
             tasks={taskList}
