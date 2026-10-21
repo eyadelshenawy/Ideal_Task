@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Bigger Description box",
+    description: "The Description box in the task form now starts at four lines and grows as you type, up to about twelve lines, then scrolls. There's still no limit on how much you can write.",
+  },
+  {
     title: "Clearer New Task form and a shorter What's New",
     description: "The New Task form no longer shows a Code box — the code is assigned when you save (a Super Admin can still change it afterwards under More options). The status and progress bar now appears once a task is saved, since a new task always starts as New, 0%. The Description box no longer says \"Optional details\", because a description is required. What's New shows the latest 5 updates; click Show older for the rest.",
   },
