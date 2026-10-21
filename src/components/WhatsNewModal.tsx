@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Task window no longer jumps between tabs",
+    description: "An open task now keeps the same height whichever tab you pick — Details, Checklist, Time, Files or Comments — so the window stays in place instead of shrinking and moving.",
+  },
+  {
     title: "Bigger Description box",
     description: "The Description box in the task form now starts at four lines and grows as you type, up to about twelve lines, then scrolls. There's still no limit on how much you can write.",
   },
