@@ -134,6 +134,14 @@ export default function TaskModal({
   const [newTagText, setNewTagText] = useState("");
   // Existing tasks open on a tabbed layout; a new task only has Details.
   const [tab, setTab] = useState<"details" | "checklist" | "time" | "files" | "comments">("details");
+  // Description starts at 4 lines and grows with the text up to ~12 lines, then scrolls.
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = descriptionRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    if (el.scrollHeight > 0) el.style.height = `${Math.min(el.scrollHeight + 2, 260)}px`;
+  }, [draft.description, tab]);
   const [moreOpen, setMoreOpen] = useState(false);
   const [matrixOpen, setMatrixOpen] = useState(false);
   const [slaOpen, setSlaOpen] = useState(false);
@@ -421,11 +429,12 @@ export default function TaskModal({
             <div>
               <label className="text-xs font-semibold text-brand-sub">Description *</label>
               <textarea
+                ref={descriptionRef}
                 value={draft.description}
                 onChange={(e) => setDraft({ ...draft, description: e.target.value })}
-                rows={2}
+                rows={4}
                 placeholder="What's needed?"
-                className="w-full mt-1 rounded-lg border border-brand-border px-3 py-2 text-sm outline-none resize-none"
+                className="w-full mt-1 rounded-lg border border-brand-border px-3 py-2 text-sm outline-none resize-none overflow-y-auto"
               />
             </div>
 
