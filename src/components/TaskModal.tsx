@@ -336,24 +336,20 @@ export default function TaskModal({
     </div>
   );
 
-  // Only a Super Admin types a code; for everyone else it's shown greyed out
-  // and the server assigns the next number on save.
+  // The server assigns the code on save; only a Super Admin can change it
+  // afterwards (under More options), everyone else sees it greyed out.
   const codeField = (
-    <div className={draft.id ? "" : "w-full sm:w-[110px] sm:flex-shrink-0"}>
-      <label className="text-xs font-semibold text-brand-sub">Code{isSuperAdmin ? " *" : ""}</label>
+    <div>
+      <label className="text-xs font-semibold text-brand-sub">Code</label>
       <input
         value={draft.code}
         onChange={(e) => setDraft({ ...draft, code: e.target.value })}
         readOnly={!isSuperAdmin}
-        placeholder={isSuperAdmin ? "e.g. APEX-0001" : "Set on save"}
-        title={isSuperAdmin ? undefined : draft.id ? "Only a Super Admin can change the code" : "Assigned automatically when you save"}
+        placeholder="e.g. APEX-0001"
+        title={isSuperAdmin ? undefined : "Only a Super Admin can change the code"}
         className={`${field} font-mono ${isSuperAdmin ? "" : "bg-brand-bg text-brand-sub cursor-not-allowed"}`}
       />
-      {!isSuperAdmin && (
-        <div className="text-[10.5px] text-brand-sub mt-1">
-          {draft.id ? "Only a Super Admin can change the code." : "Assigned on save."}
-        </div>
-      )}
+      {!isSuperAdmin && <div className="text-[10.5px] text-brand-sub mt-1">Only a Super Admin can change the code.</div>}
     </div>
   );
 
@@ -403,12 +399,15 @@ export default function TaskModal({
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {statusStrip}
+            {/* A new task always starts as New, 0% — status and progress appear once it's saved. */}
+            {draft.id && statusStrip}
 
             <div className="flex flex-col sm:flex-row gap-2">
-              {!draft.id && codeField}
               <div className="flex-1">
-                <label className="text-xs font-semibold text-brand-sub">Title *</label>
+                <label className="text-xs font-semibold text-brand-sub flex justify-between">
+                  Title *
+                  {!draft.id && <span className="font-normal">Code assigned on save</span>}
+                </label>
                 <input
                   value={draft.title}
                   onChange={(e) => setDraft({ ...draft, title: e.target.value })}
@@ -425,7 +424,7 @@ export default function TaskModal({
                 value={draft.description}
                 onChange={(e) => setDraft({ ...draft, description: e.target.value })}
                 rows={2}
-                placeholder="Optional details"
+                placeholder="What's needed?"
                 className="w-full mt-1 rounded-lg border border-brand-border px-3 py-2 text-sm outline-none resize-none"
               />
             </div>

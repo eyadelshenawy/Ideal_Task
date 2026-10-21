@@ -1,10 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { X, Sparkles } from "lucide-react";
 
 // Newest first. Add one entry here whenever a user-facing feature ships —
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
+  {
+    title: "Clearer New Task form and a shorter What's New",
+    description: "The New Task form no longer shows a Code box — the code is assigned when you save (a Super Admin can still change it afterwards under More options). The status and progress bar now appears once a task is saved, since a new task always starts as New, 0%. The Description box no longer says \"Optional details\", because a description is required. What's New shows the latest 5 updates; click Show older for the rest.",
+  },
   {
     title: "Reports and schedules follow the Work calendar",
     description: "In Reports, average resolution time and the age of open tickets are now counted in working days, like overdue — weekends and holidays don't count (response time stays in calendar hours). The Excel export headings say so too. The SLA warning check now skips any non-working day in Settings → Work calendar, including holidays, and the weekly summary email goes out on the first working day of the week — Sunday, or the next working day if Sunday is a holiday.",
@@ -175,7 +180,12 @@ const ENTRIES: { title: string; description: string }[] = [
   },
 ];
 
+// Only the latest few show at first; "Show older" reveals the rest.
+const RECENT = 5;
+
 export default function WhatsNewModal({ onClose }: { onClose: () => void }) {
+  const [showAll, setShowAll] = useState(false);
+  const shown = showAll ? ENTRIES : ENTRIES.slice(0, RECENT);
   return (
     <div className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(20,30,26,0.45)" }}>
       <div className="bg-white rounded-none sm:rounded-2xl w-full max-w-none sm:max-w-[480px] h-full sm:h-auto max-h-none sm:max-h-[85vh] overflow-y-auto p-4 sm:p-5">
@@ -186,13 +196,18 @@ export default function WhatsNewModal({ onClose }: { onClose: () => void }) {
           <button onClick={onClose} className="text-brand-sub"><X size={18} /></button>
         </div>
         <div className="flex flex-col gap-3">
-          {ENTRIES.map((e, i) => (
+          {shown.map((e, i) => (
             <div key={i} className="border-b border-brand-border pb-3 last:border-0 last:pb-0">
               <div className="text-[13px] font-semibold text-brand-text mb-0.5">{e.title}</div>
               <div className="text-[12px] text-brand-sub leading-relaxed">{e.description}</div>
             </div>
           ))}
         </div>
+        {!showAll && ENTRIES.length > RECENT && (
+          <button onClick={() => setShowAll(true)} className="mt-3 w-full rounded-lg border border-brand-border py-2 text-xs font-semibold text-brand-dark">
+            Show older ({ENTRIES.length - RECENT})
+          </button>
+        )}
       </div>
     </div>
   );
