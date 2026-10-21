@@ -363,7 +363,8 @@ export default function TaskModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(20,30,26,0.45)" }}>
-      <div className="bg-white rounded-none sm:rounded-2xl w-full max-w-none sm:max-w-[460px] h-full sm:h-auto max-h-none sm:max-h-[90vh] flex flex-col">
+      {/* An open task keeps one fixed height, so switching tabs doesn't make the window jump. */}
+      <div className={`bg-white rounded-none sm:rounded-2xl w-full max-w-none sm:max-w-[460px] h-full ${draft.id ? "sm:h-[90vh]" : "sm:h-auto"} max-h-none sm:max-h-[90vh] flex flex-col`}>
         <div className={`px-5 pt-5 flex-shrink-0 border-b border-brand-border ${draft.id ? "" : "pb-4"}`}>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
