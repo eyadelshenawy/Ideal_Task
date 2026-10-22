@@ -417,6 +417,10 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
     const d = blankDraft();
     d.projectId = parent.projectId ?? "";
     d.parentId = parent.id;
+    // Starts with the main task's dates; narrow them as needed.
+    d.startDate = parent.startDate ?? "";
+    d.dueDate = parent.dueDate ?? "";
+    d.durationDays = parent.durationDays !== null ? String(parent.durationDays) : "";
     if (parent.code) {
       d.code = `${parent.code}-${String(parent.childCodeSeq + 1).padStart(2, "0")}`;
     }

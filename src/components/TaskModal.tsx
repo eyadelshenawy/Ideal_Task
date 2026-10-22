@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X, ChevronRight, ChevronDown } from "lucide-react";
 import type { Task, Project, TeamMember, Contact, Priority, Status, RecurrenceFreq, TicketType, MatrixLevel, Category } from "@/types/models";
-import { PRIORITIES, STATUSES, descendantIds, splitModules } from "@/lib/taskHelpers";
+import { PRIORITIES, STATUSES, descendantIds, splitModules, formatDateDisplay } from "@/lib/taskHelpers";
 import { TICKET_TYPES, MATRIX_LEVELS, priorityFromMatrix } from "@/lib/ticketMeta";
 import { MODULE_OPTIONS } from "@/lib/listConfig";
 import type { TaskSla } from "@/lib/taskSla";
@@ -262,9 +262,16 @@ export default function TaskModal({
     // Same "soft suggestion, never overwrite a manual edit" rule as the
     // project-code suggestion below — only fills in a still-blank Code.
     const suggestCode = !draft.id && !draft.code.trim() && parent?.code;
+    // A new subtask with no dates yet starts with its main task's dates.
+    const suggestDates = !draft.id && !draft.startDate && !draft.dueDate && parent && (parent.startDate || parent.dueDate);
     setDraft({
       ...draft,
       parentId,
+      ...(suggestDates ? {
+        startDate: parent!.startDate ?? "",
+        dueDate: parent!.dueDate ?? "",
+        durationDays: parent!.durationDays !== null ? String(parent!.durationDays) : "",
+      } : {}),
       ...(suggestCode ? { code: `${parent!.code}-${String(parent!.childCodeSeq + 1).padStart(2, "0")}` } : {}),
     });
   }
@@ -701,6 +708,19 @@ export default function TaskModal({
                 Fill any two of Start / Duration / Due — the third is computed on save (skips weekends and holidays set in Work Calendar).
               </div>
             )}
+            {(() => {
+              // A subtask outside its main task's dates widens the main task on save.
+              const parent = draft.parentId ? allTasks.find((t) => t.id === draft.parentId) : undefined;
+              if (!parent) return null;
+              const start = draft.startDate && parent.startDate && draft.startDate < parent.startDate ? draft.startDate : parent.startDate;
+              const due = draft.dueDate && parent.dueDate && draft.dueDate > parent.dueDate ? draft.dueDate : parent.dueDate;
+              if (start === parent.startDate && due === parent.dueDate) return null;
+              return (
+                <div className="text-[11px] -mt-1 rounded-lg px-2.5 py-1.5" style={{ background: "#FDF3E6", color: "#8A5A1A" }}>
+                  Main task {parent.code ?? parent.title} will extend to {formatDateDisplay(start)} – {formatDateDisplay(due)}.
+                </div>
+              );
+            })()}
             {(() => {
               // Live dependency-conflict banner: reflects the draft, not the
               // saved task, so escalating a start date shows/hides the warning

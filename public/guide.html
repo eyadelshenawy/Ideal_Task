@@ -403,6 +403,14 @@
       This is entirely optional — most tasks have no parent and no subtasks at all. Use it only where a task genuinely breaks down into a real sequence of sub-work.
     </div>
 
+    <h3>Main task and subtask dates always agree</h3>
+    <p>One rule keeps them in step: <strong>the main task's dates always cover all its subtasks</strong> — <code>Main start ≤ earliest subtask start</code> and <code>Main due ≥ latest subtask due</code>. You can work either way:</p>
+    <ul>
+      <li><strong>Main task first</strong> — a new subtask opens with the main task's dates already filled in; narrow them as needed.</li>
+      <li><strong>Subtasks first</strong> — the main task widens on its own to cover them. If a subtask goes outside the main task's dates, the form says so (e.g. "Main task will extend to …") and the main task widens when you save.</li>
+      <li>The main task never shrinks on its own. Shrinking it by hand so a subtask falls outside is refused with a message showing the subtasks' dates — move those subtasks first. In a bulk edit, such a main task is left unchanged.</li>
+    </ul>
+
     <h3>The parent auto-completes — and reopens</h3>
     <p>Once every subtask under a parent is marked <em>Done</em>, the parent is automatically marked Done too (progress jumps to 100%). Reopen any one of those subtasks afterward, and the parent automatically reverts to <em>In Progress</em>, with its progress recalculated from however many subtasks are still done. You never have to remember to close out the parent yourself. A recurring subtask's next occurrence stays under the same parent, with a fresh code of its own.</p>
 

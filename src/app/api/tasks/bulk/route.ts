@@ -8,7 +8,7 @@ import { logActivity, describeTaskChanges, loadNameLookups } from "@/lib/activit
 import { checkCategoryPair } from "@/lib/categories";
 import { createNextOccurrence } from "@/lib/recurrence";
 import { maybeSendSurvey } from "@/lib/csat";
-import { getDescendantIds, syncAncestorChain } from "@/lib/taskHierarchy";
+import { getDescendantIds, syncAncestorChain, childDateSpan, uncoveredSpanError } from "@/lib/taskHierarchy";
 import { resolveTags } from "@/lib/tags";
 import { dateStrToUTC } from "@/lib/serverDates";
 import { loadSchedulingCalendar, resolveTaskDates, toDateOnly } from "@/lib/scheduling";
@@ -133,6 +133,11 @@ export async function PATCH(req: NextRequest) {
         cal,
         dueDate !== undefined,
       );
+      // A main task's dates must keep covering its subtasks — skip it otherwise.
+      if (uncoveredSpanError(await childDateSpan(prisma, task.id), resolved.startDate, resolved.dueDate)) {
+        skipped.push(task.id);
+        continue;
+      }
       bulkDateData = {
         startDate: dateStrToUTC(resolved.startDate),
         dueDate: dateStrToUTC(resolved.dueDate),

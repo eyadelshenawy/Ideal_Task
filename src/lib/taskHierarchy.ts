@@ -58,16 +58,13 @@ export async function wouldCreateHierarchyCycle(db: Db, taskId: string, candidat
 /**
  * Re-derives a single parent's status AND date range from its (non-deleted)
  * children: status goes DONE when every child is DONE (reverts to INPROGRESS
- * otherwise), and startDate / dueDate / durationDays are rolled up from the
- * earliest child start to the latest child due, with duration recomputed as
- * working days across that span using the org calendar. Returns whether the
- * parent's stored row actually changed — the ancestor loop uses that to stop
- * when nothing propagates further up.
- *
- * Rollup is authoritative for any parent that has children: manually editing
- * a parent's dates works, but the next time a child moves the parent snaps
- * back to the computed span. This is intentional — the parent's dates aren't
- * a fact of their own, they're a summary of the children.
+ * otherwise), and startDate / dueDate / durationDays only ever widen so the
+ * parent covers every child: start = earlier of its own start and the earliest
+ * child start, due = later of its own due and the latest child due, duration
+ * recomputed as working days across that span. A parent never shrinks on its
+ * own; shrinking it by hand below its children is refused (see childDateSpan).
+ * Returns whether the parent's stored row actually changed — the ancestor loop
+ * uses that to stop when nothing propagates further up.
  */
 async function recomputeOneLevel(db: Db, parentId: string): Promise<boolean> {
   const [parent, siblings] = await Promise.all([
@@ -103,11 +100,10 @@ async function recomputeOneLevel(db: Db, parentId: string): Promise<boolean> {
     patch.progress = siblings.length > 0 ? Math.round((doneCount / siblings.length) * 100) : 0;
   }
 
-  // Date rollup: earliest start across children, latest due. Only compute
-  // when there IS at least one child with a date — a parent whose children
-  // all lack dates keeps whatever it had (nothing to summarize).
-  const childStarts = siblings.map((s) => s.startDate).filter((d): d is Date => !!d);
-  const childDues = siblings.map((s) => s.dueDate).filter((d): d is Date => !!d);
+  // Date rollup: widen only — the parent's own dates count alongside its
+  // children's, so it grows to cover them but never shrinks on its own.
+  const childStarts = [parent.startDate, ...siblings.map((s) => s.startDate)].filter((d): d is Date => !!d);
+  const childDues = [parent.dueDate, ...siblings.map((s) => s.dueDate)].filter((d): d is Date => !!d);
   if (childStarts.length > 0 || childDues.length > 0) {
     const nextStart = childStarts.length > 0 ? new Date(Math.min(...childStarts.map((d) => d.getTime()))) : null;
     const nextDue = childDues.length > 0 ? new Date(Math.max(...childDues.map((d) => d.getTime()))) : null;
@@ -130,6 +126,27 @@ async function recomputeOneLevel(db: Db, parentId: string): Promise<boolean> {
   if (Object.keys(patch).length === 0) return false;
   await db.task.update({ where: { id: parentId }, data: patch });
   return true;
+}
+
+/**
+ * Earliest start and latest due across a task's (non-deleted) subtasks, as
+ * "YYYY-MM-DD" — the span its own dates must keep covering.
+ */
+export async function childDateSpan(db: Db, parentId: string): Promise<{ start: string | null; due: string | null }> {
+  const children = await db.task.findMany({ where: { parentId, deletedAt: null }, select: { startDate: true, dueDate: true } });
+  const day = (d: Date) => d.toISOString().slice(0, 10);
+  const starts = children.map((c) => c.startDate).filter((d): d is Date => !!d).map(day).sort();
+  const dues = children.map((c) => c.dueDate).filter((d): d is Date => !!d).map(day).sort();
+  return { start: starts[0] ?? null, due: dues[dues.length - 1] ?? null };
+}
+
+/** The message when new dates for a main task would no longer cover its subtasks, or null if they do. */
+export function uncoveredSpanError(span: { start: string | null; due: string | null }, start: string | null, due: string | null): string | null {
+  const fmt = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
+  const tooLate = !!(span.start && start && start > span.start);
+  const tooEarly = !!(span.due && due && due < span.due);
+  if (!tooLate && !tooEarly) return null;
+  return `Subtasks run from ${fmt(span.start ?? start!)} to ${fmt(span.due ?? due!)} — the main task's dates must cover them`;
 }
 
 /**

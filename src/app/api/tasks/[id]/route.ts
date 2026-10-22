@@ -14,7 +14,7 @@ import { createNextOccurrence } from "@/lib/recurrence";
 import { resolveTags } from "@/lib/tags";
 import { codeMatchesProject } from "@/lib/taskCode";
 import { wouldCreateCycle } from "@/lib/taskDependencies";
-import { codeMatchesParent, wouldCreateHierarchyCycle, syncAncestorChain, getDescendantIds } from "@/lib/taskHierarchy";
+import { codeMatchesParent, wouldCreateHierarchyCycle, syncAncestorChain, getDescendantIds, childDateSpan, uncoveredSpanError } from "@/lib/taskHierarchy";
 import { loadSchedulingCalendar, resolveTaskDates, toDateOnly } from "@/lib/scheduling";
 
 export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
@@ -226,6 +226,9 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
       cal,
       data.dueDate !== undefined,
     );
+    // A main task's dates must keep covering its subtasks.
+    const spanError = uncoveredSpanError(await childDateSpan(prisma, params.id), resolvedDates.startDate, resolvedDates.dueDate);
+    if (spanError) return NextResponse.json({ error: spanError }, { status: 400 });
   }
 
   // Auto-track actual completion date: stamped the moment a task first
