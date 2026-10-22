@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Needs attention follows your filters",
+    description: "The Needs attention button in List now uses the same filters as the list — pick a project (or an assignee, type, search…) and its count and lists show only that project's overdue and due-soon high-priority tasks. Before, it always showed every project.",
+  },
+  {
     title: "Task window no longer jumps between tabs",
     description: "An open task now keeps the same height whichever tab you pick — Details, Checklist, Time, Files or Comments — so the window stays in place instead of shrinking and moving.",
   },

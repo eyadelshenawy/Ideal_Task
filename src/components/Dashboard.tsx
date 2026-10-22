@@ -275,8 +275,6 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
   const canCreateAnywhere = isSuperAdmin || administeredProjectIds.length > 0;
   const closeSettings = () => setSettingsSection(null);
   const workDays = useWorkDays();
-  const attention = needsAttention(taskList, todayStr(), workDays);
-  const attentionCount = attention.overdue.length + attention.dueSoonHighPriority.length;
   // Same visibility rules the ⋯ menu used for each screen.
   const settingsItems: SettingsItem[] = [
     ...(isSuperAdmin ? [{ id: "team", label: "Team", group: "People" } as const] : []),
@@ -347,6 +345,10 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
     if (filters.milestonesOnly && !t.isMilestone) return false;
     return true;
   }), [statsBase, filters.overdueOnly, filters.milestonesOnly, filters.statusIds, hideDone, today, workDays]);
+
+  // Needs attention follows the same filters as the list (project, assignee, search…).
+  const attention = needsAttention(filteredTasks, today, workDays);
+  const attentionCount = attention.overdue.length + attention.dueSoonHighPriority.length;
 
   // Modules from Lists, plus hidden ones still used on a task so old tickets
   // can still be filtered.
@@ -1371,7 +1373,7 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
 
         {view === "list" && attentionOnly && (
           <NeedsAttentionView
-            tasks={taskList}
+            tasks={filteredTasks}
             projectList={projectList}
             allTasks={taskList}
             canManage={canManage}
