@@ -440,7 +440,9 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
       if (!draft.description.trim()) return setFormError("Description is required");
       if (!draft.projectId) return setFormError("Project is required");
       if (draft.assignees.length === 0) return setFormError("At least one assignee is required");
-      if (!draft.dueDate) return setFormError(draft.isMilestone ? "Date is required" : "Due date is required");
+      // Start + Duration is enough: Due is computed on save.
+      const dueFromDuration = !draft.isMilestone && !!draft.startDate && !!draft.durationDays.trim();
+      if (!draft.dueDate && !dueFromDuration) return setFormError(draft.isMilestone ? "Date is required" : "Due date or Duration is required");
       if (!draft.isMilestone && !draft.startDate) return setFormError("Start date is required");
     }
     if (fullEdit && isSuperAdmin && draft.projectId && draft.code.trim()) {
@@ -483,6 +485,7 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
           projectId: draft.projectId || null, assignees: draft.assignees,
           priority: draft.priority, status: draft.status, ...ticketFields,
           startDate: draft.startDate || null, dueDate: draft.dueDate || null,
+          durationDays: draft.durationDays.trim() ? Number(draft.durationDays) : null,
           ...(draft.status === "DONE" && draft.completedAt ? { completedAt: draft.completedAt } : {}),
           progress: draft.progress, isMilestone: draft.isMilestone, dependsOn: draft.dependsOn,
           recurrenceFreq: draft.recurrenceFreq || null, recurrenceEndDate: draft.recurrenceEndDate || null,

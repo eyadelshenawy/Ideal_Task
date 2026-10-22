@@ -60,8 +60,10 @@ export const taskCreateSchema = taskFields
     priority: z.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW"], { required_error: "Priority is required" }),
   })
   .superRefine((data, ctx) => {
-    if (!data.dueDate) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: data.isMilestone ? "Date is required" : "Due date is required", path: ["dueDate"] });
+    // Start + Duration is enough: the server computes Due from them (working days).
+    const dueFromDuration = !data.isMilestone && !!data.startDate && !!data.durationDays;
+    if (!data.dueDate && !dueFromDuration) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: data.isMilestone ? "Date is required" : "Due date or Duration is required", path: ["dueDate"] });
     }
     if (!data.isMilestone && !data.startDate) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Start date is required", path: ["startDate"] });
