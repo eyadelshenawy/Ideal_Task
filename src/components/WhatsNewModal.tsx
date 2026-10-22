@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Main task and subtask dates always agree",
+    description: "A main task's dates now always cover its subtasks. A new subtask opens with the main task's dates filled in. If a subtask goes outside them, the form tells you and the main task widens on save. A main task no longer shrinks on its own when you add a subtask, and you can't shrink it by hand so that a subtask falls outside — you'll see the subtasks' dates instead.",
+  },
+  {
     title: "Needs attention follows your filters",
     description: "The Needs attention button in List now uses the same filters as the list — pick a project (or an assignee, type, search…) and its count and lists show only that project's overdue and due-soon high-priority tasks. Before, it always showed every project.",
   },
