@@ -693,7 +693,7 @@ export default function TaskModal({
               )}
               <div>
                 <label className="text-xs font-semibold text-brand-sub">
-                  {draft.isMilestone ? "Milestone Date *" : "Due Date *"}
+                  {draft.isMilestone ? "Milestone Date *" : "Due Date"}
                 </label>
                 <input
                   type="date"
