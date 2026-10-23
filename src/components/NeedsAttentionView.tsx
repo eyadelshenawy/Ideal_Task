@@ -2,10 +2,11 @@
 
 import { useMemo } from "react";
 import type { Task, Project, AssigneeDisplay, Status } from "@/types/models";
-import { todayStr, sortTasks } from "@/lib/taskHelpers";
+import { todayStr, sortTasks, projectColourOf } from "@/lib/taskHelpers";
 import { isOverdue, workDaysAfter, type WorkDays } from "@/lib/workdays";
 import { useWorkDays } from "@/lib/useWorkDays";
 import TaskListRow from "./TaskListRow";
+import EmptyState from "./ui/EmptyState";
 
 interface NeedsAttentionViewProps {
   tasks: Task[];
@@ -47,6 +48,7 @@ export default function NeedsAttentionView({
         task={task}
         assignees={getAssigneeDisplays(task)}
         project={projectList.find((p) => p.id === task.projectId)}
+        projectColour={projectColourOf(projectList, task.projectId)}
         allTasks={allTasks}
         canManage={canManage(task)}
         onEdit={onEdit}
@@ -58,7 +60,7 @@ export default function NeedsAttentionView({
   }
 
   if (overdue.length === 0 && dueSoonHighPriority.length === 0) {
-    return <div className="text-center text-brand-sub text-sm py-10">Nothing needs attention right now</div>;
+    return <EmptyState title="All clear — nothing overdue" hint="Nothing due soon at high priority either." />;
   }
 
   return (

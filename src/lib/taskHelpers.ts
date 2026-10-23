@@ -27,6 +27,15 @@ export const PALETTE = [
   "#C4443D", "#3D6EA6", "#B08D3E", "#707A75", "#8A5A9E",
 ];
 
+// One colour per project, picked by its position in the project list. Kept
+// away from the red/amber used for overdue and SLA so the dot never reads as a warning.
+export const PROJECT_COLOURS = ["#3D6EA6", "#8A5A9E", "#C08A2E", "#3E8C8C", "#B5639B", "#6B7F3A", "#5B6B8C", "#9C6B4E"];
+
+export function projectColourOf(projects: { id: string }[], projectId: string | null): string | undefined {
+  const i = projectId ? projects.findIndex((p) => p.id === projectId) : -1;
+  return i >= 0 ? PROJECT_COLOURS[i % PROJECT_COLOURS.length] : undefined;
+}
+
 export function colorForIndex(i: number): string {
   return PALETTE[i % PALETTE.length];
 }

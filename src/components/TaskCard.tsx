@@ -36,11 +36,13 @@ interface TaskCardProps {
   sla?: TaskSla | null;
   /** "Category › Subcategory" label, if set. */
   categoryName?: string | null;
+  /** Colour dot shown before the code, one per project. */
+  projectColour?: string;
 }
 
 export default function TaskCard({
   task, assignees, project, allTasks, canManage, onEdit, onDelete, onMove, onDuplicate,
-  selectMode, selected, onToggleSelect, draggable, onDragStart, dependencyWarning, sla, categoryName,
+  selectMode, selected, onToggleSelect, draggable, onDragStart, dependencyWarning, sla, categoryName, projectColour,
 }: TaskCardProps) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingDuplicate, setConfirmingDuplicate] = useState(false);
@@ -81,6 +83,7 @@ export default function TaskCard({
             />
           )}
           {task.isMilestone && <Diamond size={12} className="text-brand-dark flex-shrink-0" />}
+          {projectColour && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: projectColour }} title={project?.name} />}
           {task.code && <span className="font-mono text-[11px] text-brand-sub truncate">{task.code}</span>}
         </div>
         {!selectMode && (
