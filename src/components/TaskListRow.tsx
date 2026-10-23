@@ -38,13 +38,15 @@ interface TaskListRowProps {
   sla?: TaskSla | null;
   /** "Category › Subcategory" label, if set. */
   categoryName?: string | null;
+  /** Colour dot shown before the code, one per project. */
+  projectColour?: string;
 }
 
 export default function TaskListRow({
   task, assignees, project, allTasks, canManage, onEdit, onDelete, onDuplicate, onChangeStatus,
   selectMode, selected, onToggleSelect,
   depth = 0, hasChildren = false, collapsed = false, onToggleCollapse, doneChildCount = 0, totalChildCount = 0,
-  density = "comfortable", dependencyWarning, sla, categoryName,
+  density = "comfortable", dependencyWarning, sla, categoryName, projectColour,
 }: TaskListRowProps) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingDuplicate, setConfirmingDuplicate] = useState(false);
@@ -93,6 +95,7 @@ export default function TaskListRow({
           )}
           <div className="flex-shrink-0 sm:w-[46px]"><AvatarStack assignees={assignees} /></div>
           {task.isMilestone && <Diamond size={12} className="text-brand-dark flex-shrink-0" />}
+          {projectColour && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: projectColour }} title={project?.name} />}
           {task.code && <span className="font-mono text-[11px] text-brand-sub flex-shrink-0 sm:min-w-[92px]">{task.code}</span>}
           <span className="flex-shrink-0 sm:w-[36px]"><TicketTypeChip type={task.type} /></span>
           <span className="font-semibold text-[13.5px] text-brand-text sm:truncate sm:flex-shrink-0 sm:max-w-[45%]" title={task.title}>{task.title}</span>

@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "A friendlier board: your day, Undo, project colours",
+    description: "A greeting strip at the top shows your own overdue, due-today and in-progress tasks — click a number to see them. Changing a status or moving a task to Trash now shows a short note at the bottom with Undo for 5 seconds, and a green tick when a task is Done. Each project has its own colour dot on cards, rows and the Projects filter. Empty lists show a friendly message. And when the list is filtered to one project, New Task starts in that project.",
+  },
+  {
     title: "Start + Duration is enough for a new task",
     description: "Creating a task no longer stops with \"Due date is required\" when you've given a Start Date and a Duration (for example the one an SLA project fills in from the priority). The Due Date is worked out on save from the working days, as it already was when editing.",
   },

@@ -6,7 +6,7 @@ import useSWR from "swr";
 import type { Task, Project, TeamMember, Contact, Status, AssigneeDisplay, Category, ListConfig } from "@/types/models";
 import type { ImportPreview } from "@/types/import";
 import {
-  colorForIndex, STATUSES, PRIORITIES, todayStr, sortTasks, toTreeRows, splitModules, isDueThisWeek, initials,
+  colorForIndex, projectColourOf, STATUSES, PRIORITIES, todayStr, sortTasks, toTreeRows, splitModules, isDueThisWeek, initials,
   groupTaskRows, countGroupUnits, GROUP_FIELD_LABELS, type SortBy, type GroupField, type GroupNode, type TaskTreeRow,
 } from "@/lib/taskHelpers";
 import { computeDependencyWarnings, describeDependencyWarning } from "@/lib/dependencyWarnings";
@@ -15,6 +15,8 @@ import TaskCard from "./TaskCard";
 import TaskListRow from "./TaskListRow";
 import GanttView from "./GanttView";
 import TaskModal, { blankDraft, draftFromTask, type TaskDraft } from "./TaskModal";
+import EmptyState from "./ui/EmptyState";
+import UndoToast, { type ToastState } from "./ui/UndoToast";
 import TeamModal from "./TeamModal";
 import ProjectsModal from "./ProjectsModal";
 import ContactsModal from "./ContactsModal";
@@ -83,6 +85,8 @@ interface Filters {
   overdueOnly: boolean;
   milestonesOnly: boolean;
   dueThisWeek: boolean;
+  /** Set from the greeting strip's "due today" chip. */
+  dueToday?: boolean;
 }
 
 const defaultFilters: Filters = {
@@ -342,9 +346,21 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
       if (!filters.statusIds.includes(t.status)) return false;
     } else if (hideDone && t.status === "DONE") return false;
     if (filters.overdueOnly && !isOverdue(t, today, workDays)) return false;
+    if (filters.dueToday && !(t.dueDate === today && t.status !== "DONE")) return false;
     if (filters.milestonesOnly && !t.isMilestone) return false;
     return true;
-  }), [statsBase, filters.overdueOnly, filters.milestonesOnly, filters.statusIds, hideDone, today, workDays]);
+  }), [statsBase, filters.overdueOnly, filters.dueToday, filters.milestonesOnly, filters.statusIds, hideDone, today, workDays]);
+
+  // Greeting strip: the signed-in person's own open work.
+  const mine = taskList.filter((t) => t.assigneeIds.includes(userId) && t.status !== "DONE");
+  const myDay = {
+    overdue: mine.filter((t) => isOverdue(t, today, workDays)).length,
+    dueToday: mine.filter((t) => t.dueDate === today).length,
+    inProgress: mine.filter((t) => t.status === "INPROGRESS").length,
+  };
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const onlyMe = (f: Filters): Filters => ({ ...f, assigneeIds: [userId], statusIds: [], overdueOnly: false, dueToday: false, milestonesOnly: false });
 
   // Needs attention follows the same filters as the list (project, assignee, search…).
   const attention = needsAttention(filteredTasks, today, workDays);
@@ -389,7 +405,10 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
 
   function openNew() {
     const d = blankDraft();
-    if (!isSuperAdmin && administeredProjectIds.length > 0) {
+    if (filters.projectIds.length === 1) {
+      // Working inside one project (filtered to it) — start the new task there.
+      d.projectId = filters.projectIds[0];
+    } else if (!isSuperAdmin && administeredProjectIds.length > 0) {
       d.projectId = administeredProjectIds[0];
     }
     setDraft(d);
@@ -502,6 +521,30 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
   async function deleteTask(id: string) {
     await api.deleteTask(id);
     await mutateTasks();
+    showToast({
+      text: "Moved to Trash",
+      onUndo: async () => { await fetch(`/api/tasks/${id}/restore`, { method: "POST" }); await mutateTasks(); },
+    });
+  }
+
+  // Bottom-of-screen note after a status change or delete, with Undo for 5 seconds.
+  const [toast, setToast] = useState<ToastState | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function showToast(t: Omit<ToastState, "id">) {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast({ ...t, id: Date.now() });
+    toastTimer.current = setTimeout(() => setToast(null), 5000);
+  }
+
+  async function changeStatus(task: Task, next: Status) {
+    const before = { status: task.status, progress: task.progress };
+    await api.updateTask(task.id, { status: next, progress: next === "DONE" ? 100 : task.progress });
+    await mutateTasks();
+    showToast({
+      text: `${task.code ?? task.title} moved to ${STATUSES.find((s) => s.id === next)?.label ?? next}`,
+      done: next === "DONE",
+      onUndo: async () => { await api.updateTask(task.id, before); await mutateTasks(); },
+    });
   }
 
   async function duplicateTask(id: string, projectId?: string) {
@@ -539,15 +582,13 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
     const idx = order.indexOf(task.status);
     const next = order[idx + dir];
     if (!next) return;
-    await api.updateTask(task.id, { status: next, progress: next === "DONE" ? 100 : task.progress });
-    await mutateTasks();
+    await changeStatus(task, next);
   }
 
   async function moveTaskToStatus(taskId: string, statusId: Status) {
     const task = taskList.find((t) => t.id === taskId);
     if (!task || task.status === statusId) return;
-    await api.updateTask(task.id, { status: statusId, progress: statusId === "DONE" ? 100 : task.progress });
-    await mutateTasks();
+    await changeStatus(task, statusId);
   }
 
   async function createContact(name: string, projectId?: string | null): Promise<Contact | null> {
@@ -733,6 +774,7 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
         task={task}
         assignees={getAssigneeDisplays(task)}
         project={projectList.find((p) => p.id === task.projectId)}
+        projectColour={projectColourOf(projectList, task.projectId)}
         allTasks={taskList}
         canManage={canManage(task)}
         onEdit={openEdit}
@@ -1007,10 +1049,35 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
           <PersonalTasksView currentUserId={userId} />
         ) : (
         <>
+        <div className="flex flex-wrap items-center gap-2 mb-2 sm:mb-3 bg-white border border-brand-border rounded-xl px-3 sm:px-4 py-2">
+          <span className="font-bold text-[14px] text-brand-text mr-1">{greeting}, {(userName || "").split(" ")[0]}</span>
+          {myDay.overdue + myDay.dueToday + myDay.inProgress === 0 ? (
+            <span className="text-[12.5px] text-brand-sub">You&apos;re all caught up</span>
+          ) : (
+            <>
+              {myDay.overdue > 0 && (
+                <button onClick={() => setFilters((f) => ({ ...onlyMe(f), overdueOnly: true }))} className="rounded-full px-3 py-1 text-[12px] font-semibold" style={{ background: "#FBE7E5", color: "#9A3530" }}>
+                  {myDay.overdue} overdue
+                </button>
+              )}
+              {myDay.dueToday > 0 && (
+                <button onClick={() => setFilters((f) => ({ ...onlyMe(f), dueToday: true }))} className="rounded-full px-3 py-1 text-[12px] font-semibold" style={{ background: "#FDF3E6", color: "#8A5A1A", outline: filters.dueToday ? "2px solid #8A5A1A" : undefined }}>
+                  {myDay.dueToday} due today
+                </button>
+              )}
+              {myDay.inProgress > 0 && (
+                <button onClick={() => setFilters((f) => ({ ...onlyMe(f), statusIds: ["INPROGRESS"] }))} className="rounded-full px-3 py-1 text-[12px] font-semibold" style={{ background: "#E8F2EE", color: "#0A5A46" }}>
+                  {myDay.inProgress} in progress
+                </button>
+              )}
+            </>
+          )}
+          <span className="ml-auto text-[11.5px] text-brand-sub hidden sm:inline">{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" })}</span>
+        </div>
         <div className="grid grid-cols-5 sm:flex sm:flex-wrap gap-1.5 mb-2 sm:mb-3">
           <StatCard compact
             label="Total" value={stats.total} color="#0A5A46"
-            onClick={() => setFilters((f) => ({ ...f, statusIds: [], overdueOnly: false, milestonesOnly: false }))}
+            onClick={() => setFilters((f) => ({ ...f, statusIds: [], overdueOnly: false, dueToday: false, milestonesOnly: false }))}
           />
           <StatCard compact
             label="In Progress" value={stats.inProgress} color="#82B478"
@@ -1064,7 +1131,7 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
           />
           <MultiSelectFilter
             allLabel="All Projects" pluralNoun="projects" width={260}
-            options={projectList.map((p) => ({ value: p.id, label: p.name }))}
+            options={projectList.map((p) => ({ value: p.id, label: p.name, color: projectColourOf(projectList, p.id) }))}
             selected={filters.projectIds}
             onChange={(v) => setFilters((f) => ({ ...f, projectIds: v }))}
           />
@@ -1355,6 +1422,7 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
                         task={task}
                         assignees={getAssigneeDisplays(task)}
                         project={projectList.find((p) => p.id === task.projectId)}
+                        projectColour={projectColourOf(projectList, task.projectId)}
                         allTasks={taskList}
                         canManage={canManage(task)}
                         onEdit={openEdit}
@@ -1395,7 +1463,7 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
         {view === "list" && !attentionOnly && (
           <div>
             {sortedList.length === 0 && (
-              <div className="text-center text-brand-sub text-sm py-10">No tasks match your filters</div>
+              <EmptyState title="Nothing matches these filters" hint="Try clearing a filter or the search." />
             )}
             {groupTaskRows(toTreeRows(sortedList, collapsedParentIds), groupByLevels, { projectList, teamList })
               .map((node, i) => renderGroupNode(node, 0, i))}
@@ -1485,6 +1553,10 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
       )}
 
       {whatsNewOpen && <WhatsNewModal onClose={() => setWhatsNewOpen(false)} />}
+
+      {toast && (
+        <UndoToast toast={toast} onUndo={() => { const undo = toast.onUndo; setToast(null); undo?.(); }} />
+      )}
 
       {globalSearchOpen && (
         <GlobalSearchModal onClose={() => setGlobalSearchOpen(false)} onOpenTask={openTaskById} />
