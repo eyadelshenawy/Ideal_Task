@@ -23,7 +23,7 @@
     "bcryptjs": "^2.4.3",
     "exceljs": "^4.4.0",
     "lucide-react": "^0.417.0",
-    "next": "^15.5.28",
+    "next": "^16.4.2",
     "next-auth": "^4.24.15",
     "otpauth": "^9.5.2",
     "qrcode": "^1.5.4",
