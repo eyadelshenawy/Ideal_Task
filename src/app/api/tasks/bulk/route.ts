@@ -126,15 +126,16 @@ export async function PATCH(req: NextRequest) {
       const existingDueStr = task.dueDate ? toDateOnly(task.dueDate) : null;
       const resolved = resolveTaskDates(
         {
-          startDate: startDate !== undefined ? startDate : existingStartStr,
+          // A milestone is a single date: no Start, no Duration.
+          startDate: task.isMilestone ? null : startDate !== undefined ? startDate : existingStartStr,
           dueDate: dueDate !== undefined ? dueDate : existingDueStr,
-          durationDays: durationDays !== undefined ? durationDays : task.durationDays,
+          durationDays: task.isMilestone ? null : durationDays !== undefined ? durationDays : task.durationDays,
         },
         cal,
         dueDate !== undefined,
       );
       // A main task's dates must keep covering its subtasks — skip it otherwise.
-      if (uncoveredSpanError(await childDateSpan(prisma, task.id), resolved.startDate, resolved.dueDate)) {
+      if (!task.isMilestone && uncoveredSpanError(await childDateSpan(prisma, task.id), resolved.startDate, resolved.dueDate)) {
         skipped.push(task.id);
         continue;
       }
@@ -182,6 +183,10 @@ export async function PATCH(req: NextRequest) {
     );
     if (parentAffected && updatedTask.parentId) {
       await syncAncestorChain(prisma, updatedTask.parentId);
+    }
+    // A milestone with subtasks takes its date from them, whatever was set.
+    if (updatedTask.isMilestone && Object.keys(bulkDateData).length > 0) {
+      await syncAncestorChain(prisma, updatedTask.id);
     }
 
     if (assignees !== undefined) {

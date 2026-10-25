@@ -173,11 +173,13 @@ export default function TaskModal({
     const days = project.sla[draft.priority];
     if (!days) return;
 
-    // On the very first render for an existing task with a duration already
-    // set, don't stomp on it — that task's Duration is what the user (or a
-    // past auto-fill) put there. Auto-fill only kicks in when priority or
-    // project actually change from what they were.
-    if (isInitialLoad && draft.durationDays) return;
+    // A milestone is a single date — no Duration to fill.
+    if (draft.isMilestone) return;
+    // Opening a task never stomps on its dates: an existing task keeps what it
+    // has (even with no Duration, e.g. Due only), and a new one pre-filled with
+    // a Duration keeps it. Auto-fill only kicks in when priority or project
+    // actually change from what they were.
+    if (isInitialLoad && (draft.id || draft.durationDays)) return;
 
     setDraft({ ...draft, durationDays: String(days), dueDate: "" });
     // The setDraft closure captures the current draft; this is intentional —
@@ -282,7 +284,7 @@ export default function TaskModal({
     // Date from its Due Date, if Start Date is still blank — never overwrites
     // a date already set.
     const predecessor = adding ? otherTasks.find((t) => t.id === id) : undefined;
-    const suggestedStart = adding && predecessor?.dueDate && !draft.startDate ? predecessor.dueDate : undefined;
+    const suggestedStart = adding && !draft.isMilestone && predecessor?.dueDate && !draft.startDate ? predecessor.dueDate : undefined;
     setDraft({
       ...draft,
       dependsOn: adding ? [...draft.dependsOn, id] : draft.dependsOn.filter((d) => d !== id),
@@ -695,12 +697,22 @@ export default function TaskModal({
                 <label className="text-xs font-semibold text-brand-sub">
                   {draft.isMilestone ? "Milestone Date *" : "Due Date"}
                 </label>
-                <input
-                  type="date"
-                  value={draft.dueDate}
-                  onChange={(e) => setDraft({ ...draft, dueDate: e.target.value, durationDays: "" })}
-                  className={field}
-                />
+                {(() => {
+                  // A milestone with subtasks takes its date from the latest subtask due.
+                  const fromSubtasks = draft.isMilestone && !!draft.id && allTasks.some((t) => t.parentId === draft.id);
+                  return (
+                    <>
+                      <input
+                        type="date"
+                        value={draft.dueDate}
+                        onChange={(e) => setDraft({ ...draft, dueDate: e.target.value, durationDays: "" })}
+                        readOnly={fromSubtasks}
+                        className={`${field} ${fromSubtasks ? "bg-brand-bg text-brand-sub cursor-not-allowed" : ""}`}
+                      />
+                      {fromSubtasks && <div className="text-[10.5px] text-brand-sub mt-1">Set by its subtasks (latest due date).</div>}
+                    </>
+                  );
+                })()}
               </div>
             </div>
             {!draft.isMilestone && (
@@ -712,6 +724,15 @@ export default function TaskModal({
               // A subtask outside its main task's dates widens the main task on save.
               const parent = draft.parentId ? allTasks.find((t) => t.id === draft.parentId) : undefined;
               if (!parent) return null;
+              if (parent.isMilestone) {
+                // A milestone follows its latest subtask due date.
+                if (!draft.dueDate || !parent.dueDate || draft.dueDate <= parent.dueDate) return null;
+                return (
+                  <div className="text-[11px] -mt-1 rounded-lg px-2.5 py-1.5" style={{ background: "#FDF3E6", color: "#8A5A1A" }}>
+                    Milestone {parent.code ?? parent.title} will move to {formatDateDisplay(draft.dueDate)}.
+                  </div>
+                );
+              }
               const start = draft.startDate && parent.startDate && draft.startDate < parent.startDate ? draft.startDate : parent.startDate;
               const due = draft.dueDate && parent.dueDate && draft.dueDate > parent.dueDate ? draft.dueDate : parent.dueDate;
               if (start === parent.startDate && due === parent.dueDate) return null;
@@ -726,15 +747,20 @@ export default function TaskModal({
               // saved task, so escalating a start date shows/hides the warning
               // immediately as you type. Only flags DIRECT conflicts here —
               // upstream cascades don't fit into the modal's frame of one task.
-              if (!draft.startDate || draft.dependsOn.length === 0) return null;
+              // A milestone has no Start: its own date is what must not come first.
+              const ownStart = draft.isMilestone ? draft.dueDate : draft.startDate;
+              if (!ownStart || draft.dependsOn.length === 0) return null;
               const clashing = draft.dependsOn
                 .map((id) => allTasks.find((t) => t.id === id))
-                .filter((t): t is Task => !!t && t.status !== "DONE" && !!t.dueDate && t.dueDate > draft.startDate);
+                .filter((t): t is Task => !!t && t.status !== "DONE" && !!t.dueDate && t.dueDate > ownStart);
               if (clashing.length === 0) return null;
               const labels = clashing.map((c) => c.code || c.title).slice(0, 3).join(", ");
+              const verb = clashing.length === 1 ? "finishes" : "finish";
               return (
                 <div className="mt-1 rounded-md px-2 py-1.5 text-[11.5px]" style={{ background: "#FBEEDD", color: "#8A5A20" }}>
-                  ⚠️ Starts before {labels} finish{clashing.length === 1 ? "es" : ""}. Either push Start back or unset the predecessor.
+                  {draft.isMilestone
+                    ? <>⚠️ Milestone on {formatDateDisplay(ownStart)} is before {labels} {verb} ({formatDateDisplay(clashing[0].dueDate)}). Move the milestone later or unset the predecessor.</>
+                    : <>⚠️ Starts before {labels} {verb}. Either push Start back or unset the predecessor.</>}
                 </div>
               );
             })()}
@@ -783,7 +809,8 @@ export default function TaskModal({
                   <input
                     type="checkbox"
                     checked={draft.isMilestone}
-                    onChange={(e) => setDraft({ ...draft, isMilestone: e.target.checked })}
+                    // A milestone is a single date: drop Start and Duration when ticked.
+                    onChange={(e) => setDraft({ ...draft, isMilestone: e.target.checked, ...(e.target.checked ? { startDate: "", durationDays: "" } : {}) })}
                   />
                   This is a milestone (single-date marker, no duration)
                 </label>

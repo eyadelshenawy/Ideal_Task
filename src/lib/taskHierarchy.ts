@@ -70,7 +70,7 @@ async function recomputeOneLevel(db: Db, parentId: string): Promise<boolean> {
   const [parent, siblings] = await Promise.all([
     db.task.findUnique({
       where: { id: parentId },
-      select: { status: true, startDate: true, dueDate: true, durationDays: true },
+      select: { status: true, startDate: true, dueDate: true, durationDays: true, isMilestone: true },
     }),
     db.task.findMany({
       where: { parentId, deletedAt: null },
@@ -98,6 +98,23 @@ async function recomputeOneLevel(db: Db, parentId: string): Promise<boolean> {
     const doneCount = siblings.filter((s) => s.status === "DONE").length;
     patch.status = "INPROGRESS";
     patch.progress = siblings.length > 0 ? Math.round((doneCount / siblings.length) * 100) : 0;
+  }
+
+  // A milestone parent marks the moment its subtasks are all due: its single
+  // date follows the latest subtask due, both ways, and it keeps no Start.
+  if (parent.isMilestone) {
+    const dues = siblings.map((s) => s.dueDate).filter((d): d is Date => !!d);
+    if (dues.length > 0) {
+      const nextDue = new Date(Math.max(...dues.map((d) => d.getTime())));
+      if (nextDue.getTime() !== parent.dueDate?.getTime()) patch.dueDate = nextDue;
+    }
+    if (parent.startDate || parent.durationDays) {
+      patch.startDate = null;
+      patch.durationDays = null;
+    }
+    if (Object.keys(patch).length === 0) return false;
+    await db.task.update({ where: { id: parentId }, data: patch });
+    return true;
   }
 
   // Date rollup: widen only — the parent's own dates count alongside its

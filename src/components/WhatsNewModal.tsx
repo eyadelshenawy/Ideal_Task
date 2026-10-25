@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Milestones keep one date",
+    description: "A milestone now keeps only its own date — ticking Milestone clears Start and Duration, so the \"Starts before … finishes\" warning no longer appears on milestones by mistake. Instead, a milestone warns when its date comes before a predecessor finishes. A milestone with subtasks takes its date from the latest subtask due date and moves with it both ways; its date box is greyed out while it has subtasks. Also fixed: opening a milestone (or a task with only a Due Date) in an SLA project no longer blanks its date in the form.",
+  },
+  {
     title: "A friendlier board: your day, Undo, project colours",
     description: "A greeting strip at the top shows your own overdue, due-today and in-progress tasks — click a number to see them. Changing a status or moving a task to Trash now shows a short note at the bottom with Undo for 5 seconds, and a green tick when a task is Done. Each project has its own colour dot on cards, rows and the Projects filter. Empty lists show a friendly message. And when the list is filtered to one project, New Task starts in that project.",
   },

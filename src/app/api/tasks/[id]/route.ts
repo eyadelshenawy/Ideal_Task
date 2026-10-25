@@ -212,6 +212,8 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
   // the DB always satisfies "due = start + (duration-1) working days" per
   // the org's calendar, or is left null when there's no anchor to compute
   // from. Skip the whole thing if none of the three fields moved.
+  // A milestone is a single date (its Due Date): no Start, no Duration.
+  const willBeMilestone = data.isMilestone ?? existing.isMilestone;
   let resolvedDates: { startDate: string | null; dueDate: string | null; durationDays: number | null } | null = null;
   if (data.startDate !== undefined || data.dueDate !== undefined || data.durationDays !== undefined) {
     const existingStartStr = existing.startDate ? toDateOnly(existing.startDate) : null;
@@ -219,16 +221,19 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
     const cal = await loadSchedulingCalendar();
     resolvedDates = resolveTaskDates(
       {
-        startDate: data.startDate !== undefined ? data.startDate : existingStartStr,
+        startDate: willBeMilestone ? null : data.startDate !== undefined ? data.startDate : existingStartStr,
         dueDate: data.dueDate !== undefined ? data.dueDate : existingDueStr,
-        durationDays: data.durationDays !== undefined ? data.durationDays : existing.durationDays,
+        durationDays: willBeMilestone ? null : data.durationDays !== undefined ? data.durationDays : existing.durationDays,
       },
       cal,
       data.dueDate !== undefined,
     );
-    // A main task's dates must keep covering its subtasks.
-    const spanError = uncoveredSpanError(await childDateSpan(prisma, params.id), resolvedDates.startDate, resolvedDates.dueDate);
-    if (spanError) return NextResponse.json({ error: spanError }, { status: 400 });
+    // A main task's dates must keep covering its subtasks. (A milestone's
+    // date is set from its subtasks instead — see syncAncestorChain below.)
+    if (!willBeMilestone) {
+      const spanError = uncoveredSpanError(await childDateSpan(prisma, params.id), resolvedDates.startDate, resolvedDates.dueDate);
+      if (spanError) return NextResponse.json({ error: spanError }, { status: 400 });
+    }
   }
 
   // Auto-track actual completion date: stamped the moment a task first
@@ -269,7 +274,9 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
               durationDays: resolvedDates.durationDays,
               ...(data.dueDate !== undefined ? { dueSoonNotifiedAt: null } : {}),
             }
-          : {}),
+          : willBeMilestone && (existing.startDate || existing.durationDays)
+            ? { startDate: null, durationDays: null }
+            : {}),
         ...(completedAtUpdate !== undefined ? { completedAt: completedAtUpdate } : {}),
         progress: nextStatus === "DONE" ? 100 : data.progress ?? existing.progress,
         ...(data.isMilestone !== undefined ? { isMilestone: data.isMilestone } : {}),
@@ -292,6 +299,8 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
     // parent's own date span), or moving to a different parent (both the
     // old and the new parent need to be recomputed).
     const datesChanged = resolvedDates !== null;
+    // A milestone with subtasks takes its date from them, whatever was typed.
+    if (willBeMilestone && (datesChanged || data.isMilestone !== undefined)) await syncAncestorChain(prisma, params.id);
     if (nextStatus !== existing.status || task.parentId !== existing.parentId || datesChanged) {
       if (task.parentId) await syncAncestorChain(prisma, task.parentId);
       if (existing.parentId && existing.parentId !== task.parentId) {

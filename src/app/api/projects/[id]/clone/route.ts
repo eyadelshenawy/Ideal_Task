@@ -172,16 +172,22 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
           subcategoryId: t.subcategoryId,
           status: "TODO",
           progress: 0,
+          // A milestone keeps one date: its own Due Date, shifted.
           startDate: (() => {
+            if (t.isMilestone) return null;
             const s = shift(t.startDate);
             return s ? new Date(`${s}T00:00:00.000Z`) : null;
           })(),
           dueDate: (() => {
+            if (t.isMilestone) {
+              const m = shift(t.dueDate ?? t.startDate);
+              return m ? new Date(`${m}T00:00:00.000Z`) : null;
+            }
             const s = shift(t.startDate);
             const e = shiftEndFromStart(s, t.durationDays, t.dueDate);
             return e ? new Date(`${e}T00:00:00.000Z`) : null;
           })(),
-          durationDays: t.durationDays,
+          durationDays: t.isMilestone ? null : t.durationDays,
           isMilestone: t.isMilestone,
           tags: { connect: t.tags.map((tag) => ({ id: tag.id })) },
           checklistItems: { create: t.checklistItems.map((c) => ({ text: c.text, order: c.order })) },
