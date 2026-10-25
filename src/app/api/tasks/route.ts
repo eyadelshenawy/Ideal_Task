@@ -108,7 +108,10 @@ export async function POST(req: NextRequest) {
   // is computed from the org's work-week + holidays. See src/lib/scheduling.ts.
   const cal = await loadSchedulingCalendar();
   const resolvedDates = resolveTaskDates(
-    { startDate: data.startDate, dueDate: data.dueDate, durationDays: data.durationDays },
+    // A milestone is a single date: no Start, no Duration.
+    data.isMilestone
+      ? { startDate: null, dueDate: data.dueDate, durationDays: null }
+      : { startDate: data.startDate, dueDate: data.dueDate, durationDays: data.durationDays },
     cal,
     data.dueDate !== null,
   );

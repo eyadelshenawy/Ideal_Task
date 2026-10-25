@@ -22,6 +22,11 @@ export interface DependencyWarning {
  * Both DONE predecessors and DONE dependents drop out of the check — a
  * finished task never "blocks" anything and never inherits a warning.
  */
+/** A milestone has no Start — its single date is what must not come before a predecessor's Due. */
+function ownStart(t: Task): string | null {
+  return t.isMilestone ? t.dueDate : t.startDate;
+}
+
 export function computeDependencyWarnings(tasks: Task[]): DependencyWarning {
   const byId = new Map(tasks.map((t) => [t.id, t]));
   const direct = new Set<string>();
@@ -31,11 +36,12 @@ export function computeDependencyWarnings(tasks: Task[]): DependencyWarning {
   // the task's Start. "Strictly" because a task can validly start the same
   // day its predecessor finishes.
   for (const t of tasks) {
-    if (t.status === "DONE" || !t.startDate) continue;
+    const start = ownStart(t);
+    if (t.status === "DONE" || !start) continue;
     for (const depId of t.dependsOn) {
       const dep = byId.get(depId);
       if (!dep || dep.status === "DONE" || !dep.dueDate) continue;
-      if (dep.dueDate > t.startDate) {
+      if (dep.dueDate > start) {
         direct.add(t.id);
         break;
       }
@@ -84,12 +90,13 @@ export function describeDependencyWarning(
   if (warnings.direct.has(taskId)) {
     const offenders = t.dependsOn
       .map((id) => byId.get(id))
-      .filter((d): d is Task => !!d && d.status !== "DONE" && !!d.dueDate && !!t.startDate && d.dueDate > t.startDate)
+      .filter((d): d is Task => { const s = ownStart(t); return !!d && d.status !== "DONE" && !!d.dueDate && !!s && d.dueDate > s; })
       .map((d) => d.code || d.title)
       .slice(0, 3);
+    const what = t.isMilestone ? "Milestone is" : "Starts";
     return offenders.length > 0
-      ? `Starts before ${offenders.join(", ")} finish${offenders.length === 1 ? "es" : ""}`
-      : "Starts before a predecessor finishes";
+      ? `${what} before ${offenders.join(", ")} finish${offenders.length === 1 ? "es" : ""}`
+      : `${what} before a predecessor finishes`;
   }
   if (warnings.cascaded.has(taskId)) {
     return "Blocked by an upstream predecessor that will slip";
