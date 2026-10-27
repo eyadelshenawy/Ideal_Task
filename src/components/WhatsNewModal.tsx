@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Back button stays in the app, filters stay in view",
+    description: "On a phone, Back now closes the task or window you have open, and from Board, Timeline, Reports, My Tasks or Needs attention it returns you to the List — it only leaves the app when nothing is open. On a computer, the search and filter row stays pinned under the header while you scroll.",
+  },
+  {
     title: "Milestones keep one date",
     description: "A milestone now keeps only its own date — ticking Milestone clears Start and Duration, so the \"Starts before … finishes\" warning no longer appears on milestones by mistake. Instead, a milestone warns when its date comes before a predecessor finishes. A milestone with subtasks takes its date from the latest subtask due date and moves with it both ways; its date box is greyed out while it has subtasks. Also fixed: opening a milestone (or a task with only a Due Date) in an SLA project no longer blanks its date in the form.",
   },
