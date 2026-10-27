@@ -109,3 +109,24 @@ export function addBusinessMinutes(start: Date, minutes: number, cal: BusinessCa
   }
   return new Date(start.getTime() + minutes * 60000);
 }
+
+/** Working minutes between two instants (0 when `to` ≤ `from`). */
+export function businessMinutesBetween(from: Date, to: Date, cal: BusinessCalendar): number {
+  if (to.getTime() <= from.getTime()) return 0;
+  if (workdayMinutes(cal) <= 0 || !cal.workDays.some(Boolean)) return (to.getTime() - from.getTime()) / 60000;
+
+  const end = localParts(to, cal.timeZone);
+  let { dateStr, minuteOfDay } = localParts(from, cal.timeZone);
+  let total = 0;
+  for (let i = 0; i < 3700; i++) {
+    if (isWorkingDate(dateStr, cal)) {
+      const s = Math.max(minuteOfDay, cal.startMinutes);
+      const e = dateStr === end.dateStr ? Math.min(end.minuteOfDay, cal.endMinutes) : cal.endMinutes;
+      if (e > s) total += e - s;
+    }
+    if (dateStr >= end.dateStr) break;
+    dateStr = nextDateStr(dateStr);
+    minuteOfDay = 0;
+  }
+  return total;
+}

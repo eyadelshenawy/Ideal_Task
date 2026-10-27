@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Waiting on Customer: the SLA clock pauses",
+    description: "A new status, Waiting on Customer, sits after In Progress. Use it when a ticket is stuck because you need something from the customer. While a ticket is in Waiting on Customer or Customer Test, its resolution SLA stops, it never shows as overdue, and the card shows \"⏸ Waiting · 3d\" and \"SLA paused\". When it comes back, the Resolve by time moves on by the time it waited and, in SLA projects, the Due Date moves on by the working days it waited. Reports leave waiting days out of the resolution time. Tickets already in Customer Test start their wait today.",
+  },
+  {
     title: "Back button stays in the app, filters stay in view",
     description: "On a phone, Back now closes the task or window you have open, and from Board, Timeline, Reports, My Tasks or Needs attention it returns you to the List — it only leaves the app when nothing is open. On a computer, the search and filter row stays pinned under the header while you scroll.",
   },

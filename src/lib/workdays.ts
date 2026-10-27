@@ -1,6 +1,7 @@
 // Overdue and due-soon counts in working days — weekends and holidays from
 // the Work Calendar don't count. Pure (no Prisma) so the browser and the
 // server share one rule. Dates are "YYYY-MM-DD" strings.
+import { isPausedStatus } from "@/lib/pause";
 
 export interface WorkDays {
   days: boolean[]; // Sunday..Saturday, true = working day
@@ -43,9 +44,9 @@ export function nextWorkDay(dateStr: string, cal: WorkDays): string {
   return str(utc(dateStr) + DAY);
 }
 
-/** Days overdue = working days after the due date up to today. */
+/** Days overdue = working days after the due date up to today. Never while waiting on the customer. */
 export function daysOverdue(task: { dueDate: string | null; status: string }, today: string, cal: WorkDays): number {
-  if (!task.dueDate || task.status === "DONE" || task.dueDate >= today) return 0;
+  if (!task.dueDate || task.status === "DONE" || isPausedStatus(task.status) || task.dueDate >= today) return 0;
   return workDaysAfter(task.dueDate, today, cal);
 }
 

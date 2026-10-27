@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkTaskLists } from "@/lib/lists";
 import { prisma } from "@/lib/prisma";
+import { isPausedStatus } from "@/lib/pause";
 import { requireSession, getUserAccess } from "@/lib/permissions";
 import { taskCreateSchema, assigneesToConnect } from "@/lib/validation/task";
 import { serializeTask, taskInclude } from "@/lib/serializers/task";
@@ -129,6 +130,7 @@ export async function POST(req: NextRequest) {
         tags: { connect: tags.map((t) => ({ id: t.id })) },
         priority: data.priority,
         status: data.status,
+        pausedAt: isPausedStatus(data.status) ? new Date() : null,
         type: data.type,
         impact: data.impact,
         urgency: data.urgency,

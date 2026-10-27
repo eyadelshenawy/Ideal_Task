@@ -1,6 +1,6 @@
 export type Role = "SUPER_ADMIN" | "MEMBER";
 export type Priority = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
-export type Status = "TODO" | "READY" | "INPROGRESS" | "INTERNAL_TEST" | "CUSTOMER_TEST" | "DONE";
+export type Status = "TODO" | "READY" | "INPROGRESS" | "WAITING_CUSTOMER" | "INTERNAL_TEST" | "CUSTOMER_TEST" | "DONE";
 export type RecurrenceFreq = "DAILY" | "WEEKLY" | "MONTHLY";
 /** Code of a configurable ticket type (Super Admin → Lists). */
 export type TicketType = string;
@@ -147,6 +147,10 @@ export interface Task {
   /** Working-days between start and due (inclusive), skipping the org's weekends + holidays. Auto-kept in sync with dates. */
   durationDays: number | null;
   completedAt: string | null; // "YYYY-MM-DD" — when it actually finished, auto-set on DONE
+  // Waiting on the customer — see src/lib/pause.ts. pausedAt is a full ISO time.
+  pausedAt: string | null;
+  pausedMinutes: number;
+  pausedDays: number;
   progress: number;
   isMilestone: boolean;
   dependsOn: string[]; // predecessor task ids

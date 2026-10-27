@@ -28,6 +28,7 @@ enum Status {
   TODO
   READY
   INPROGRESS
+  WAITING_CUSTOMER
   INTERNAL_TEST
   CUSTOMER_TEST
   DONE
@@ -405,6 +406,16 @@ model Task {
   // moves to DONE (and cleared if reopened), but editable by hand so a user
   // can log a different actual completion date.
   completedAt DateTime?
+
+  // Waiting on the customer (Waiting on Customer or Customer Test): the
+  // resolution SLA clock stops. pausedAt = when the current wait began (null
+  // when not waiting). pausedMinutes = total finished waits in the project's
+  // SLA clock (working minutes for business-hours projects, else wall-clock);
+  // pausedDays = the same waits in working days, used to push the Due Date
+  // and for reports. See src/lib/pause.ts.
+  pausedAt      DateTime?
+  pausedMinutes Int       @default(0)
+  pausedDays    Int       @default(0)
 
   // Set once the "due tomorrow" reminder email has been sent for the current
   // dueDate. Cleared whenever dueDate changes so a future move back to

@@ -3,6 +3,7 @@ import { normaliseModules } from "@/lib/lists";
 import { randomUUID } from "crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { isPausedStatus } from "@/lib/pause";
 import { requireSuperAdmin } from "@/lib/permissions";
 import { importCommitSchema } from "@/lib/validation/import";
 import { dateStrToUTC } from "@/lib/serverDates";
@@ -222,6 +223,7 @@ export async function POST(req: NextRequest) {
             categoryId: t.categoryId,
             subcategoryId: t.subcategoryId,
             status: t.status,
+            pausedAt: isPausedStatus(t.status) ? new Date() : null,
             startDate: t.isMilestone ? null : dateStrToUTC(dates.startDate),
             dueDate: dateStrToUTC(dates.dueDate),
             durationDays: t.isMilestone ? null : dates.durationDays,

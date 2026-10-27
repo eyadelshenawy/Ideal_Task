@@ -42,7 +42,7 @@ export async function exportInsightsToExcel(data: Insights, periodLabel: string)
   }));
 
   // 3 · Average response and resolution time
-  ws = sheet("Response & resolution", ["Priority", "Total response hours", "Tickets responded", "Avg response (hours)", "Total resolution working days", "Tickets resolved", "Avg resolution (working days)"]);
+  ws = sheet("Response & resolution", ["Priority", "Total response hours", "Tickets responded", "Avg response (hours)", "Total resolution working days (excl. waiting on customer)", "Tickets resolved", "Avg resolution (working days)"]);
   data.speed.forEach((s) => {
     const row = ws.addRow([s.label, Math.round(s.responseHours * 10) / 10, s.responseCount, null, s.resolutionDays, s.resolutionCount]);
     const n = row.number;
@@ -78,7 +78,7 @@ export async function exportInsightsToExcel(data: Insights, periodLabel: string)
   }
 
   // 7 · Team performance
-  ws = sheet("Team performance", ["Person", "Closed", "Total resolution working days", "Avg resolution (working days)", "Open now", "Overdue now", "Overdue %"]);
+  ws = sheet("Team performance", ["Person", "Closed", "Total resolution working days (excl. waiting on customer)", "Avg resolution (working days)", "Open now", "Overdue now", "Overdue %"]);
   data.team.forEach((r) => {
     const row = ws.addRow([r.name, r.closed, r.resolutionDays, null, r.open, r.overdue]);
     const n = row.number;

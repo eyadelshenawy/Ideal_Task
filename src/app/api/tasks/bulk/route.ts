@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkTaskLists } from "@/lib/lists";
 import { prisma } from "@/lib/prisma";
+import { pauseUpdate } from "@/lib/pauseUpdate";
 import { requireSession, getUserAccess } from "@/lib/permissions";
 import { taskBulkUpdateSchema, taskBulkDeleteSchema, assigneesToSet } from "@/lib/validation/task";
 import { notifyAssignment } from "@/lib/notifications";
@@ -146,6 +147,9 @@ export async function PATCH(req: NextRequest) {
       };
     }
 
+    // Waiting on the customer: start / stop the SLA pause (may push the Due Date).
+    const pauseData = status !== undefined ? await pauseUpdate(task, status, dueDate !== undefined) : {};
+
     const updatedTask = await prisma.task.update({
       where: { id: task.id },
       data: {
@@ -159,6 +163,7 @@ export async function PATCH(req: NextRequest) {
         // A new category invalidates whatever subcategory the task had.
         ...(categoryId !== undefined ? { categoryId, subcategoryId: null } : {}),
         ...bulkDateData,
+        ...pauseData,
         ...(moduleValue !== undefined ? { module: moduleValue || null } : {}),
         ...(addTagRecord ? { tags: { connect: [{ id: addTagRecord.id }] } } : {}),
         ...(removeTagRecord ? { tags: { disconnect: [{ id: removeTagRecord.id }] } } : {}),

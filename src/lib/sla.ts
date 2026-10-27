@@ -35,12 +35,13 @@ export function responseDeadline(priority: Priority, createdAt: string | Date, t
   return clock.calendar ? addBusinessMinutes(start, minutes, clock.calendar) : new Date(start.getTime() + minutes * 60000);
 }
 
-export function resolutionDeadline(priority: Priority, createdAt: string | Date, targets: SlaTargets, clock: SlaClock = CALENDAR_CLOCK): Date {
+/** `pausedMinutes` = time spent waiting on the customer, added on top (see src/lib/pause.ts). */
+export function resolutionDeadline(priority: Priority, createdAt: string | Date, targets: SlaTargets, clock: SlaClock = CALENDAR_CLOCK, pausedMinutes = 0): Date {
   const start = new Date(createdAt);
   const days = targets[priority].resolutionDays;
   return clock.calendar
-    ? addBusinessMinutes(start, days * workdayMinutes(clock.calendar), clock.calendar)
-    : new Date(start.getTime() + days * 86400000);
+    ? addBusinessMinutes(start, days * workdayMinutes(clock.calendar) + pausedMinutes, clock.calendar)
+    : new Date(start.getTime() + days * 86400000 + pausedMinutes * 60000);
 }
 
 function stateFor(deadline: Date, doneAt: string | null, now: Date): SlaState {
@@ -67,6 +68,7 @@ export function resolutionSlaState(
   now: Date,
   targets: SlaTargets = DEFAULT_SLA_TARGETS,
   clock: SlaClock = CALENDAR_CLOCK,
+  pausedMinutes = 0,
 ): SlaState {
-  return stateFor(resolutionDeadline(priority, createdAt, targets, clock), completedAt, now);
+  return stateFor(resolutionDeadline(priority, createdAt, targets, clock, pausedMinutes), completedAt, now);
 }
