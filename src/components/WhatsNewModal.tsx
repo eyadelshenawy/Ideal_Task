@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Reminder to follow up on waiting tickets",
+    description: "When a ticket has been in Waiting on Customer or Customer Test for 3 working days, its assignees and the Super Admins get a \"Follow up with the customer\" reminder by email and in the bell, then again every 3 working days while it still waits. Nothing is sent to the customer, and the ticket is never closed automatically.",
+  },
+  {
     title: "Waiting on Customer: the SLA clock pauses",
     description: "A new status, Waiting on Customer, sits after In Progress. Use it when a ticket is stuck because you need something from the customer. While a ticket is in Waiting on Customer or Customer Test, its resolution SLA stops, it never shows as overdue, and the card shows \"⏸ Waiting · 3d\" and \"SLA paused\". When it comes back, the Resolve by time moves on by the time it waited and, in SLA projects, the Due Date moves on by the working days it waited. Reports leave waiting days out of the resolution time. Tickets already in Customer Test start their wait today.",
   },

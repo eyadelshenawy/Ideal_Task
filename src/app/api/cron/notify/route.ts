@@ -2,12 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { utcToDateStr } from "@/lib/serverDates";
-import { dueSoonEmailHtml, overdueEmailHtml } from "@/lib/notifications";
+import { dueSoonEmailHtml, overdueEmailHtml, waitingNudgeEmailHtml } from "@/lib/notifications";
+import { PAUSED_STATUSES } from "@/lib/pause";
+import { STATUSES } from "@/lib/taskHelpers";
 import { sendWeeklyReports } from "@/lib/weeklyReport";
 import { notify } from "@/lib/inAppNotify";
 import { checkSlaRisks } from "@/lib/slaRisk";
 import { loadWorkDays } from "@/lib/scheduling";
 import { isWorkDay, isOverdue, nextWorkDay, workDaysAfter } from "@/lib/workdays";
+
+// Remind the team after this many working days waiting on the customer, and again every as many days after.
+const WAIT_NUDGE_EVERY = 3;
 
 function startOfTodayUTC(): Date {
   const now = new Date();
@@ -50,7 +55,7 @@ export async function GET(req: NextRequest) {
         },
       },
     }),
-    prisma.user.findMany({ where: { role: "SUPER_ADMIN", active: true }, select: { email: true } }),
+    prisma.user.findMany({ where: { role: "SUPER_ADMIN", active: true }, select: { id: true, email: true } }),
   ]);
   const superAdminEmails = superAdmins.map((u) => u.email);
 
@@ -99,6 +104,46 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Waiting on the customer for 3, 6, 9… working days: remind the assignees and
+  // Super Admins to follow up. Internal only — nothing goes to the customer,
+  // and the ticket is never closed automatically.
+  let waitNudgesSent = 0;
+  if (workingToday) {
+    const waiting = await prisma.task.findMany({
+      where: {
+        deletedAt: null,
+        isPrivate: false,
+        status: { in: [...PAUSED_STATUSES] },
+        pausedAt: { not: null },
+        OR: [{ projectId: null }, { project: { isTemplate: false } }],
+      },
+      select: {
+        id: true, title: true, priority: true, status: true, pausedAt: true,
+        project: { select: { name: true } },
+        assignees: { select: { id: true, email: true } },
+      },
+    });
+    for (const task of waiting) {
+      const days = workDaysAfter(utcToDateStr(task.pausedAt)!, todayKey, workDays);
+      if (days === 0 || days % WAIT_NUDGE_EVERY !== 0) continue;
+      const statusLabel = STATUSES.find((s) => s.id === task.status)?.label ?? task.status;
+      const recipients = Array.from(new Set([...superAdminEmails, ...task.assignees.map((a) => a.email)].filter(Boolean)));
+      if (recipients.length > 0) {
+        await sendEmail({
+          to: recipients,
+          subject: `Follow up: "${task.title}" — ${statusLabel} for ${days} working days`,
+          html: waitingNudgeEmailHtml({ title: task.title, projectName: task.project?.name ?? null, dueDate: null, priority: task.priority }, statusLabel, days),
+        });
+      }
+      await notify(
+        [...superAdmins.map((u) => u.id), ...task.assignees.map((a) => a.id)],
+        `${statusLabel} for ${days} working days — follow up with the customer on "${task.title}"`,
+        task.id,
+      );
+      waitNudgesSent++;
+    }
+  }
+
   // The daily check runs every morning; the weekly summary goes out on the
   // first working day of the week (Sunday, or the next working day when
   // Sunday is a holiday).
@@ -118,6 +163,7 @@ export async function GET(req: NextRequest) {
     checked: tasks.length,
     dueSoonSent,
     overdueSent,
+    waitNudgesSent,
     weeklyReportsSent,
     slaResponseRiskWarned: slaRisk.responseWarned,
     slaResolutionRiskWarned: slaRisk.resolutionWarned,

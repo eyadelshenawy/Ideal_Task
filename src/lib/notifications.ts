@@ -69,6 +69,22 @@ export function overdueEmailHtml(task: TaskSummary) {
   return wrap("Task overdue", task);
 }
 
+/** Internal nudge: a ticket has waited on the customer for a while — nothing is sent to the customer. */
+export function waitingNudgeEmailHtml(task: TaskSummary, statusLabel: string, days: number) {
+  return `
+    <div style="font-family: -apple-system, Arial, sans-serif; max-width: 480px; margin: 0 auto;">
+      <h2 style="color:#111;">Follow up with the customer</h2>
+      <p style="font-size:16px;"><strong>${escapeHtml(task.title)}</strong></p>
+      <p style="color:#5E4A8C; font-size:14px;">${escapeHtml(statusLabel)} for ${days} working days. The SLA clock is paused, but the customer may need a nudge.</p>
+      <ul style="color:#444; padding-left:18px;">
+        ${task.projectName ? `<li>Project: ${escapeHtml(task.projectName)}</li>` : ""}
+        <li>Priority: ${task.priority}</li>
+      </ul>
+      <p style="margin-top:24px;"><a href="${APP_URL}" style="color:#2563eb;">Open IDEAL Tasks</a></p>
+    </div>
+  `;
+}
+
 /** Sent once, proactively, while a task's SLA deadline is still ahead but close — not yet breached. */
 export function slaRiskEmailHtml(task: TaskSummary, kind: "response" | "resolution", timeLeft: string) {
   const heading = kind === "response" ? "SLA response deadline approaching" : "SLA resolution deadline approaching";

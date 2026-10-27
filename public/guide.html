@@ -381,6 +381,7 @@
       <li><strong>New Resolve by</strong> = original Resolve by + all waits.</li>
       <li><strong>New Due Date</strong> = Due Date + working days waited (SLA-tracked projects only; not when it goes straight to Done, or when you set a different Due Date in the same save).</li>
     </ul>
+    <p>If a ticket is still waiting after 3 working days, its assignees and the Super Admins get a <strong>Follow up with the customer</strong> reminder by email and in the bell, then again every 3 working days. It is internal only: the customer gets nothing, and the ticket is never closed automatically.</p>
     <p>The response clock does not pause — you will normally have replied before asking the customer for something. Waiting days are also taken out of the resolution time in Reports.</p>
     <p><strong>Priority change always rewrites Duration</strong> — escalating a Low ticket to Critical MUST tighten its deadline, so the SLA is re-applied even if you had typed a Duration manually. Typing your own Duration afterwards keeps it until you touch the priority again.</p>
     <h3>Parent-task rollup and dependency warnings</h3>
@@ -582,6 +583,7 @@
       <tr><td>Overdue</td><td>Every working day it stays overdue (none on weekends or holidays)</td><td>Assignees + the project's admins + all Super Admins</td></tr>
       <tr><td>Weekly summary</td><td>First working day of the week, 9am Cairo time (Sunday, or Monday if Sunday is a holiday)</td><td>Everyone — scoped to what they can see (see below)</td></tr>
       <tr><td>SLA warning</td><td>Once, when a ticket enters the last quarter of its response or resolution time (checked every 15 minutes during working hours, on working days from Settings → Work calendar)</td><td>The ticket's assignees</td></tr>
+      <tr><td>Follow up with the customer</td><td>After 3 working days in Waiting on Customer or Customer Test, then every 3 working days while it still waits (also in the bell). Nothing is sent to the customer and the ticket is never closed automatically.</td><td>The ticket's assignees + all Super Admins</td></tr>
       <tr><td>Mention</td><td>When someone types @your name in a comment</td><td>The person mentioned</td></tr>
       <tr><td>Satisfaction survey</td><td>Once, when a customer ticket in an SLA-tracked project is first marked Done</td><td>The ticket's outside contact</td></tr>
     </table>
