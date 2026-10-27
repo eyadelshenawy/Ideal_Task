@@ -19,7 +19,7 @@ export const previewTaskSchema = z.object({
   type: z.string().trim().min(1).max(40).default("TASK"),
   categoryId: z.string().nullable().default(null),
   subcategoryId: z.string().nullable().default(null),
-  status: z.enum(["TODO", "READY", "INPROGRESS", "INTERNAL_TEST", "CUSTOMER_TEST", "DONE"]),
+  status: z.enum(["TODO", "READY", "INPROGRESS", "WAITING_CUSTOMER", "INTERNAL_TEST", "CUSTOMER_TEST", "DONE"]),
   startDate: z.string().nullable(),
   dueDate: z.string().nullable(),
   durationDays: z.number().int().min(1).nullable(),

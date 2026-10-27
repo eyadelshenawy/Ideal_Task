@@ -70,7 +70,7 @@ async function recomputeOneLevel(db: Db, parentId: string): Promise<boolean> {
   const [parent, siblings] = await Promise.all([
     db.task.findUnique({
       where: { id: parentId },
-      select: { status: true, startDate: true, dueDate: true, durationDays: true, isMilestone: true },
+      select: { status: true, startDate: true, dueDate: true, durationDays: true, isMilestone: true, pausedAt: true },
     }),
     db.task.findMany({
       where: { parentId, deletedAt: null },
@@ -82,6 +82,7 @@ async function recomputeOneLevel(db: Db, parentId: string): Promise<boolean> {
   const patch: {
     status?: "DONE" | "INPROGRESS";
     progress?: number;
+    pausedAt?: null;
     startDate?: Date | null;
     dueDate?: Date | null;
     durationDays?: number | null;
@@ -91,6 +92,8 @@ async function recomputeOneLevel(db: Db, parentId: string): Promise<boolean> {
   if (allDone && parent.status !== "DONE") {
     patch.status = "DONE";
     patch.progress = 100;
+    // Done ends any wait on the customer it was in.
+    if (parent.pausedAt) patch.pausedAt = null;
   } else if (!allDone && parent.status === "DONE") {
     // Reopening un-does the 100% this task got when it auto-completed —
     // otherwise the progress bar would keep reading "done" under a

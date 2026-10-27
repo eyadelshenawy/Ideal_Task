@@ -274,7 +274,7 @@
     <p class="lede">Three ways to look at the same tasks — pick whichever fits what you're doing.</p>
 
     <h3>Board</h3>
-    <p>The default view — tasks grouped into six columns: <strong>New</strong>, <strong>Ready</strong>, <strong>In Progress</strong>, <strong>Internal Test</strong>, <strong>Customer Test</strong>, <strong>Done</strong>. <strong>Drag and drop</strong> a card into a different column to change its status. On a phone or tablet, use the ‹ › arrows at the bottom of the card instead.</p>
+    <p>The default view — tasks grouped into seven columns: <strong>New</strong>, <strong>Ready</strong>, <strong>In Progress</strong>, <strong>Waiting on Customer</strong>, <strong>Internal Test</strong>, <strong>Customer Test</strong>, <strong>Done</strong>. <strong>Drag and drop</strong> a card into a different column to change its status. On a phone or tablet, use the ‹ › arrows at the bottom of the card instead.</p>
     <p>Each card shows the code on top, the full title, then the coloured tags that matter (type, SLA countdown, Blocked). Project, modules, category, tags and subtask info share one grey line underneath, and comment and checklist counts sit on the bottom line beside the due date. On a computer, the Edit, Duplicate and Trash icons appear when you move the mouse over a card.</p>
     <p>A card shows small icons at a glance whenever it has any: a paperclip with a count for attachments, a speech bubble for comments, and a checklist icon showing done/total — so you know a task has activity without opening it.</p>
     <p>Tickets also carry a short coloured <strong>type tag</strong> (INC, SR, CHG, PRB — plain tasks show none), and in SLA-tracked projects a <strong>countdown chip</strong>: "Respond in 2h", "Resolve in 1d 4h", or a red "SLA breached".</p>
@@ -373,6 +373,15 @@
     <p>Four priority levels — <strong>Critical</strong> (most urgent, red), High, Medium, Low. Sorting by Priority puts Critical first. In an SLA-tracked project (Settings → Projects → Track SLA), picking a priority for a new task <em>pre-fills</em> the Duration field from that project's SLA resolution days, so the Due Date computes itself from your Start Date. Defaults: Critical 2 days, High 4 days, Medium 7 days, Low 10 days — tune them per project (Manage Projects → SLA targets) or org-wide (Reports → Edit default targets). Priority names and colours can be changed by a Super Admin in ⋯ menu → <strong>Settings</strong> → <strong>Lists</strong>; the four levels themselves are fixed because SLA targets depend on them.</p>
     <h3>The SLA tag on a ticket</h3>
     <p>In an SLA-tracked project, an open ticket shows an SLA tag at the top of the form; click it to open the <strong>SLA</strong> box with its <em>Response by</em> and <em>Resolve by</em> times and how much is left (or <em>Met</em> / <em>Breached</em>). The same countdown appears as a chip on the card and the row. If the project counts working hours only, the clock pauses outside working hours, weekends and holidays (see Work Calendar).</p>
+    <h3>Waiting on the customer — the SLA pauses</h3>
+    <p>When a ticket is stuck because you need something from the customer (data, access, a confirmation), move it to <strong>Waiting on Customer</strong>. While it waits, the resolution clock stops: the card shows <strong>⏸ Waiting · 3d</strong> (working days waited) and <strong>SLA paused</strong>, and it never shows as overdue. <strong>Customer Test</strong> works the same way, because the customer is the one testing. Moving between the two counts as one wait.</p>
+    <p>When the ticket comes back (for example to In Progress), the clock carries on from where it stopped:</p>
+    <ul>
+      <li><strong>Wait</strong> = time it left the status − time it entered it (working hours only, if the project counts working hours).</li>
+      <li><strong>New Resolve by</strong> = original Resolve by + all waits.</li>
+      <li><strong>New Due Date</strong> = Due Date + working days waited (SLA-tracked projects only; not when it goes straight to Done, or when you set a different Due Date in the same save).</li>
+    </ul>
+    <p>The response clock does not pause — you will normally have replied before asking the customer for something. Waiting days are also taken out of the resolution time in Reports.</p>
     <p><strong>Priority change always rewrites Duration</strong> — escalating a Low ticket to Critical MUST tighten its deadline, so the SLA is re-applied even if you had typed a Duration manually. Typing your own Duration afterwards keeps it until you touch the priority again.</p>
     <h3>Parent-task rollup and dependency warnings</h3>
     <p>A task with subtasks (a parent) rolls its date range up from them: the earliest child Start becomes the parent's Start, the latest child Due becomes the parent's Due, and Duration is the working days between the two. You can still edit a parent's dates by hand, but the moment any child moves the parent snaps back to the recomputed span — the parent's dates aren't a fact of their own, they're a summary of the children.</p>
@@ -503,7 +512,7 @@
       <tr><td>Customers</td><td>1 · Tickets per customer per month</td><td>count of tickets created in the month</td></tr>
       <tr><td>Customers</td><td>5 · Where problems come from (top 5 modules and categories)</td><td>count of tickets created in the period</td></tr>
       <tr><td>SLA &amp; speed</td><td>2 · Resolution SLA met per customer per month</td><td>met ÷ (met + breached) × 100</td></tr>
-      <tr><td>SLA &amp; speed</td><td>3 · Average response and resolution time per priority</td><td>sum of hours (or working days) ÷ number of tickets — response = created → first comment (hours); resolution = created → Done (working days)</td></tr>
+      <tr><td>SLA &amp; speed</td><td>3 · Average response and resolution time per priority</td><td>sum of hours (or working days) ÷ number of tickets — response = created → first comment (hours); resolution = created → Done (working days) − working days waiting on the customer</td></tr>
       <tr><td>SLA &amp; speed</td><td>4 · Age of open tickets (0–7, 8–30, 31–60, 60+ days)</td><td>working days from created date to today</td></tr>
       <tr><td>Team</td><td>7 · Team performance</td><td>average resolution = resolution working days ÷ closed; overdue % = overdue ÷ open × 100 (overdue counted in working days)</td></tr>
       <tr><td>Time &amp; billing</td><td>6 · Hours logged per customer per month</td><td>sum of hours logged in the month</td></tr>

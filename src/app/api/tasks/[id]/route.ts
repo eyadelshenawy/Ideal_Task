@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkTaskLists } from "@/lib/lists";
 import { prisma } from "@/lib/prisma";
+import { pauseUpdate } from "@/lib/pauseUpdate";
 import { requireSession, getUserAccess } from "@/lib/permissions";
 import { taskFullUpdateSchema, taskStatusUpdateSchema, assigneesToSet } from "@/lib/validation/task";
 import { serializeTask, taskInclude } from "@/lib/serializers/task";
@@ -69,6 +70,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
           status: nextStatus,
           progress: nextStatus === "DONE" ? 100 : data.progress ?? existing.progress,
           ...(completedAtUpdate !== undefined ? { completedAt: completedAtUpdate } : {}),
+          ...(await pauseUpdate(existing, nextStatus)),
         },
         include: taskInclude,
       });
@@ -248,6 +250,14 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
           ? null
           : undefined;
 
+  // Waiting on the customer: start / stop the SLA pause. Leaving a wait pushes
+  // the Due Date back — unless this same save sets a different Due Date.
+  const pauseData = await pauseUpdate(
+    existing,
+    nextStatus,
+    data.dueDate !== undefined && data.dueDate !== (existing.dueDate ? toDateOnly(existing.dueDate) : null),
+  );
+
   try {
     const task = await prisma.task.update({
       where: { id: params.id },
@@ -277,6 +287,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
           : willBeMilestone && (existing.startDate || existing.durationDays)
             ? { startDate: null, durationDays: null }
             : {}),
+        ...pauseData,
         ...(completedAtUpdate !== undefined ? { completedAt: completedAtUpdate } : {}),
         progress: nextStatus === "DONE" ? 100 : data.progress ?? existing.progress,
         ...(data.isMilestone !== undefined ? { isMilestone: data.isMilestone } : {}),
@@ -298,7 +309,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
     // status (may flip parent to/from DONE), dates or duration (roll up to
     // parent's own date span), or moving to a different parent (both the
     // old and the new parent need to be recomputed).
-    const datesChanged = resolvedDates !== null;
+    const datesChanged = resolvedDates !== null || pauseData.dueDate !== undefined;
     // A milestone with subtasks takes its date from them, whatever was typed.
     if (willBeMilestone && (datesChanged || data.isMilestone !== undefined)) await syncAncestorChain(prisma, params.id);
     if (nextStatus !== existing.status || task.parentId !== existing.parentId || datesChanged) {

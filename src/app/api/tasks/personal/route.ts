@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isPausedStatus } from "@/lib/pause";
 import { requireSession } from "@/lib/permissions";
 import { personalTaskCreateSchema } from "@/lib/validation/task";
 import { serializeTask, taskInclude } from "@/lib/serializers/task";
@@ -41,6 +42,7 @@ export async function POST(req: NextRequest) {
       assignees: { connect: [{ id: session.user.id }] },
       priority: data.priority,
       status: data.status,
+      pausedAt: isPausedStatus(data.status) ? new Date() : null,
       startDate: dateStrToUTC(data.startDate),
       dueDate: dateStrToUTC(data.dueDate),
       completedAt: data.status === "DONE" ? new Date() : null,

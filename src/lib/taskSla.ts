@@ -2,6 +2,7 @@ import type { Project, Task } from "@/types/models";
 import type { BusinessCalendar } from "@/lib/businessTime";
 import type { SlaConfigDto } from "@/lib/slaConfig";
 import { CALENDAR_CLOCK, responseDeadline, resolutionDeadline, type SlaState } from "@/lib/sla";
+import { isPausedStatus, totalPausedMinutes } from "@/lib/pause";
 
 /** Shape of GET /api/settings/sla/all. */
 export interface SlaAll {
@@ -15,6 +16,8 @@ export interface TaskSla {
   resolutionDue: Date;
   response: SlaState;
   resolution: SlaState;
+  // Waiting on the customer: the resolution clock is stopped.
+  paused: boolean;
 }
 
 /**
@@ -34,7 +37,9 @@ export function computeTaskSla(
 
   const clock = project.slaBusinessHours ? { calendar: slaAll.calendar } : CALENDAR_CLOCK;
   const responseDue = responseDeadline(task.priority, task.createdAt, config.targets, clock);
-  const resolutionDue = resolutionDeadline(task.priority, task.createdAt, config.targets, clock);
+  // Waiting on the customer pushes the deadline back; while the wait runs it
+  // moves with the clock, so the time left stays frozen.
+  const resolutionDue = resolutionDeadline(task.priority, task.createdAt, config.targets, clock, totalPausedMinutes(task, now, clock));
 
   const state = (deadline: Date, doneAt: string | null): SlaState =>
     doneAt ? (new Date(doneAt) <= deadline ? "met" : "breached") : now <= deadline ? "pending" : "breached";
@@ -44,6 +49,7 @@ export function computeTaskSla(
     resolutionDue,
     response: state(responseDue, firstCommentAt),
     resolution: state(resolutionDue, task.completedAt),
+    paused: isPausedStatus(task.status),
   };
 }
 

@@ -3,6 +3,7 @@ import { sendEmail } from "@/lib/email";
 import { slaRiskEmailHtml } from "@/lib/notifications";
 import { notify } from "@/lib/inAppNotify";
 import { responseSlaState, resolutionSlaState, responseDeadline, resolutionDeadline } from "@/lib/sla";
+import { isPausedStatus, totalPausedMinutes } from "@/lib/pause";
 import { loadDefaultSlaConfig, loadAllProjectSlaOverrides, loadBusinessCalendar, clockFor, type SlaConfigDto } from "@/lib/slaConfig";
 
 // Warns assignees once per deadline when a ticket enters the last quarter of
@@ -31,7 +32,7 @@ export async function checkSlaRisks(now: Date): Promise<{ responseWarned: number
         OR: [{ responseRiskNotifiedAt: null }, { resolutionRiskNotifiedAt: null }],
       },
       select: {
-        id: true, title: true, priority: true, createdAt: true, completedAt: true, projectId: true,
+        id: true, title: true, priority: true, status: true, createdAt: true, completedAt: true, projectId: true, pausedAt: true, pausedMinutes: true,
         responseRiskNotifiedAt: true, resolutionRiskNotifiedAt: true,
         project: { select: { name: true } },
         assignees: { select: { id: true, email: true } },
@@ -84,10 +85,12 @@ export async function checkSlaRisks(now: Date): Promise<{ responseWarned: number
       }
     }
 
-    if (!task.resolutionRiskNotifiedAt) {
-      const state = resolutionSlaState(task.priority, createdAtIso, task.completedAt ? task.completedAt.toISOString() : null, now, config.targets, clock);
+    // No resolution warning while the ticket waits on the customer: its clock is stopped.
+    if (!task.resolutionRiskNotifiedAt && !isPausedStatus(task.status)) {
+      const paused = totalPausedMinutes(task, now, clock);
+      const state = resolutionSlaState(task.priority, createdAtIso, task.completedAt ? task.completedAt.toISOString() : null, now, config.targets, clock, paused);
       if (state === "pending") {
-        const deadline = resolutionDeadline(task.priority, task.createdAt, config.targets, clock).getTime();
+        const deadline = resolutionDeadline(task.priority, task.createdAt, config.targets, clock, paused).getTime();
         const daysRemaining = (deadline - now.getTime()) / 86400000;
         const windowDays = (deadline - task.createdAt.getTime()) / 86400000;
         if (daysRemaining > 0 && daysRemaining <= windowDays * 0.25) {

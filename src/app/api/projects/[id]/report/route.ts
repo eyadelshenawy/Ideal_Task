@@ -4,6 +4,7 @@ import { loadWorkDays } from "@/lib/scheduling";
 import { isOverdue } from "@/lib/workdays";
 import { requireProjectAccess } from "@/lib/permissions";
 import { responseSlaState, resolutionSlaState } from "@/lib/sla";
+import { totalPausedMinutes } from "@/lib/pause";
 import { loadSlaConfig, loadDefaultSlaConfig, loadBusinessCalendar, clockFor } from "@/lib/slaConfig";
 import { dateStrToUTC } from "@/lib/serverDates";
 
@@ -37,7 +38,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
   // rolls up into any operational counts anywhere.
   const tasks = await prisma.task.findMany({
     where: { projectId: project.id, deletedAt: null, isPrivate: false },
-    select: { id: true, priority: true, status: true, dueDate: true, createdAt: true, completedAt: true, updatedAt: true },
+    select: { id: true, priority: true, status: true, dueDate: true, createdAt: true, completedAt: true, updatedAt: true, pausedAt: true, pausedMinutes: true },
   });
 
   const today = new Date().toISOString().slice(0, 10);
@@ -89,7 +90,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
     for (const t of inScope) {
       const createdAtIso = t.createdAt.toISOString();
       response[responseSlaState(t.priority, createdAtIso, firstCommentAt.get(t.id) ?? null, now, config.targets, clock)]++;
-      resolution[resolutionSlaState(t.priority, createdAtIso, t.completedAt ? t.completedAt.toISOString() : null, now, config.targets, clock)]++;
+      resolution[resolutionSlaState(t.priority, createdAtIso, t.completedAt ? t.completedAt.toISOString() : null, now, config.targets, clock, totalPausedMinutes(t, now, clock))]++;
     }
     sla = { response, resolution };
   }

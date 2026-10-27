@@ -75,6 +75,8 @@ export function computeInsights(input: {
   workDays: WorkDays;
 }): Insights {
   const { projects, team, slaAll, firstCommentAt, raw, today, monthCount, projectIds, workDays } = input;
+  // Resolution = working days from created to Done − working days spent waiting on the customer.
+  const resolutionWorkDays = (t: Task) => Math.max(0, workDaysAfter(dayOf(t.createdAt), t.completedAt!, workDays) - t.pausedDays);
   const months = lastMonths(today, monthCount);
   const from = `${months[0].key}-01`;
   const inPeriod = (d: string | null) => !!d && dayOf(d) >= from && dayOf(d) <= today;
@@ -121,7 +123,7 @@ export function computeInsights(input: {
   const completed = tasks.filter((t) => t.status === "DONE" && inPeriod(t.completedAt));
   for (const t of completed) {
     const s = speed.get(t.priority)!;
-    s.resolutionDays += workDaysAfter(dayOf(t.createdAt), t.completedAt!, workDays);
+    s.resolutionDays += resolutionWorkDays(t);
     s.resolutionCount++;
   }
 
@@ -164,7 +166,7 @@ export function computeInsights(input: {
       id: m.id,
       name: m.name,
       closed: mineDone.length,
-      resolutionDays: mineDone.reduce((sum, t) => sum + workDaysAfter(dayOf(t.createdAt), t.completedAt!, workDays), 0),
+      resolutionDays: mineDone.reduce((sum, t) => sum + resolutionWorkDays(t), 0),
       open: mineOpen.length,
       overdue: mineOpen.filter((t) => isOverdue(t, today, workDays)).length,
     };

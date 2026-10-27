@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { isPausedStatus } from "@/lib/pause";
 import type { Priority, Status, Task, TeamMember } from "@/types/models";
 import { daysOverdue, workDaysAfter, type WorkDays } from "@/lib/workdays";
 
@@ -15,6 +16,7 @@ export const STATUSES: { id: Status; label: string; color: string }[] = [
   { id: "TODO", label: "New", color: "#8A8F8C" },
   { id: "READY", label: "Ready", color: "#6B8FB5" },
   { id: "INPROGRESS", label: "In Progress", color: "#82B478" },
+  { id: "WAITING_CUSTOMER", label: "Waiting on Customer", color: "#8E7CC3" },
   { id: "INTERNAL_TEST", label: "Internal Test", color: "#D98B3A" },
   { id: "CUSTOMER_TEST", label: "Customer Test", color: "#4A7FB5" },
   { id: "DONE", label: "Done", color: "#0A5A46" },
@@ -41,7 +43,11 @@ export function colorForIndex(i: number): string {
 }
 
 export function todayStr(): string {
-  const d = new Date();
+  return localDateStr(new Date());
+}
+
+/** "YYYY-MM-DD" of an instant in the browser's local time. */
+export function localDateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
@@ -51,7 +57,7 @@ export function todayStr(): string {
  */
 export const PERSONAL_COLUMNS: { id: string; label: string; color: string; statuses: Status[] }[] = [
   { id: "todo", label: "To do", color: "#8A8F8C", statuses: ["TODO", "READY"] },
-  { id: "doing", label: "Doing", color: "#82B478", statuses: ["INPROGRESS", "INTERNAL_TEST", "CUSTOMER_TEST"] },
+  { id: "doing", label: "Doing", color: "#82B478", statuses: ["INPROGRESS", "WAITING_CUSTOMER", "INTERNAL_TEST", "CUSTOMER_TEST"] },
   { id: "done", label: "Done", color: "#0A5A46", statuses: ["DONE"] },
 ];
 
@@ -78,7 +84,7 @@ export function formatDateDisplay(s?: string | null): string {
   return `${d}/${m}/${y}`;
 }
 
-export type DueTone = "done" | "overdue" | "soon" | "normal";
+export type DueTone = "done" | "overdue" | "soon" | "normal" | "paused";
 
 /** Due within the next 7 days (inclusive of today), and not already Done. */
 export function isDueThisWeek(task: Pick<Task, "dueDate" | "status">): boolean {
@@ -88,9 +94,14 @@ export function isDueThisWeek(task: Pick<Task, "dueDate" | "status">): boolean {
 }
 
 /** Overdue and "Due in" count working days only (Work Calendar), not weekends or holidays. */
-export function dueBadge(task: Pick<Task, "dueDate" | "status">, cal: WorkDays): { label: string; tone: DueTone } | null {
-  if (!task.dueDate) return null;
+export function dueBadge(task: Pick<Task, "dueDate" | "status"> & Partial<Pick<Task, "pausedAt">>, cal: WorkDays): { label: string; tone: DueTone } | null {
   const today = todayStr();
+  // Waiting on the customer: no overdue, just how many working days it has waited.
+  if (isPausedStatus(task.status)) {
+    const waited = task.pausedAt ? workDaysAfter(localDateStr(new Date(task.pausedAt)), today, cal) : 0;
+    return { label: waited > 0 ? `⏸ Waiting · ${waited}d` : "⏸ Waiting", tone: "paused" };
+  }
+  if (!task.dueDate) return null;
   if (task.status === "DONE") return { label: formatDateDisplay(task.dueDate), tone: "done" };
   const late = daysOverdue(task, today, cal);
   if (late > 0) return { label: `${late}d overdue`, tone: "overdue" };
@@ -107,6 +118,7 @@ export function toneStyle(tone: DueTone): CSSProperties {
     case "overdue": return { background: "#FBE7E5", color: "#9A3530" };
     case "soon": return { background: "#FBEEDD", color: "#8A5A20" };
     case "done": return { background: "#E4EFE8", color: "#0A5A46" };
+    case "paused": return { background: "#EFEAF7", color: "#5E4A8C" };
     default: return { background: "#EEF2F0", color: "#5B6B64" };
   }
 }
