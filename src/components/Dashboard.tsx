@@ -278,6 +278,53 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
   }
   const canCreateAnywhere = isSuperAdmin || administeredProjectIds.length > 0;
   const closeSettings = () => setSettingsSection(null);
+
+  // Phone Back button: every open window (and any view other than List) gets a
+  // history entry, so Back closes the top one instead of leaving the app.
+  const backDepth = [view !== "list", attentionOnly, modalOpen, !!settingsSection, mfaModalOpen, whatsNewOpen, globalSearchOpen, !!importPreview].filter(Boolean).length;
+  const closeTopRef = useRef(() => {});
+  closeTopRef.current = () => {
+    if (importPreview) setImportPreview(null);
+    else if (globalSearchOpen) setGlobalSearchOpen(false);
+    else if (whatsNewOpen) setWhatsNewOpen(false);
+    else if (mfaModalOpen) setMfaModalOpen(false);
+    else if (settingsSection) setSettingsSection(null);
+    else if (modalOpen) setModalOpen(false);
+    else if (attentionOnly) setAttentionOnly(false);
+    else if (view !== "list") setView("list");
+  };
+  const pushedRef = useRef(0);
+  const skipPopRef = useRef(0);
+  useEffect(() => {
+    if (backDepth > pushedRef.current) {
+      for (let i = pushedRef.current; i < backDepth; i++) history.pushState({ idealBack: true }, "");
+    } else if (backDepth < pushedRef.current) {
+      // Closed with X / Cancel: drop the entries it left behind.
+      skipPopRef.current++;
+      history.go(backDepth - pushedRef.current);
+    }
+    pushedRef.current = backDepth;
+  }, [backDepth]);
+  useEffect(() => {
+    const onPop = () => {
+      if (skipPopRef.current > 0) { skipPopRef.current--; return; }
+      pushedRef.current = Math.max(0, pushedRef.current - 1);
+      closeTopRef.current();
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  // Desktop: the search + filter row sticks under the header while scrolling.
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setHeaderHeight(el.offsetHeight));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [tasks, team, projects, contacts]);
   const workDays = useWorkDays();
   // Same visibility rules the ⋯ menu used for each screen.
   const settingsItems: SettingsItem[] = [
@@ -858,7 +905,7 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
 
   return (
     <div className="min-h-screen bg-brand-bg">
-      <div className="bg-brand-dark px-3 sm:px-4 py-2 sm:py-3 sticky top-0 z-30">
+      <div ref={headerRef} className="bg-brand-dark px-3 sm:px-4 py-2 sm:py-3 sticky top-0 z-30">
         <div className="flex items-center justify-between flex-wrap gap-2 sm:gap-3">
           <div className="flex items-center gap-2.5">
             <div className="relative w-[30px] h-[30px]">
@@ -1101,7 +1148,7 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
           />
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4 flex-wrap">
+        <div className="flex items-center gap-1.5 sm:gap-2 mb-3 sm:mb-2 sm:py-2 flex-wrap sm:sticky z-20 bg-brand-bg" style={{ top: headerHeight }}>
           <div className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 bg-white border border-brand-border flex-1 min-w-[140px] sm:flex-none">
             <Search size={14} className="text-brand-sub" />
             <input
