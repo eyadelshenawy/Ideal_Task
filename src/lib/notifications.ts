@@ -114,6 +114,7 @@ export function customerMessageEmailHtml(task: { code: string | null; title: str
       <h2 style="color:#111;">${task.code ? `${escapeHtml(task.code)} — ` : ""}${escapeHtml(task.title)}</h2>
       <blockquote style="border-left:3px solid #0A5A46; padding-left:12px; color:#333; margin:16px 0; white-space:pre-wrap;">${escapeHtml(message)}</blockquote>
       <p style="margin-top:24px;"><a href="${task.trackingUrl}" style="color:#2563eb;">View status &amp; reply</a></p>
+      <p style="font-size:12px; color:#777;">Please reply using the <strong>View status &amp; reply</strong> link above, not by replying to this email — replies to this email don't reach the ticket.</p>
     </div>
   `;
 }
