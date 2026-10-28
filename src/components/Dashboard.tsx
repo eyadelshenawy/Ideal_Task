@@ -124,7 +124,8 @@ function normalizeSavedFilters(saved: Record<string, unknown>): Filters {
 const GROUP_PAGE_SIZE = 30;
 
 export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, administeredProjectIds, mfaInitiallyEnabled, idleTimeoutMinutes }: DashboardProps) {
-  const { data: tasks, mutate: mutateTasks } = useSWR<Task[]>("/api/tasks", fetcher);
+  // Refreshes every minute so colleagues' changes show up without reloading.
+  const { data: tasks, mutate: mutateTasks } = useSWR<Task[]>("/api/tasks", fetcher, { refreshInterval: 60000 });
   const { data: team, mutate: mutateTeam } = useSWR<TeamMember[]>("/api/team", fetcher);
   const { data: projects, mutate: mutateProjects } = useSWR<Project[]>("/api/projects", fetcher);
   const { data: contacts, mutate: mutateContacts } = useSWR<Contact[]>("/api/contacts", fetcher);

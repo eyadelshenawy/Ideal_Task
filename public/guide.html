@@ -284,6 +284,7 @@
     </figure>
 
     <h3>List</h3>
+    <p>Board and List refresh on their own every minute, so changes made by colleagues appear without reloading the page.</p>
     <p>A flat, sortable table — better when you want to scan everything at once or sort by a specific column. Each row reads in one line: assignee, code, type tag and title, then project, modules, category, tags, subtasks and comment/file/checklist counts in grey. Status, the SLA countdown and the due date line up in columns on the right, and progress is the thin line along the bottom of the row. The Status pill is a drop-down — change a task's status right there, no need to open it or switch to Board. On a computer, the Edit, Duplicate and Trash icons appear when you move the mouse over a row.</p>
     <figure class="shot">
       <img loading="lazy" src="/guide/list.jpg" alt="List view">
@@ -428,7 +429,9 @@
     </ul>
 
     <h3>The parent auto-completes — and reopens</h3>
-    <p>Once every subtask under a parent is marked <em>Done</em>, the parent is automatically marked Done too (progress jumps to 100%). Reopen any one of those subtasks afterward, and the parent automatically reverts to <em>In Progress</em>, with its progress recalculated from however many subtasks are still done. You never have to remember to close out the parent yourself. A recurring subtask's next occurrence stays under the same parent, with a fresh code of its own.</p>
+    <p>Once every subtask under a parent is marked <em>Done</em>, the parent is automatically marked Done too (progress jumps to 100%). Reopen any one of those subtasks afterward, and the parent automatically reverts to <em>In Progress</em>.</p>
+    <p>A parent's <strong>progress</strong> always comes from its subtasks, so its progress slider is greyed out: <strong>parent progress = sum of the subtasks' progress ÷ number of subtasks</strong> (a Done subtask counts as 100%). For example, subtasks at 90% and 10% give the parent 50%. Changing the parent's progress never changes its subtasks. With several levels, each level is worked out from the one below it.</p>
+    <p> You never have to remember to close out the parent yourself. A recurring subtask's next occurrence stays under the same parent, with a fresh code of its own.</p>
 
     <h3>Where it shows up</h3>
     <ul>
