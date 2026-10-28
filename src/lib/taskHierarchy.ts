@@ -70,11 +70,11 @@ async function recomputeOneLevel(db: Db, parentId: string): Promise<boolean> {
   const [parent, siblings] = await Promise.all([
     db.task.findUnique({
       where: { id: parentId },
-      select: { status: true, startDate: true, dueDate: true, durationDays: true, isMilestone: true, pausedAt: true },
+      select: { status: true, progress: true, startDate: true, dueDate: true, durationDays: true, isMilestone: true, pausedAt: true },
     }),
     db.task.findMany({
       where: { parentId, deletedAt: null },
-      select: { status: true, startDate: true, dueDate: true },
+      select: { status: true, progress: true, startDate: true, dueDate: true },
     }),
   ]);
   if (!parent) return false;
@@ -91,16 +91,17 @@ async function recomputeOneLevel(db: Db, parentId: string): Promise<boolean> {
   const allDone = siblings.length > 0 && siblings.every((s) => s.status === "DONE");
   if (allDone && parent.status !== "DONE") {
     patch.status = "DONE";
-    patch.progress = 100;
     // Done ends any wait on the customer it was in.
     if (parent.pausedAt) patch.pausedAt = null;
   } else if (!allDone && parent.status === "DONE") {
-    // Reopening un-does the 100% this task got when it auto-completed —
-    // otherwise the progress bar would keep reading "done" under a
-    // now-incorrect "In Progress" status.
-    const doneCount = siblings.filter((s) => s.status === "DONE").length;
     patch.status = "INPROGRESS";
-    patch.progress = siblings.length > 0 ? Math.round((doneCount / siblings.length) * 100) : 0;
+  }
+
+  // A main task's progress comes from its subtasks:
+  // progress = Σ subtask progress ÷ number of subtasks (a Done subtask counts as 100%).
+  if (siblings.length > 0) {
+    const average = Math.round(siblings.reduce((sum, s) => sum + (s.status === "DONE" ? 100 : s.progress), 0) / siblings.length);
+    if (average !== parent.progress) patch.progress = average;
   }
 
   // A milestone parent marks the moment its subtasks are all due: its single

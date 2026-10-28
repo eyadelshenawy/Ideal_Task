@@ -110,8 +110,10 @@ export async function PATCH(req: NextRequest) {
 
     // A standalone bulk progress change becomes the new progress (unless
     // combined with status=DONE, which forces 100 above).
+    // A main task's progress comes from its subtasks, so it's left alone here.
+    const hasSubtasks = progress !== undefined && (await prisma.task.count({ where: { parentId: task.id, deletedAt: null } })) > 0;
     const progressUpdate =
-      status === "DONE"
+      status === "DONE" || hasSubtasks
         ? undefined
         : progress !== undefined
           ? progress
@@ -184,6 +186,7 @@ export async function PATCH(req: NextRequest) {
     // parent the same way the single-task PATCH does.
     const parentAffected = updatedTask.parentId && (
       (status !== undefined && status !== task.status) ||
+      (progressUpdate !== undefined && progressUpdate !== task.progress) ||
       Object.keys(bulkDateData).length > 0
     );
     if (parentAffected && updatedTask.parentId) {

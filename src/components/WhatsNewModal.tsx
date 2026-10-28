@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Main task progress follows its subtasks; the list refreshes itself",
+    description: "A main task's progress is now the average of its subtasks (a Done subtask counts as 100%) — for example 90% and 10% give 50% — and its progress slider is greyed out. Changing a main task's progress never changes its subtasks. Board and List also refresh on their own every minute, so colleagues' changes appear without reloading.",
+  },
+  {
     title: "Customer emails say how to reply",
     description: "Emails sent with Email customer now end with a short note asking the customer to reply through the View status & reply link, not by replying to the email, because email replies don't reach the ticket.",
   },

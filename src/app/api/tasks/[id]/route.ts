@@ -47,6 +47,8 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
   // assigned to the task — same rule the bulk endpoint enforces. Without
   // this an id-guessing member could flip any task's status.
   const isAssignee = existing.assignees.some((a) => a.id === session.user.id);
+  // A main task's progress is the average of its subtasks (see syncAncestorChain), so a typed value is ignored.
+  const hasSubtasks = (await prisma.task.count({ where: { parentId: params.id, deletedAt: null } })) > 0;
   if (!canFullyEdit) {
     if (!isAssignee) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -68,7 +70,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
         where: { id: params.id },
         data: {
           status: nextStatus,
-          progress: nextStatus === "DONE" ? 100 : data.progress ?? existing.progress,
+          progress: nextStatus === "DONE" ? 100 : hasSubtasks ? existing.progress : data.progress ?? existing.progress,
           ...(completedAtUpdate !== undefined ? { completedAt: completedAtUpdate } : {}),
           ...(await pauseUpdate(existing, nextStatus)),
         },
@@ -80,7 +82,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
       if (nextStatus === "DONE" && existing.status !== "DONE") {
         maybeSendSurvey(task.id).catch((err) => console.error("maybeSendSurvey failed:", err));
       }
-      if (nextStatus !== existing.status && task.parentId) {
+      if ((nextStatus !== existing.status || task.progress !== existing.progress) && task.parentId) {
         await syncAncestorChain(prisma, task.parentId);
       }
       if (nextStatus !== existing.status) {
@@ -289,7 +291,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
             : {}),
         ...pauseData,
         ...(completedAtUpdate !== undefined ? { completedAt: completedAtUpdate } : {}),
-        progress: nextStatus === "DONE" ? 100 : data.progress ?? existing.progress,
+        progress: nextStatus === "DONE" ? 100 : hasSubtasks ? existing.progress : data.progress ?? existing.progress,
         ...(data.isMilestone !== undefined ? { isMilestone: data.isMilestone } : {}),
         ...(dependsOn !== undefined ? { dependsOn: { set: dependsOn.map((id) => ({ id })) } } : {}),
         ...(data.recurrenceFreq !== undefined ? { recurrenceFreq: data.recurrenceFreq } : {}),
@@ -312,7 +314,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
     const datesChanged = resolvedDates !== null || pauseData.dueDate !== undefined;
     // A milestone with subtasks takes its date from them, whatever was typed.
     if (willBeMilestone && (datesChanged || data.isMilestone !== undefined)) await syncAncestorChain(prisma, params.id);
-    if (nextStatus !== existing.status || task.parentId !== existing.parentId || datesChanged) {
+    if (nextStatus !== existing.status || task.progress !== existing.progress || task.parentId !== existing.parentId || datesChanged) {
       if (task.parentId) await syncAncestorChain(prisma, task.parentId);
       if (existing.parentId && existing.parentId !== task.parentId) {
         await syncAncestorChain(prisma, existing.parentId);

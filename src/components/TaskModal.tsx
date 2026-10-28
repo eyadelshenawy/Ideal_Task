@@ -293,6 +293,8 @@ export default function TaskModal({
   }
 
   const savedTask = draft.id ? allTasks.find((t) => t.id === draft.id) : undefined;
+  // A main task's progress is the average of its subtasks, worked out when a subtask changes.
+  const progressFromSubtasks = !!draft.id && allTasks.some((t) => t.parentId === draft.id);
   const levelLabel = (v: MatrixLevel | "") => MATRIX_LEVELS.find((l) => l.value === v)?.label;
   // Tab panels drop their own divider line, since the tab bar already separates them.
   const panelWrap = "[&>div]:mt-0 [&>div]:border-t-0 [&>div]:pt-0";
@@ -323,10 +325,13 @@ export default function TaskModal({
               type="range" min={0} max={100} step={5}
               value={draft.progress || 0}
               onChange={(e) => setDraft({ ...draft, progress: Number(e.target.value) })}
+              disabled={progressFromSubtasks}
+              title={progressFromSubtasks ? "Set by its subtasks (average)" : undefined}
               aria-label="Progress"
-              className="flex-1"
+              className="flex-1 disabled:opacity-60"
             />
             <span className="text-[11px] text-brand-sub w-8 text-right">{draft.progress || 0}%</span>
+            {progressFromSubtasks && <span className="text-[10.5px] text-brand-sub w-full">Set by its subtasks (average).</span>}
           </div>
         )}
         {sla && (
