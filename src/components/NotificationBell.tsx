@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import useSWR from "swr";
 import { Bell } from "lucide-react";
 
@@ -26,6 +26,8 @@ export default function NotificationBell({ onOpenTask }: { onOpenTask: (taskId: 
     { refreshInterval: 20000 }
   );
   const [open, setOpen] = useState(false);
+  // On a phone the list spans the screen just below the bell, instead of hanging off the left edge.
+  const [panelTop, setPanelTop] = useState(0);
 
   async function handleClick(n: NotificationItem) {
     if (!n.read) {
@@ -46,7 +48,7 @@ export default function NotificationBell({ onOpenTask }: { onOpenTask: (taskId: 
   return (
     <div className="relative">
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={(e) => { setPanelTop(e.currentTarget.getBoundingClientRect().bottom + 6); setOpen((v) => !v); }}
         title="Notifications"
         className="relative p-1.5 sm:p-2 rounded-lg text-white"
         style={{ background: open ? "#fff" : "rgba(255,255,255,0.12)", color: open ? "#0A5A46" : "#fff" }}
@@ -63,7 +65,10 @@ export default function NotificationBell({ onOpenTask }: { onOpenTask: (taskId: 
       </button>
 
       {open && (
-        <div className="absolute right-0 top-[calc(100%+6px)] z-20 w-[300px] max-h-[360px] overflow-y-auto rounded-xl bg-white border border-brand-border shadow-lg">
+        <div
+          className="fixed left-3 right-3 top-[var(--bell-top)] sm:absolute sm:left-auto sm:right-0 sm:top-[calc(100%+6px)] sm:w-[300px] z-20 max-h-[360px] overflow-y-auto rounded-xl bg-white border border-brand-border shadow-lg"
+          style={{ "--bell-top": `${panelTop}px` } as CSSProperties}
+        >
           <div className="flex items-center justify-between px-3 py-2 border-b border-brand-border">
             <span className="text-xs font-bold text-brand-text">Notifications</span>
             {unreadCount > 0 && (

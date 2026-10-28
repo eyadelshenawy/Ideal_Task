@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Notifications fit the phone screen",
+    description: "On a phone, the notifications list now opens across the full width under the header, instead of being cut off on the left.",
+  },
+  {
     title: "Main task progress follows its subtasks; the list refreshes itself",
     description: "A main task's progress is now the average of its subtasks (a Done subtask counts as 100%) — for example 90% and 10% give 50% — and its progress slider is greyed out. Changing a main task's progress never changes its subtasks. Board and List also refresh on their own every minute, so colleagues' changes appear without reloading.",
   },
