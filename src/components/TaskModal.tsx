@@ -320,7 +320,7 @@ export default function TaskModal({
           {STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
         </select>
         {!draft.isMilestone && (
-          <div className="flex items-center gap-2 flex-1 min-w-[140px]">
+          <div className="flex flex-wrap items-center gap-x-2 flex-1 min-w-[140px]">
             <input
               type="range" min={0} max={100} step={5}
               value={draft.progress || 0}
@@ -331,7 +331,7 @@ export default function TaskModal({
               className="flex-1 disabled:opacity-60"
             />
             <span className="text-[11px] text-brand-sub w-8 text-right">{draft.progress || 0}%</span>
-            {progressFromSubtasks && <span className="text-[10.5px] text-brand-sub w-full">Set by its subtasks (average).</span>}
+            {progressFromSubtasks && <span className="text-[10.5px] text-brand-sub w-full text-right">Set by its subtasks (average).</span>}
           </div>
         )}
         {sla && (
