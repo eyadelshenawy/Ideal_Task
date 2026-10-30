@@ -221,7 +221,7 @@
       <strong>Too many wrong attempts locks the account for 2 minutes.</strong> After 5 incorrect attempts in a row — wrong passwords and wrong two-factor codes both count — further tries (even with the correct details) are blocked for 2 minutes as a brute-force protection. The counter resets on the next successful login.
     </div>
     <div class="card tip">
-      <strong>Outside working hours, the first load can take up to a minute.</strong> The app is kept ready Sunday–Thursday, 8:45am–6pm Cairo time. In the evening, at night, and on Friday and Saturday it rests when no one is using it, so the first person to open it waits 30–60 seconds while it wakes up — after that it's fast as usual. Nothing is wrong; just wait for the page to load.
+      <strong>The first load can take up to a minute.</strong> When no one has used the app for about 15 minutes it rests, so the first person to open it waits 30–60 seconds while it wakes up — after that it's fast as usual. Nothing is wrong; just wait for the page to load.
     </div>
   </section>
 
@@ -585,7 +585,7 @@
       <tr><td>Due soon</td><td>Once, on the last working day before it's due (e.g. Thursday for a Sunday due date)</td><td>The task's assignees</td></tr>
       <tr><td>Overdue</td><td>Every working day it stays overdue (none on weekends or holidays)</td><td>Assignees + the project's admins + all Super Admins</td></tr>
       <tr><td>Weekly summary</td><td>First working day of the week, 9am Cairo time (Sunday, or Monday if Sunday is a holiday)</td><td>Everyone — scoped to what they can see (see below)</td></tr>
-      <tr><td>SLA warning</td><td>Once, when a ticket enters the last quarter of its response or resolution time (checked every 15 minutes during working hours, Sunday to Thursday, skipping holidays from Settings → Work calendar)</td><td>The ticket's assignees</td></tr>
+      <tr><td>SLA warning</td><td>Once, when a ticket enters the last quarter of its response or resolution time (checked every 30 minutes during working hours, Sunday to Thursday, skipping holidays from Settings → Work calendar)</td><td>The ticket's assignees</td></tr>
       <tr><td>Mention</td><td>When someone types @your name in a comment</td><td>The person mentioned</td></tr>
       <tr><td>Satisfaction survey</td><td>Once, when a customer ticket in an SLA-tracked project is first marked Done</td><td>The ticket's outside contact</td></tr>
     </table>
@@ -657,7 +657,7 @@
     <h3>Track SLA</h3>
     <p>Tick <strong>Track SLA</strong> under a project to include it in the SLA section of Reports — meant for support/ticket-style projects, not implementation projects with their own scheduled dates. Once on, an {{IICON:timer}} <strong>SLA targets</strong> button appears for that project so you can give it its own response/resolution numbers instead of the shared default (see Reports → SLA).</p>
     <p>Next to it, <strong>Working hours only</strong> decides how that project's SLA clock runs: unticked, it runs 24/7; ticked, it only counts working hours on working days (set in Work Calendar), so a ticket raised on Thursday evening doesn't breach over the weekend.</p>
-    <p>A ticket's assignees also get a one-time warning (email and in-app) once it enters the last quarter of its response or resolution time — before the deadline is missed, not after. This is checked every 15 minutes during working hours, so even a 4-hour Critical response target gets its warning in time.</p>
+    <p>A ticket's assignees also get a one-time warning (email and in-app) once it enters the last quarter of its response or resolution time — before the deadline is missed, not after. This is checked every 30 minutes during working hours, so even a 4-hour Critical response target gets its warning in time (the last quarter is one hour).</p>
   </section>
 
   <section class="doc-section" id="contacts-mgmt" data-group="Administration" data-icon="user-plus" data-label="Managing contacts">
@@ -848,7 +848,7 @@
     </details>
     <details class="faq">
       <summary>Why did the app take a minute to open in the evening or at the weekend?</summary>
-      <div class="faq-body">Outside working hours (Sunday–Thursday, 8:45am–6pm Cairo time) the app rests when no one is using it. The first visit wakes it up, which takes 30–60 seconds; everyone after that gets the normal speed. Just wait for the page — there's no need to refresh or report it.</div>
+      <div class="faq-body">When no one has used it for about 15 minutes, the app rests. The first visit wakes it up, which takes 30–60 seconds; everyone after that gets the normal speed. Just wait for the page — there's no need to refresh or report it.</div>
     </details>
     <details class="faq">
       <summary>I lost the phone with my Authenticator app — how do I sign in?</summary>

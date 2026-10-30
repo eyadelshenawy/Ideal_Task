@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "The app rests when nobody is using it",
+    description: "To stay within the free hosting hours, the app is no longer kept awake during working hours. After about 15 minutes with no one using it, it rests, and the first person to open it waits 30–60 seconds. SLA warnings are now checked every 30 minutes and still arrive before the deadline.",
+  },
+  {
     title: "Notifications fit the phone screen",
     description: "On a phone, the notifications list now opens across the full width under the header, instead of being cut off on the left.",
   },

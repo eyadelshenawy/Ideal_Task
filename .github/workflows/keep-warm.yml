@@ -1,22 +1,11 @@
 name: Keep Render instance warm
 
-# Render's free tier spins the service down after ~15 min idle, adding a
-# 30-60s cold-start delay to whoever opens the app next. Keeping it warm
-# around the clock used ~720 of the workspace's 750 free instance-hours a
-# month, starving the other services on the same Render account — so it is
-# kept warm during working hours only (Sun-Thu, 08:45-18:00 Cairo). Outside
-# that window the app sleeps and wakes on the first visit.
-#
-# GitHub cron runs in UTC and Cairo switches between UTC+3 (summer) and
-# UTC+2 (winter). The window below (05:45-15:59 UTC) covers 08:45-18:00 Cairo
-# in both, so nothing needs editing when DST changes:
-#   summer: awake ~08:45-19:00   winter: awake ~07:45-18:00
-# A 5-minute cadence leaves room for GitHub's scheduled-trigger delays
-# without exceeding Render's 15-min idle window.
+# No longer scheduled (Eyad, 30 Oct 2026): the free Render instance-hours
+# ran out at the end of October, shared with the other IDEAL apps on the
+# same account. The app now sleeps after ~15 idle minutes and wakes on the
+# first visit (~1 minute). Run this by hand (Actions → Run workflow) to
+# wake it before a demo.
 on:
-  schedule:
-    - cron: "45,50,55 5 * * 0-4" # Sun-Thu, 05:45-05:55 UTC
-    - cron: "*/5 6-15 * * 0-4" # Sun-Thu, 06:00-15:55 UTC
   workflow_dispatch: {}
 
 jobs:
