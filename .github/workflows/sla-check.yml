@@ -2,12 +2,14 @@ name: SLA deadline check
 
 on:
   schedule:
-    # Every 15 minutes, every day, 05:00-15:45 UTC — covers Cairo working
-    # hours in both summer (UTC+3) and winter (UTC+2). The app itself skips
-    # weekends and holidays from the Work Calendar, so this needs no edit
-    # when working days change. The app's own *RiskNotifiedAt stamps stop a
-    # warning being sent twice.
-    - cron: "*/15 5-15 * * *"
+    # Every 15 minutes, Sunday-Thursday, 05:00-15:45 UTC — covers Cairo
+    # working hours in both summer (UTC+3) and winter (UTC+2). Friday and
+    # Saturday are left out so the free Render instance can sleep (each call
+    # wakes it, and its instance hours are limited). The app itself still
+    # skips holidays from the Work Calendar; if Friday or Saturday ever
+    # become working days, add them back here (0-4 → 0-6). The app's own
+    # *RiskNotifiedAt stamps stop a warning being sent twice.
+    - cron: "*/15 5-15 * * 0-4"
   workflow_dispatch: {}
 
 jobs:
