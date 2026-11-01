@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Trash2, Check, ChevronLeft, ChevronRight, Diamond, AlertTriangle, Copy, Paperclip, MessageSquare, ListChecks } from "lucide-react";
+import { Trash2, Check, ChevronLeft, ChevronRight, Diamond, AlertTriangle, Copy, Paperclip, MessageSquare, ListChecks } from "lucide-react";
 import type { Task, Project, AssigneeDisplay } from "@/types/models";
 import { PRIORITIES, STATUSES, dueBadge, toneStyle, isBlocked, splitModules } from "@/lib/taskHelpers";
 import { useWorkDays } from "@/lib/useWorkDays";
@@ -65,12 +65,27 @@ export default function TaskCard({
     children.length > 0 ? `${doneChildren}/${children.length} subtasks` : null,
   ].filter(Boolean) as string[];
 
+  // Clicking anywhere on it opens the task (or ticks it while selecting) —
+  // except on its own buttons, status picker and checkbox.
+  const openOnClick = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest("button, input, select, a, label")) return;
+    if (selectMode) onToggleSelect?.(task.id);
+    else onEdit(task);
+  };
+  const openOnKey = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && e.target === e.currentTarget) onEdit(task);
+  };
+
   return (
     <div
+      onClick={openOnClick}
+      onKeyDown={openOnKey}
+      tabIndex={0}
+      title="Open"
       draggable={draggable}
       onDragStart={() => onDragStart?.(task.id)}
-      className="group bg-white border border-brand-border rounded-[10px] px-3 py-2.5 mb-2.5"
-      style={{ borderRight: `4px solid ${priority.color}`, cursor: draggable ? "grab" : undefined }}
+      className="group bg-white border border-brand-border rounded-[10px] px-3 py-2.5 mb-2.5 cursor-pointer hover:border-brand-light outline-none focus-visible:ring-2 focus-visible:ring-brand-light"
+      style={{ borderRight: `4px solid ${priority.color}` }}
     >
       <div className="flex items-center justify-between gap-2 min-h-[22px]">
         <div className="flex items-center gap-1.5 min-w-0">
@@ -95,9 +110,6 @@ export default function TaskCard({
                 : "[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 group-focus-within:opacity-100"
             }`}
           >
-            <button onClick={() => onEdit(task)} title="Edit" className="p-1 rounded hover:bg-gray-100 text-brand-sub">
-              <Pencil size={14} />
-            </button>
             {canManage && (
               <button
                 onClick={() => (confirmingDuplicate ? onDuplicate(task.id) : setConfirmingDuplicate(true))}

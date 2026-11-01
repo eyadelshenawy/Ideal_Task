@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Download, Upload, Loader2, ListChecks, BarChart3, FileDown, Bookmark, X, AlertTriangle, BookOpen, ChevronDown, ChevronRight, Lock, MoreHorizontal, Sparkles, SlidersHorizontal, Shield, Settings, LogOut } from "lucide-react";
+import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Download, Upload, Loader2, ListChecks, BarChart3, FileDown, Bookmark, X, AlertTriangle, BookOpen, ChevronDown, ChevronRight, Lock, MoreHorizontal, Sparkles, SlidersHorizontal, LayoutList, Shield, Settings, LogOut } from "lucide-react";
 import useSWR from "swr";
 import type { Task, Project, TeamMember, Contact, Status, AssigneeDisplay, Category, ListConfig } from "@/types/models";
 import type { ImportPreview } from "@/types/import";
@@ -216,7 +216,7 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
   }, [moreFiltersOpen]);
-  const [groupByOpen, setGroupByOpen] = useState(false);
+  const [viewMenuOpen, setViewMenuOpen] = useState(false);
   // List-view only: which fields to nest tasks under, in order. Empty = the
   // existing flat behavior, unchanged.
   const [groupByLevels, setGroupByLevels] = useState<GroupField[]>([]);
@@ -1122,7 +1122,8 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
           )}
           <span className="ml-auto text-[11.5px] text-brand-sub hidden sm:inline">{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" })}</span>
         </div>
-        <div className="grid grid-cols-5 sm:flex sm:flex-wrap gap-1.5 mb-2 sm:mb-3">
+        {/* Phones skip the count cards — the greeting strip above already shows your own numbers. */}
+        <div className="hidden sm:flex sm:flex-wrap gap-1.5 mb-2 sm:mb-3">
           <StatCard compact
             label="Total" value={stats.total} color="#0A5A46"
             onClick={() => setFilters((f) => ({ ...f, statusIds: [], overdueOnly: false, dueToday: false, milestonesOnly: false }))}
@@ -1246,17 +1247,6 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
               </div>
             )}
           </div>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as SortBy)}
-            className="rounded-lg px-2 py-1.5 text-xs bg-white border border-brand-border"
-          >
-            <option value="dueDate">Sort: Due Date</option>
-            <option value="code">Sort: Code</option>
-            <option value="priority">Sort: Priority</option>
-            <option value="assignee">Sort: Assignee</option>
-            <option value="created">Sort: Newest</option>
-          </select>
           <button
             onClick={() => setHideDone(!hideDone)}
             title="Hide Done tasks everywhere"
@@ -1281,90 +1271,118 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
           >
             Due this week
           </button>
-          {(view === "list" || view === "board") && (
+          {selectMode && (
             <button
-              onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
-              title={selectMode ? "Exit select mode" : "Select multiple tasks to change them together"}
+              onClick={exitSelectMode}
+              title="Exit select mode"
               className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs border"
-              style={{
-                background: selectMode ? "#0A5A46" : "#fff",
-                color: selectMode ? "#fff" : "#5B6B64",
-                borderColor: selectMode ? "#0A5A46" : "#E1E7E4",
-              }}
+              style={{ background: "#0A5A46", color: "#fff", borderColor: "#0A5A46" }}
             >
-              <ListChecks size={13} /> {selectMode ? "Done selecting" : "Select"}
+              <ListChecks size={13} /> Done selecting
             </button>
           )}
           <div className="flex items-center gap-1.5 sm:ml-auto">
-          {view === "list" && (
-            <div className="relative">
-              <button
-                onClick={() => setGroupByOpen((v) => !v)}
-                className="rounded-lg px-2 py-1.5 text-xs bg-white border border-brand-border text-brand-text"
-              >
-                {groupByLevels.length === 0 ? "Group" : `Group: ${groupByLevels.map((f) => GROUP_FIELD_LABELS[f]).join(" › ")}`}
-              </button>
-              {groupByOpen && (
-                <div className="absolute left-0 sm:left-auto sm:right-0 top-[calc(100%+4px)] z-20 w-[220px] rounded-lg bg-white border border-brand-border shadow-lg p-2">
+          {/* View: how the tasks are shown — sort, group, row size, multi-select. */}
+          <div className="relative">
+            <button
+              onClick={() => setViewMenuOpen((v) => !v)}
+              className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs bg-white border border-brand-border text-brand-text"
+              style={viewMenuOpen ? { borderColor: "#0A5A46", color: "#0A5A46" } : undefined}
+            >
+              <LayoutList size={13} /> View
+            </button>
+            {viewMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setViewMenuOpen(false)} />
+                <div className="absolute left-0 sm:left-auto sm:right-0 top-[calc(100%+4px)] z-20 w-[240px] rounded-lg bg-white border border-brand-border shadow-lg p-2.5 flex flex-col gap-3">
+                  <label className="flex flex-col gap-1 text-[11px] font-semibold text-brand-sub">
+                    Sort by
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value as SortBy)}
+                      className="rounded-lg px-2 py-1.5 text-xs font-normal text-brand-text bg-white border border-brand-border"
+                    >
+                      <option value="dueDate">Due Date</option>
+                      <option value="code">Code</option>
+                      <option value="priority">Priority</option>
+                      <option value="assignee">Assignee</option>
+                      <option value="created">Newest</option>
+                    </select>
+                  </label>
+                  {view === "list" && (
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[11px] font-semibold text-brand-sub">Group by</span>
+                      {groupByLevels.length === 0 && <span className="text-[11px] text-brand-sub">No grouping</span>}
                   <div className="flex flex-col gap-1.5">
-                    {groupByLevels.map((lv, i) => {
-                      const available = (Object.keys(GROUP_FIELD_LABELS) as GroupField[]).filter((f) => f === lv || !groupByLevels.includes(f));
-                      return (
-                        <div key={i} className="flex items-center gap-1.5">
-                          <span className="text-[10px] text-brand-sub w-3">{i + 1}</span>
-                          <select
-                            value={lv}
-                            onChange={(e) => {
-                              const next = [...groupByLevels];
-                              next[i] = e.target.value as GroupField;
-                              setGroupByLevels(next);
-                            }}
-                            className="flex-1 rounded-lg border border-brand-border px-1.5 py-1 text-xs outline-none"
-                          >
-                            {available.map((f) => <option key={f} value={f}>{GROUP_FIELD_LABELS[f]}</option>)}
-                          </select>
-                          <button
-                            onClick={() => setGroupByLevels(groupByLevels.filter((_, idx) => idx !== i))}
-                            className="p-0.5 text-brand-sub hover:text-brand-text"
-                          >
-                            <X size={12} />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {groupByLevels.length < 4 && (
-                    <button
-                      onClick={() => {
-                        const remaining = (Object.keys(GROUP_FIELD_LABELS) as GroupField[]).filter((f) => !groupByLevels.includes(f));
-                        if (remaining.length > 0) setGroupByLevels([...groupByLevels, remaining[0]]);
-                      }}
-                      className="text-[11px] text-brand-dark underline mt-1.5"
-                    >
-                      + Add level
-                    </button>
+                        {groupByLevels.map((lv, i) => {
+                          const available = (Object.keys(GROUP_FIELD_LABELS) as GroupField[]).filter((f) => f === lv || !groupByLevels.includes(f));
+                          return (
+                            <div key={i} className="flex items-center gap-1.5">
+                              <span className="text-[10px] text-brand-sub w-3">{i + 1}</span>
+                              <select
+                                value={lv}
+                                onChange={(e) => {
+                                  const next = [...groupByLevels];
+                                  next[i] = e.target.value as GroupField;
+                                  setGroupByLevels(next);
+                                }}
+                                className="flex-1 rounded-lg border border-brand-border px-1.5 py-1 text-xs outline-none"
+                              >
+                                {available.map((f) => <option key={f} value={f}>{GROUP_FIELD_LABELS[f]}</option>)}
+                              </select>
+                              <button
+                                onClick={() => setGroupByLevels(groupByLevels.filter((_, idx) => idx !== i))}
+                                className="p-0.5 text-brand-sub hover:text-brand-text"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {groupByLevels.length < 4 && (
+                        <button
+                          onClick={() => {
+                            const remaining = (Object.keys(GROUP_FIELD_LABELS) as GroupField[]).filter((f) => !groupByLevels.includes(f));
+                            if (remaining.length > 0) setGroupByLevels([...groupByLevels, remaining[0]]);
+                          }}
+                          className="text-[11px] text-brand-dark underline mt-1.5"
+                        >
+                          + Add level
+                        </button>
+                      )}
+                      {groupByLevels.length > 0 && (
+                        <button
+                          onClick={() => setGroupByLevels([])}
+                          className="text-[11px] text-brand-sub underline mt-1.5 ml-3"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
                   )}
-                  {groupByLevels.length > 0 && (
+                  {view === "list" && (
+                    <label className="flex items-center gap-2 text-xs text-brand-text cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={density === "compact"}
+                        onChange={() => setDensity((d) => (d === "comfortable" ? "compact" : "comfortable"))}
+                      />
+                      Compact rows
+                    </label>
+                  )}
+                  {(view === "list" || view === "board") && !selectMode && (
                     <button
-                      onClick={() => setGroupByLevels([])}
-                      className="text-[11px] text-brand-sub underline mt-1.5 ml-3"
+                      onClick={() => { setSelectMode(true); setViewMenuOpen(false); }}
+                      className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs border border-brand-border text-brand-text"
                     >
-                      Clear
+                      <ListChecks size={13} /> Select several tasks
                     </button>
                   )}
                 </div>
-              )}
-            </div>
-          )}
-          {view === "list" && (
-            <button
-              onClick={() => setDensity((d) => (d === "comfortable" ? "compact" : "comfortable"))}
-              title="Toggle row density"
-              className="rounded-lg px-2 py-1.5 text-xs bg-white border border-brand-border text-brand-sub"
-            >
-              {density === "comfortable" ? "Compact" : "Comfortable"}
-            </button>
-          )}
+              </>
+            )}
+          </div>
           {view === "board" && (
             <button
               onClick={() => setHideSubtasksInBoard((v) => !v)}

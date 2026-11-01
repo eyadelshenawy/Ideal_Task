@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Click a task to open it; one View button",
+    description: "Click anywhere on a card or row to open the task — the pencil icon is gone (Duplicate and Trash stay). Sort, Group, Compact rows and Select now sit together under one View button in the filter bar. On a phone, the count cards are hidden so your tasks show sooner; the greeting strip still shows your own numbers. The \"Waiting on Customer\" status is now just \"Waiting\", so it fits in the list.",
+  },
+  {
     title: "The app rests when nobody is using it",
     description: "To stay within the free hosting hours, the app is no longer kept awake during working hours. After about 15 minutes with no one using it, it rests, and the first person to open it waits 30–60 seconds. SLA warnings are now checked every 30 minutes and still arrive before the deadline.",
   },

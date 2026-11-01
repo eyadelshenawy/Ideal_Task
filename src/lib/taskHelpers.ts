@@ -16,7 +16,7 @@ export const STATUSES: { id: Status; label: string; color: string }[] = [
   { id: "TODO", label: "New", color: "#8A8F8C" },
   { id: "READY", label: "Ready", color: "#6B8FB5" },
   { id: "INPROGRESS", label: "In Progress", color: "#82B478" },
-  { id: "WAITING_CUSTOMER", label: "Waiting on Customer", color: "#8E7CC3" },
+  { id: "WAITING_CUSTOMER", label: "Waiting", color: "#8E7CC3" },
   { id: "INTERNAL_TEST", label: "Internal Test", color: "#D98B3A" },
   { id: "CUSTOMER_TEST", label: "Customer Test", color: "#4A7FB5" },
   { id: "DONE", label: "Done", color: "#0A5A46" },
