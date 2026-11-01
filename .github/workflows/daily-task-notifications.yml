@@ -1,15 +1,10 @@
 name: Daily task notifications
 
 on:
-  schedule:
-    # Sent at 09:00 Cairo time all year. GitHub cron runs in UTC and Cairo
-    # is UTC+3 in summer / UTC+2 in winter, so both candidate times are
-    # scheduled and the step below lets only the one matching today's
-    # offset through. Sunday-Thursday only: the app sends nothing on Friday
-    # and Saturday, and each call wakes the free Render instance. If Friday
-    # or Saturday become working days, change 0-4 back to *.
-    - cron: "0 6 * * 0-4" # 09:00 Cairo in summer (UTC+3)
-    - cron: "0 7 * * 0-4" # 09:00 Cairo in winter (UTC+2)
+  # No longer scheduled here (Eyad, 1 Nov 2026): GitHub ran it hours late
+  # (e.g. 14:33 instead of 09:00 Cairo). cron-job.org now calls
+  # /api/cron/notify at 09:00 Cairo, Sunday-Thursday, with the same
+  # Authorization header. Run this by hand (Actions → Run workflow) if needed.
   workflow_dispatch: {}
 
 jobs:
