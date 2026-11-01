@@ -493,14 +493,17 @@ export default function TaskModal({
                       </button>
                     </span>
                   ))}
-                  <select
-                    value=""
-                    onChange={(e) => addModule(e.target.value)}
-                    className="flex-1 min-w-[70px] bg-transparent px-1 py-1 text-xs outline-none"
-                  >
-                    <option value="">{modulesToAdd.length ? (moduleList.length ? "Add…" : "Add a module… (optional)") : "No more modules in the list"}</option>
-                    {modulesToAdd.map((m) => <option key={m.id} value={m.name}>{m.name}</option>)}
-                  </select>
+                  {/* Only offer "Add" while there is a module left to add. */}
+                  {modulesToAdd.length > 0 ? (
+                    <select
+                      value=""
+                      onChange={(e) => addModule(e.target.value)}
+                      className="flex-1 min-w-[70px] bg-transparent px-1 py-1 text-xs outline-none"
+                    >
+                      <option value="">{moduleList.length ? "Add…" : "Add a module… (optional)"}</option>
+                      {modulesToAdd.map((m) => <option key={m.id} value={m.name}>{m.name}</option>)}
+                    </select>
+                  ) : null}
                 </div>
               </div>
             </div>

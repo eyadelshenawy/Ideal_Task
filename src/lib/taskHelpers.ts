@@ -99,7 +99,7 @@ export function dueBadge(task: Pick<Task, "dueDate" | "status"> & Partial<Pick<T
   // Waiting on the customer: no overdue, just how many working days it has waited.
   if (isPausedStatus(task.status)) {
     const waited = task.pausedAt ? workDaysAfter(localDateStr(new Date(task.pausedAt)), today, cal) : 0;
-    return { label: waited > 0 ? `⏸ Waiting · ${waited}d` : "⏸ Waiting", tone: "paused" };
+    return { label: waited > 0 ? `⏸ ${waited}d` : "⏸ Today", tone: "paused" };
   }
   if (!task.dueDate) return null;
   if (task.status === "DONE") return { label: formatDateDisplay(task.dueDate), tone: "done" };

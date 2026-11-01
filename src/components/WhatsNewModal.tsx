@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Shorter waiting tag; tidier Module field",
+    description: "A ticket waiting on the customer now shows \"⏸ 3d\" instead of \"⏸ Waiting · 3d\", since its status already says Waiting. The Module field no longer shows \"No more modules in the list\" — the Add picker simply disappears when there is nothing left to add.",
+  },
+  {
     title: "Click a task to open it; one View button",
     description: "Click anywhere on a card or row to open the task — the pencil icon is gone (Duplicate and Trash stay). Sort, Group, Compact rows and Select now sit together under one View button in the filter bar. On a phone, the count cards are hidden so your tasks show sooner; the greeting strip still shows your own numbers. The \"Waiting on Customer\" status is now just \"Waiting\", so it fits in the list.",
   },
