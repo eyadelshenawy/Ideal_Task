@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Trash2, Check, Diamond, Copy, ChevronDown, ChevronRight, AlertTriangle } from "lucide-react";
+import { Trash2, Check, Diamond, Copy, ChevronDown, ChevronRight, AlertTriangle } from "lucide-react";
 import type { Task, Project, AssigneeDisplay, Status } from "@/types/models";
 import { PRIORITIES, STATUSES, dueBadge, toneStyle, isBlocked, splitModules } from "@/lib/taskHelpers";
 import { useWorkDays } from "@/lib/useWorkDays";
@@ -69,9 +69,23 @@ export default function TaskListRow({
     task.checklistTotal > 0 ? `${task.checklistDone}/${task.checklistTotal} checklist` : null,
   ].filter(Boolean) as string[];
 
+  // Clicking anywhere on it opens the task (or ticks it while selecting) —
+  // except on its own buttons, status picker and checkbox.
+  const openOnClick = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest("button, input, select, a, label")) return;
+    if (selectMode) onToggleSelect?.(task.id);
+    else onEdit(task);
+  };
+  const openOnKey = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && e.target === e.currentTarget) onEdit(task);
+  };
+
   return (
     <div
-      className={`group relative overflow-hidden bg-white border border-brand-border ${compact ? "rounded-lg px-2.5 py-1 mb-1" : "rounded-[10px] px-3 py-2.5 mb-1.5"}`}
+      onClick={openOnClick}
+      onKeyDown={openOnKey}
+      tabIndex={0}
+      className={`group relative overflow-hidden cursor-pointer hover:border-brand-light outline-none focus-visible:ring-2 focus-visible:ring-brand-light bg-white border border-brand-border ${compact ? "rounded-lg px-2.5 py-1 mb-1" : "rounded-[10px] px-3 py-2.5 mb-1.5"}`}
       style={{ borderRight: `4px solid ${priority.color}`, marginLeft: depth * 22 }}
     >
       <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
@@ -134,9 +148,6 @@ export default function TaskListRow({
                   : "[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 group-focus-within:opacity-100"
               }`}
             >
-              <button onClick={() => onEdit(task)} title="Edit" className="p-1 rounded hover:bg-gray-100 text-brand-sub">
-                <Pencil size={14} />
-              </button>
               {canManage && (
                 <button
                   onClick={() => (confirmingDuplicate ? onDuplicate(task.id) : setConfirmingDuplicate(true))}

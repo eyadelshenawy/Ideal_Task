@@ -264,7 +264,7 @@
       <strong>Only a Super Admin can create new projects or add new team members.</strong> Everyone else works within what's already been set up for them.
     </div>
     <div class="card tip">
-      <strong>Duplicate and Move to Trash are admin-only actions.</strong> A Member only sees the Edit pencil on their tasks — no Duplicate or Trash icon — and the server rejects those actions even if attempted directly, so this isn't just a hidden button.
+      <strong>Duplicate and Move to Trash are admin-only actions.</strong> A Member can open their tasks but sees no Duplicate or Trash icon — and the server rejects those actions even if attempted directly, so this isn't just a hidden button.
     </div>
   </section>
 
@@ -274,8 +274,8 @@
     <p class="lede">Three ways to look at the same tasks — pick whichever fits what you're doing.</p>
 
     <h3>Board</h3>
-    <p>The default view — tasks grouped into seven columns: <strong>New</strong>, <strong>Ready</strong>, <strong>In Progress</strong>, <strong>Waiting on Customer</strong>, <strong>Internal Test</strong>, <strong>Customer Test</strong>, <strong>Done</strong>. <strong>Drag and drop</strong> a card into a different column to change its status. On a phone or tablet, use the ‹ › arrows at the bottom of the card instead.</p>
-    <p>Each card shows the code on top, the full title, then the coloured tags that matter (type, SLA countdown, Blocked). Project, modules, category, tags and subtask info share one grey line underneath, and comment and checklist counts sit on the bottom line beside the due date. On a computer, the Edit, Duplicate and Trash icons appear when you move the mouse over a card.</p>
+    <p>The default view — tasks grouped into seven columns: <strong>New</strong>, <strong>Ready</strong>, <strong>In Progress</strong>, <strong>Waiting</strong>, <strong>Internal Test</strong>, <strong>Customer Test</strong>, <strong>Done</strong>. <strong>Drag and drop</strong> a card into a different column to change its status. On a phone or tablet, use the ‹ › arrows at the bottom of the card instead.</p>
+    <p>Each card shows the code on top, the full title, then the coloured tags that matter (type, SLA countdown, Blocked). Project, modules, category, tags and subtask info share one grey line underneath, and comment and checklist counts sit on the bottom line beside the due date. Click anywhere on a card to open it. On a computer, the Duplicate and Trash icons appear when you move the mouse over a card.</p>
     <p>A card shows small icons at a glance whenever it has any: a paperclip with a count for attachments, a speech bubble for comments, and a checklist icon showing done/total — so you know a task has activity without opening it.</p>
     <p>Tickets also carry a short coloured <strong>type tag</strong> (INC, SR, CHG, PRB — plain tasks show none), and in SLA-tracked projects a <strong>countdown chip</strong>: "Respond in 2h", "Resolve in 1d 4h", or a red "SLA breached".</p>
     <figure class="shot">
@@ -285,7 +285,7 @@
 
     <h3>List</h3>
     <p>Board and List refresh on their own every minute, so changes made by colleagues appear without reloading the page.</p>
-    <p>A flat, sortable table — better when you want to scan everything at once or sort by a specific column. Each row reads in one line: assignee, code, type tag and title, then project, modules, category, tags, subtasks and comment/file/checklist counts in grey. Status, the SLA countdown and the due date line up in columns on the right, and progress is the thin line along the bottom of the row. The Status pill is a drop-down — change a task's status right there, no need to open it or switch to Board. On a computer, the Edit, Duplicate and Trash icons appear when you move the mouse over a row.</p>
+    <p>A flat, sortable table — better when you want to scan everything at once or sort by a specific column. Each row reads in one line: assignee, code, type tag and title, then project, modules, category, tags, subtasks and comment/file/checklist counts in grey. Status, the SLA countdown and the due date line up in columns on the right, and progress is the thin line along the bottom of the row. The Status pill is a drop-down — change a task's status right there, no need to open it or switch to Board. Click anywhere on a row to open it. On a computer, the Duplicate and Trash icons appear when you move the mouse over a row.</p>
     <figure class="shot">
       <img loading="lazy" src="/guide/list.jpg" alt="List view">
       <figcaption>List view — change a status straight from the drop-down on each row.</figcaption>
@@ -319,7 +319,7 @@
       <li><strong>The counts at the top are filters too.</strong> Click <strong>In Progress</strong> or <strong>Done</strong> at the top to show just those tasks (click again to clear); <strong>Total</strong> clears the status, Overdue and Milestones filters in one go.</li>
       <li><strong>Hide Done</strong> removes finished tasks from every view (Board, List, Timeline). It's switched on every time you open the app; turning it off only lasts until you leave. Picking <em>Done</em> in the Statuses filter shows Done tasks even while Hide Done is on.</li>
       <li><strong>Due this week</strong> is a single-click chip that hides everything not due in the next 7 days — the fastest way to see what actually needs your attention. Combines with any other filter above.</li>
-      <li>On a phone, the filter row collapses behind a single <strong>Filters</strong> button so the dashboard doesn't eat the screen — tap it to open every filter above, tap again to hide.</li>
+      <li>On a phone, the count cards (Total, In Progress, Overdue…) are hidden — the greeting strip shows your own numbers — and the filter row collapses behind a single <strong>Filters</strong> button so the dashboard doesn't eat the screen — tap it to open every filter above, tap again to hide.</li>
       <li>On a computer, the search and filter row stays pinned under the green header while you scroll, so you can change a filter without going back to the top.</li>
       <li>On a phone, the <strong>Back</strong> button closes whatever is open — a task, Settings, search — and from Board, Timeline, Reports, My Tasks or Needs attention it takes you back to the List. It only leaves the app when you're already on the List with nothing open.</li>
       <li><strong>Sort</strong>: Due Date, Code, Priority, Assignee, or Newest first.</li>
@@ -328,14 +328,14 @@
     <h3>Global search</h3>
     <p>Press <strong>Ctrl+K</strong> (or click {{IICON:search}} in the top bar) to open a search box that looks everywhere at once — task titles and codes, comment text, and attachment file names — not just the tasks currently on screen. Click any result to jump straight to that task.</p>
     <h3>Group (List view)</h3>
-    <p>On large projects, the <strong>Group</strong> button in List view lets you stack tasks into collapsible sections by Project, Module, Assignee, or Priority — pick just one, or add several levels to nest them (e.g. Project, then Module inside each). A task with subtasks always stays together with its whole subtree in one group, even if a subtask's own field differs from its parent's. Leave it on "Group by" (no levels chosen) for the plain flat list you're used to.</p>
-    <p>Each group only lists its first 30 tasks at a time — click <strong>Show more</strong> to reveal the rest. This, plus a <strong>Compact</strong> toggle that shrinks row height, is what keeps a project with hundreds of tasks usable instead of one long scroll.</p>
+    <p>On large projects, <strong>View → Group by</strong> in List view lets you stack tasks into collapsible sections by Project, Module, Assignee, or Priority — pick just one, or add several levels to nest them (e.g. Project, then Module inside each). A task with subtasks always stays together with its whole subtree in one group, even if a subtask's own field differs from its parent's. Leave it on "No grouping" for the plain flat list you're used to. The same <strong>View</strong> button holds <strong>Sort by</strong>, <strong>Compact rows</strong> and <strong>Select several tasks</strong>.</p>
+    <p>Each group only lists its first 30 tasks at a time — click <strong>Show more</strong> to reveal the rest. This, plus <strong>Compact rows</strong> (in View) that shrinks row height, is what keeps a project with hundreds of tasks usable instead of one long scroll.</p>
   </section>
 
   <!-- ============ CREATING TASKS ============ -->
   <section class="doc-section" id="creating" data-group="Working with tasks" data-icon="plus-circle" data-label="Creating a task">
     <h2>{{ICON:plus-circle}} Creating & editing a task</h2>
-    <p class="lede">Click <strong>New Task</strong>, or the pencil on any existing task, to open the task form.</p>
+    <p class="lede">Click <strong>New Task</strong>, or click any existing task, to open the task form.</p>
     <figure class="shot">
       <img loading="lazy" src="/guide/task-form.jpg" alt="Task edit form">
       <figcaption>The task form — tabs across the top, status, progress and SLA together, and less-used settings folded under More options.</figcaption>
@@ -375,7 +375,7 @@
     <h3>The SLA tag on a ticket</h3>
     <p>In an SLA-tracked project, an open ticket shows an SLA tag at the top of the form; click it to open the <strong>SLA</strong> box with its <em>Response by</em> and <em>Resolve by</em> times and how much is left (or <em>Met</em> / <em>Breached</em>). The same countdown appears as a chip on the card and the row. If the project counts working hours only, the clock pauses outside working hours, weekends and holidays (see Work Calendar).</p>
     <h3>Waiting on the customer — the SLA pauses</h3>
-    <p>When a ticket is stuck because you need something from the customer (data, access, a confirmation), move it to <strong>Waiting on Customer</strong>. While it waits, the resolution clock stops: the card shows <strong>⏸ Waiting · 3d</strong> (working days waited) and <strong>SLA paused</strong>, and it never shows as overdue. <strong>Customer Test</strong> works the same way, because the customer is the one testing. Moving between the two counts as one wait.</p>
+    <p>When a ticket is stuck because you need something from the customer (data, access, a confirmation), move it to <strong>Waiting</strong> (waiting on the customer). While it waits, the resolution clock stops: the card shows <strong>⏸ Waiting · 3d</strong> (working days waited) and <strong>SLA paused</strong>, and it never shows as overdue. <strong>Customer Test</strong> works the same way, because the customer is the one testing. Moving between the two counts as one wait.</p>
     <p>When the ticket comes back (for example to In Progress), the clock carries on from where it stopped:</p>
     <ul>
       <li><strong>Wait</strong> = time it left the status − time it entered it (working hours only, if the project counts working hours).</li>
@@ -488,7 +488,7 @@
   <!-- ============ BULK ACTIONS ============ -->
   <section class="doc-section" id="bulk" data-group="Working with tasks" data-icon="check-square" data-label="Bulk actions">
     <h2>{{ICON:check-square}} Selecting multiple tasks at once</h2>
-    <p class="lede">Click <strong>Select</strong> in the filter bar on Board or List to enter select mode (click <strong>Done selecting</strong> to leave it), tick the tasks you want, then act on all of them together — set status, assignee, or project directly on the bar, or hit <strong>Mark Done</strong> as a shortcut. Behind <strong>More…</strong> you'll find priority, start date, due date, <strong>duration</strong>, progress %, module (picked from the Modules list), and add/remove a tag, one field at a time — dates flow through the same Duration ↔ Due auto-compute as the single-task modal, so bulk-setting a Duration of 5 on ten tasks recomputes each of their Due Dates against its own Start. <strong>Move to Trash</strong> deletes the selection (with a confirm step). And when you're in Trash, tick multiple tasks and hit <strong>Restore N selected</strong> to bring them all back at once.</p>
+    <p class="lede">Click <strong>View → Select several tasks</strong> on Board or List to enter select mode (click <strong>Done selecting</strong> to leave it), tick the tasks you want, then act on all of them together — set status, assignee, or project directly on the bar, or hit <strong>Mark Done</strong> as a shortcut. Behind <strong>More…</strong> you'll find priority, start date, due date, <strong>duration</strong>, progress %, module (picked from the Modules list), and add/remove a tag, one field at a time — dates flow through the same Duration ↔ Due auto-compute as the single-task modal, so bulk-setting a Duration of 5 on ten tasks recomputes each of their Due Dates against its own Start. <strong>Move to Trash</strong> deletes the selection (with a confirm step). And when you're in Trash, tick multiple tasks and hit <strong>Restore N selected</strong> to bring them all back at once.</p>
     <figure class="shot">
       <img loading="lazy" src="/guide/bulk.jpg" alt="Bulk action bar">
       <figcaption>Select mode — tick tasks, then change status, assignee or project for all of them, open More… for other fields, or move them to Trash.</figcaption>
