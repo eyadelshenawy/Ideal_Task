@@ -1466,6 +1466,7 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
             totalVisible={filteredTasks.length}
             canManageAny={canCreateAnywhere}
             team={teamList}
+            contacts={contactList}
             projects={modalProjects}
             onClear={() => setSelectedIds(new Set())}
             onSelectAll={() => setSelectedIds(new Set(filteredTasks.map((t) => t.id)))}

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { X, Loader2, MoreHorizontal } from "lucide-react";
-import type { Project, Status, TeamMember } from "@/types/models";
+import type { Contact, Project, Status, TeamMember } from "@/types/models";
 import { STATUSES } from "@/lib/taskHelpers";
 import { MODULE_OPTIONS } from "@/lib/listConfig";
 
@@ -15,6 +15,7 @@ interface BulkActionBarProps {
   // can actually apply across the selection.
   canManageAny: boolean;
   team: TeamMember[];
+  contacts: Contact[];
   projects: Project[];
   onClear: () => void;
   onSelectAll: () => void;
@@ -23,12 +24,16 @@ interface BulkActionBarProps {
 }
 
 export default function BulkActionBar({
-  selectedCount, totalVisible, canManageAny, team, projects, onClear, onSelectAll, onBulkUpdate, onDelete,
+  selectedCount, totalVisible, canManageAny, team, contacts, projects, onClear, onSelectAll, onBulkUpdate, onDelete,
 }: BulkActionBarProps) {
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [assignPicked, setAssignPicked] = useState<string[]>([]);
+  const [contactPicked, setContactPicked] = useState<string[]>([]);
+  const assignRef = useRef<HTMLDivElement>(null);
 
   // The More popover has its own field-level state so a user can fill a
   // date/tag/module and Apply it, without every keystroke triggering an API
@@ -49,6 +54,28 @@ export default function BulkActionBar({
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [moreOpen]);
+
+  useEffect(() => {
+    if (!assignOpen) return;
+    function onDocClick(e: MouseEvent) {
+      if (assignRef.current && !assignRef.current.contains(e.target as Node)) setAssignOpen(false);
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [assignOpen]);
+
+  async function applyAssignees(mode: "add" | "replace") {
+    await run({
+      assignees: [
+        ...assignPicked.map((id) => ({ type: "user", id })),
+        ...contactPicked.map((id) => ({ type: "contact", id })),
+      ],
+      assigneeMode: mode,
+    });
+    setAssignPicked([]);
+    setContactPicked([]);
+    setAssignOpen(false);
+  }
 
   async function run(patch: Record<string, unknown>) {
     setBusy(true);
@@ -93,19 +120,72 @@ export default function BulkActionBar({
       </select>
 
       {canManageAny && (
-        <select
-          disabled={busy}
-          defaultValue=""
-          onChange={(e) => {
-            const userId = e.target.value;
-            e.target.value = "";
-            if (userId) run({ assignees: [{ type: "user", id: userId }] });
-          }}
-          className="rounded-md px-2 py-1 text-xs text-brand-text"
-        >
-          <option value="" disabled>Set assignee…</option>
-          {team.filter((m) => m.active).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-        </select>
+        // Tick one or more consultants, then add them to the selected tasks or
+        // make them the only consultants. Customer contacts are never changed.
+        <div ref={assignRef} className="relative">
+          <button
+            disabled={busy}
+            onClick={() => setAssignOpen((v) => !v)}
+            className="rounded-md px-2 py-1 text-xs text-brand-text bg-white"
+          >
+            Assignees…
+          </button>
+          {assignOpen && (
+            <div
+              className="absolute z-30 top-full mt-1 left-0 rounded-lg p-3 bg-white border border-brand-border shadow-lg text-brand-text"
+              style={{ minWidth: 240 }}
+            >
+              <div className="text-[11px] font-semibold text-brand-sub mb-1.5">Consultants</div>
+              <div className="max-h-[220px] overflow-y-auto flex flex-col gap-1">
+                {team.filter((m) => m.active).map((m) => (
+                  <label key={m.id} className="flex items-center gap-2 text-xs cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={assignPicked.includes(m.id)}
+                      onChange={(e) => setAssignPicked((prev) => e.target.checked ? [...prev, m.id] : prev.filter((id) => id !== m.id))}
+                    />
+                    {m.name}
+                  </label>
+                ))}
+                {contacts.length > 0 && (
+                  <>
+                    <div className="text-[11px] font-semibold text-brand-sub mt-2 mb-0.5">Customer contacts</div>
+                    {[...contacts].sort((a, b) => a.name.localeCompare(b.name)).map((c) => (
+                      <label key={c.id} className="flex items-center gap-2 text-xs cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={contactPicked.includes(c.id)}
+                          onChange={(e) => setContactPicked((prev) => e.target.checked ? [...prev, c.id] : prev.filter((id) => id !== c.id))}
+                        />
+                        {c.name}
+                      </label>
+                    ))}
+                  </>
+                )}
+              </div>
+              <div className="mt-2.5 flex gap-1.5">
+                <button
+                  disabled={busy || (assignPicked.length === 0 && contactPicked.length === 0)}
+                  onClick={() => applyAssignees("add")}
+                  title="Keeps whoever is already on each task"
+                  className="flex-1 rounded-md px-2 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                  style={{ background: "#0A5A46" }}
+                >
+                  Add to tasks
+                </button>
+                <button
+                  disabled={busy || assignPicked.length === 0}
+                  onClick={() => applyAssignees("replace")}
+                  title="Only the ticked consultants stay on each task; ticked customer contacts are added"
+                  className="flex-1 rounded-md px-2 py-1.5 text-xs font-semibold border border-brand-border disabled:opacity-50"
+                >
+                  Replace
+                </button>
+              </div>
+              <div className="mt-1.5 text-[10.5px] text-brand-sub leading-snug">Customer contacts already on the tasks always stay. Ticked contacts are added.</div>
+            </div>
+          )}
+        </div>
       )}
 
       {canManageAny && (

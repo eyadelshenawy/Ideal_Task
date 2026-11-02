@@ -3,7 +3,7 @@ import { checkTaskLists } from "@/lib/lists";
 import { prisma } from "@/lib/prisma";
 import { pauseUpdate } from "@/lib/pauseUpdate";
 import { requireSession, getUserAccess } from "@/lib/permissions";
-import { taskBulkUpdateSchema, taskBulkDeleteSchema, assigneesToSet } from "@/lib/validation/task";
+import { taskBulkUpdateSchema, taskBulkDeleteSchema } from "@/lib/validation/task";
 import { notifyAssignment } from "@/lib/notifications";
 import { logActivity, describeTaskChanges, loadNameLookups } from "@/lib/activity";
 import { checkCategoryPair } from "@/lib/categories";
@@ -26,7 +26,7 @@ export async function PATCH(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request" }, { status: 400 });
   }
-  const { taskIds, status, assignees, projectId, priority, type, categoryId, startDate, dueDate, durationDays, progress, addTag, removeTag } = parsed.data;
+  const { taskIds, status, assignees, assigneeMode, projectId, priority, type, categoryId, startDate, dueDate, durationDays, progress, addTag, removeTag } = parsed.data;
   const lists = await checkTaskLists(type, parsed.data.module);
   if (lists.error) return NextResponse.json({ error: lists.error }, { status: 400 });
   const moduleValue = lists.module;
@@ -64,6 +64,14 @@ export async function PATCH(req: NextRequest) {
     },
     include: { assignees: { select: { id: true } }, contactAssignees: { select: { id: true } } },
   });
+
+  // Bulk assignee changes touch consultants only; customer contacts stay as they are.
+  // Ticked contacts are only ever added (never used to remove anyone).
+  // Consultants change only when at least one is ticked, so Replace can never
+  // leave a task with nobody on it.
+  const pickedUserIds = assignees?.filter((a) => a.type === "user").map((a) => a.id) ?? [];
+  const bulkUserIds = pickedUserIds.length > 0 ? pickedUserIds : undefined;
+  const bulkContactIds = assignees?.filter((a) => a.type === "contact").map((a) => a.id) ?? [];
 
   const updated: string[] = [];
   const skipped: string[] = [];
@@ -158,7 +166,8 @@ export async function PATCH(req: NextRequest) {
         ...(status !== undefined ? { status, progress: status === "DONE" ? 100 : undefined } : {}),
         ...(progressUpdate !== undefined ? { progress: progressUpdate } : {}),
         ...(completedAtUpdate !== undefined ? { completedAt: completedAtUpdate } : {}),
-        ...(assignees !== undefined ? assigneesToSet(assignees) : {}),
+        ...(bulkContactIds.length > 0 ? { contactAssignees: { connect: bulkContactIds.map((id) => ({ id })) } } : {}),
+        ...(bulkUserIds ? { assignees: assigneeMode === "add" ? { connect: bulkUserIds.map((id) => ({ id })) } : { set: bulkUserIds.map((id) => ({ id })) } } : {}),
         ...(projectId !== undefined ? { projectId: projectId || null } : {}),
         ...(priority !== undefined ? { priority } : {}),
         ...(type !== undefined ? { type } : {}),
