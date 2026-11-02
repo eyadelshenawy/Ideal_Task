@@ -109,7 +109,8 @@ export const taskBulkUpdateSchema = z.object({
   // "add" keeps who is already on each task; "replace" (default) leaves only
   // these people. Either way, bulk changes only consultants — customer
   // contacts on the tasks are never touched.
-  assigneeMode: z.enum(["add", "replace"]).optional(),
+  // "remove" takes the ticked people (consultants or contacts) off each task.
+  assigneeMode: z.enum(["add", "replace", "remove"]).optional(),
   projectId: z.string().nullable().optional(),
   priority: z.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW"]).optional(),
   type: ticketTypeEnum.optional(),

@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Remove people from many tasks at once",
+    description: "Assignees… on the selection bar now has a Remove button: tick someone (a consultant or a customer contact) and they come off every selected task, while everyone else stays. For example, to add Sara and Ali and take Mohamed off, tick Sara and Ali and press Add to tasks, then tick Mohamed and press Remove.",
+  },
+  {
     title: "Assign several consultants to many tasks at once",
     description: "When you select several tasks, Assignees… lets you tick more than one consultant. Add to tasks keeps whoever is already on each task; Replace leaves only the people you ticked. Customer contacts on the tasks are no longer removed when you change assignees this way, and you can tick a customer contact in the same list to add them to many tasks at once — handy for putting back contacts that an earlier bulk change removed.",
   },
