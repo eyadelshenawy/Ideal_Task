@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Assign several consultants to many tasks at once",
+    description: "When you select several tasks, Assignees… lets you tick more than one consultant. Add to tasks keeps whoever is already on each task; Replace leaves only the people you ticked. Customer contacts on the tasks are no longer removed when you change assignees this way, and you can tick a customer contact in the same list to add them to many tasks at once — handy for putting back contacts that an earlier bulk change removed.",
+  },
+  {
     title: "Duplicate asks first; start and due dates on every task; Sort back in view; next code number",
     description: "Duplicate now always asks \"Duplicate this task?\" before making a copy, from the card, the row or inside the task — so a stray tap no longer creates a copy or uses up a code number. Cards and rows now show both dates, e.g. \"2 Nov → 10 Nov\", and the coloured tag only appears when it adds something: overdue, due soon or waiting. Super Admins can set a project's next code number in Settings → Projects (Next code), for example back to 41 after deleting ABM-0041 and ABM-0042 permanently from Trash. Sort is back as its own button beside View, so the order is always visible.",
   },
