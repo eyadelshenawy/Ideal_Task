@@ -1,3 +1,4 @@
+import { countedTasks } from "@/lib/taskCount";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { loadWorkDays } from "@/lib/scheduling";
@@ -36,10 +37,12 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
   // isPrivate is excluded even though requireProjectAccess already gates
   // this to project admins — a private task's whole point is that it never
   // rolls up into any operational counts anywhere.
-  const tasks = await prisma.task.findMany({
+  const allTasks = await prisma.task.findMany({
     where: { projectId: project.id, deletedAt: null, isPrivate: false },
-    select: { id: true, priority: true, status: true, dueDate: true, createdAt: true, completedAt: true, updatedAt: true, pausedAt: true, pausedMinutes: true },
+    select: { id: true, parentId: true, priority: true, status: true, dueDate: true, createdAt: true, completedAt: true, updatedAt: true, pausedAt: true, pausedMinutes: true },
   });
+  // Counts are of actual work: a task with subtasks is left out and its subtasks are counted.
+  const tasks = countedTasks(allTasks);
 
   const today = new Date().toISOString().slice(0, 10);
   const total = tasks.length;

@@ -2,6 +2,7 @@ import type { Task, Project, TeamMember, Priority } from "@/types/models";
 import { MONTHS, PRIORITIES, addDays, splitModules } from "@/lib/taskHelpers";
 import { computeTaskSla, type SlaAll } from "@/lib/taskSla";
 import { isOverdue, workDaysAfter, type WorkDays } from "@/lib/workdays";
+import { countedTasks } from "@/lib/taskCount";
 
 /** GET /api/reports/insights */
 export interface InsightsRaw {
@@ -80,9 +81,13 @@ export function computeInsights(input: {
   const months = lastMonths(today, monthCount);
   const from = `${months[0].key}-01`;
   const inPeriod = (d: string | null) => !!d && dayOf(d) >= from && dayOf(d) <= today;
-  const tasks = projectIds.length ? input.tasks.filter((t) => t.projectId && projectIds.includes(t.projectId)) : input.tasks;
+  const inProjects = projectIds.length ? input.tasks.filter((t) => t.projectId && projectIds.includes(t.projectId)) : input.tasks;
+  // Ticket counts are of actual work: tasks with subtasks are left out and
+  // their subtasks counted. Hours logged (section 6) still use every task, so
+  // time booked on a main task is never lost.
+  const tasks = countedTasks(inProjects, input.tasks);
   const taskIds = new Set(tasks.map((t) => t.id));
-  const taskById = new Map(tasks.map((t) => [t.id, t]));
+  const taskById = new Map(inProjects.map((t) => [t.id, t]));
   const projectById = new Map(projects.map((p) => [p.id, p]));
   const projName = (id: string | null) => (id ? projectById.get(id)?.name ?? "Unknown project" : "No project");
   const created = tasks.filter((t) => inPeriod(t.createdAt));

@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Counts no longer add main tasks on top of their subtasks",
+    description: "The numbers now count the actual pieces of work: a task with subtasks is left out and its subtasks are counted instead. For example, ABM-0040 with 3 subtasks now counts as 3, not 4, and a late subtask no longer also counts its main task as overdue. This applies to the cards at the top, the greeting strip, the Board column numbers, Reports and the client report. The main task still shows in the list and on the board.",
+  },
+  {
     title: "Remove people from many tasks at once",
     description: "Assignees… on the selection bar now has a Remove button: tick someone (a consultant or a customer contact) and they come off every selected task, while everyone else stays. For example, to add Sara and Ali and take Mohamed off, tick Sara and Ali and press Add to tasks, then tick Mohamed and press Remove.",
   },

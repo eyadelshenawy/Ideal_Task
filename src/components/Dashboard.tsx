@@ -9,6 +9,7 @@ import {
   colorForIndex, projectColourOf, STATUSES, PRIORITIES, todayStr, sortTasks, toTreeRows, splitModules, isDueThisWeek, initials,
   groupTaskRows, countGroupUnits, GROUP_FIELD_LABELS, type SortBy, type GroupField, type GroupNode, type TaskTreeRow,
 } from "@/lib/taskHelpers";
+import { countedTasks } from "@/lib/taskCount";
 import { computeDependencyWarnings, describeDependencyWarning } from "@/lib/dependencyWarnings";
 import { api } from "@/lib/apiClient";
 import TaskCard from "./TaskCard";
@@ -384,13 +385,17 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
     return true;
   }), [taskList, filters, projectList]);
 
-  const stats = useMemo(() => ({
-    total: statsBase.length,
-    inProgress: statsBase.filter((t) => t.status === "INPROGRESS").length,
-    overdue: statsBase.filter((t) => isOverdue(t, today, workDays)).length,
-    done: statsBase.filter((t) => t.status === "DONE").length,
+  // Counts are of actual work: a task with subtasks is left out and its
+  // subtasks are counted instead (see countedTasks). Milestones are markers,
+  // so that card still counts every milestone.
+  const countedStats = countedTasks(statsBase, taskList);
+  const stats = {
+    total: countedStats.length,
+    inProgress: countedStats.filter((t) => t.status === "INPROGRESS").length,
+    overdue: countedStats.filter((t) => isOverdue(t, today, workDays)).length,
+    done: countedStats.filter((t) => t.status === "DONE").length,
     milestones: statsBase.filter((t) => t.isMilestone).length,
-  }), [statsBase, today, workDays]);
+  };
 
   const filteredTasks = useMemo(() => statsBase.filter((t) => {
     if (filters.statusIds.length > 0) {
@@ -403,7 +408,7 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
   }), [statsBase, filters.overdueOnly, filters.dueToday, filters.milestonesOnly, filters.statusIds, hideDone, today, workDays]);
 
   // Greeting strip: the signed-in person's own open work.
-  const mine = taskList.filter((t) => t.assigneeIds.includes(userId) && t.status !== "DONE");
+  const mine = countedTasks(taskList.filter((t) => t.assigneeIds.includes(userId) && t.status !== "DONE"), taskList);
   const myDay = {
     overdue: mine.filter((t) => isOverdue(t, today, workDays)).length,
     dueToday: mine.filter((t) => t.dueDate === today).length,
@@ -1493,7 +1498,7 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
                   <div className="flex items-center gap-2 mb-2 px-1">
                     <span className="w-2 h-2 rounded-full" style={{ background: status.color }} />
                     <span className="font-bold text-[12.5px] text-brand-text">{status.label}</span>
-                    <span className="text-brand-sub text-[11.5px]">({colTasks.length})</span>
+                    <span className="text-brand-sub text-[11.5px]">({countedTasks(colTasks, taskList).length})</span>
                   </div>
                   <div style={{ minHeight: 40 }}>
                     {colTasks.length === 0 && (
