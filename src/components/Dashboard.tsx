@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Download, Upload, Loader2, ListChecks, BarChart3, FileDown, Bookmark, X, AlertTriangle, BookOpen, ChevronDown, ChevronRight, Lock, MoreHorizontal, Sparkles, SlidersHorizontal, LayoutList, Shield, Settings, LogOut } from "lucide-react";
+import { Plus, Search, LayoutGrid, List as ListIcon, CalendarDays, Download, Upload, Loader2, ListChecks, BarChart3, FileDown, Bookmark, X, AlertTriangle, BookOpen, ChevronDown, ChevronRight, Lock, MoreHorizontal, Sparkles, SlidersHorizontal, LayoutList, ArrowUpDown, Shield, Settings, LogOut } from "lucide-react";
 import useSWR from "swr";
 import type { Task, Project, TeamMember, Contact, Status, AssigneeDisplay, Category, ListConfig } from "@/types/models";
 import type { ImportPreview } from "@/types/import";
@@ -177,6 +177,8 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
+  const [pendingDuplicate, setPendingDuplicate] = useState<{ id: string; projectId?: string } | null>(null);
+  const [duplicating, setDuplicating] = useState(false);
   const [importError, setImportError] = useState("");
   const [importSubmitting, setImportSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -282,10 +284,11 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
 
   // Phone Back button: every open window (and any view other than List) gets a
   // history entry, so Back closes the top one instead of leaving the app.
-  const backDepth = [view !== "list", attentionOnly, modalOpen, !!settingsSection, mfaModalOpen, whatsNewOpen, globalSearchOpen, !!importPreview].filter(Boolean).length;
+  const backDepth = [view !== "list", attentionOnly, modalOpen, !!settingsSection, mfaModalOpen, whatsNewOpen, globalSearchOpen, !!importPreview, !!pendingDuplicate].filter(Boolean).length;
   const closeTopRef = useRef(() => {});
   closeTopRef.current = () => {
-    if (importPreview) setImportPreview(null);
+    if (pendingDuplicate) setPendingDuplicate(null);
+    else if (importPreview) setImportPreview(null);
     else if (globalSearchOpen) setGlobalSearchOpen(false);
     else if (whatsNewOpen) setWhatsNewOpen(false);
     else if (mfaModalOpen) setMfaModalOpen(false);
@@ -595,10 +598,21 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
     });
   }
 
-  async function duplicateTask(id: string, projectId?: string) {
-    await api.duplicateTask(id, projectId);
-    await mutateTasks();
-    setModalOpen(false);
+  // Duplicating always asks first, so a stray tap never creates a copy (and uses up a code number).
+  function duplicateTask(id: string, projectId?: string) {
+    setPendingDuplicate({ id, projectId });
+  }
+  async function confirmDuplicate() {
+    if (!pendingDuplicate || duplicating) return;
+    setDuplicating(true);
+    try {
+      await api.duplicateTask(pendingDuplicate.id, pendingDuplicate.projectId);
+      await mutateTasks();
+      setPendingDuplicate(null);
+      setModalOpen(false);
+    } finally {
+      setDuplicating(false);
+    }
   }
 
   function toggleSelect(id: string) {
@@ -1282,7 +1296,25 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
             </button>
           )}
           <div className="flex items-center gap-1.5 sm:ml-auto">
-          {/* View: how the tasks are shown — sort, group, row size, multi-select. */}
+          {/* Sort stays visible on its own — it's used every day, so it isn't tucked inside View. */}
+          <label
+            className="flex items-center gap-1 rounded-lg pl-2 pr-1 py-1 text-xs bg-white border border-brand-border text-brand-sub"
+            title="Sort the tasks"
+          >
+            <ArrowUpDown size={13} /> Sort:
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortBy)}
+              className="bg-transparent text-xs font-medium text-brand-text outline-none cursor-pointer"
+            >
+              <option value="dueDate">Due Date</option>
+              <option value="code">Code</option>
+              <option value="priority">Priority</option>
+              <option value="assignee">Assignee</option>
+              <option value="created">Newest</option>
+            </select>
+          </label>
+          {/* View: how the tasks are shown — group, row size, multi-select. */}
           <div className="relative">
             <button
               onClick={() => setViewMenuOpen((v) => !v)}
@@ -1295,20 +1327,6 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setViewMenuOpen(false)} />
                 <div className="absolute left-0 sm:left-auto sm:right-0 top-[calc(100%+4px)] z-20 w-[240px] rounded-lg bg-white border border-brand-border shadow-lg p-2.5 flex flex-col gap-3">
-                  <label className="flex flex-col gap-1 text-[11px] font-semibold text-brand-sub">
-                    Sort by
-                    <select
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value as SortBy)}
-                      className="rounded-lg px-2 py-1.5 text-xs font-normal text-brand-text bg-white border border-brand-border"
-                    >
-                      <option value="dueDate">Due Date</option>
-                      <option value="code">Code</option>
-                      <option value="priority">Priority</option>
-                      <option value="assignee">Assignee</option>
-                      <option value="created">Newest</option>
-                    </select>
-                  </label>
                   {view === "list" && (
                     <div className="flex flex-col gap-1">
                       <span className="text-[11px] font-semibold text-brand-sub">Group by</span>
@@ -1566,6 +1584,50 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
           sla={draft.id ? slaByTaskId.get(draft.id) ?? null : null}
         />
       )}
+
+      {pendingDuplicate && (() => {
+        const source = taskList.find((t) => t.id === pendingDuplicate.id);
+        const target = projectList.find((p) => p.id === (pendingDuplicate.projectId ?? source?.projectId));
+        return (
+          <div
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+            style={{ background: "rgba(20,30,26,0.45)" }}
+          >
+            {/* No close-on-backdrop: a quick double tap must leave the question on screen. */}
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="duplicate-title"
+              className="bg-white rounded-xl shadow-xl w-full max-w-[360px] p-5"
+            >
+              <div id="duplicate-title" className="font-semibold text-[15px] text-brand-text">Duplicate this task?</div>
+              <div className="mt-2 text-[13px] text-brand-sub leading-snug">
+                <span className="font-medium text-brand-text">{source?.code ? `${source.code} · ` : ""}{source?.title}</span>
+                <br />
+                A new copy will be created{target ? ` in ${target.name}` : ""}{target ? " with the next task code" : ""}.
+              </div>
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  autoFocus
+                  onClick={() => setPendingDuplicate(null)}
+                  disabled={duplicating}
+                  className="rounded-lg px-3 py-1.5 text-xs font-semibold border border-brand-border text-brand-text"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDuplicate}
+                  disabled={duplicating}
+                  className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                  style={{ background: "#0A5A46" }}
+                >
+                  {duplicating ? "Duplicating…" : "Yes, duplicate"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {settingsSection && (
         <SettingsModal items={settingsItems} section={settingsSection} onSelect={setSettingsSection}>

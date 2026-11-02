@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Trash2, Check, ChevronLeft, ChevronRight, Diamond, AlertTriangle, Copy, Paperclip, MessageSquare, ListChecks } from "lucide-react";
+import { Trash2, Check, ChevronLeft, ChevronRight, Diamond, AlertTriangle, Copy, Paperclip, MessageSquare, ListChecks, CalendarDays } from "lucide-react";
 import type { Task, Project, AssigneeDisplay } from "@/types/models";
-import { PRIORITIES, STATUSES, dueBadge, toneStyle, isBlocked, splitModules } from "@/lib/taskHelpers";
+import { PRIORITIES, STATUSES, dueBadge, dateRange, showsStatusTag, toneStyle, isBlocked, splitModules } from "@/lib/taskHelpers";
 import { useWorkDays } from "@/lib/useWorkDays";
 import AvatarStack from "./ui/AvatarStack";
 import Chip from "./ui/Chip";
@@ -45,10 +45,10 @@ export default function TaskCard({
   selectMode, selected, onToggleSelect, draggable, onDragStart, dependencyWarning, sla, categoryName, projectColour,
 }: TaskCardProps) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [confirmingDuplicate, setConfirmingDuplicate] = useState(false);
   const priority = PRIORITIES.find((p) => p.id === task.priority)!;
   const status = STATUSES.find((s) => s.id === task.status)!;
   const badge = dueBadge(task, useWorkDays());
+  const dates = dateRange(task);
   const statusIdx = STATUSES.findIndex((s) => s.id === task.status);
   const blocked = isBlocked(task, allTasks);
   const parent = task.parentId ? allTasks.find((t) => t.id === task.parentId) : undefined;
@@ -105,19 +105,19 @@ export default function TaskCard({
           // On a computer the icons appear when the mouse is over the card; touch screens always show them.
           <div
             className={`flex items-center gap-1 flex-shrink-0 transition-opacity ${
-              confirmingDelete || confirmingDuplicate
+              confirmingDelete
                 ? ""
                 : "[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 group-focus-within:opacity-100"
             }`}
           >
             {canManage && (
               <button
-                onClick={() => (confirmingDuplicate ? onDuplicate(task.id) : setConfirmingDuplicate(true))}
-                title={confirmingDuplicate ? "Click to confirm" : "Duplicate"}
+                onClick={() => onDuplicate(task.id)}
+                title="Duplicate"
                 className="p-1 rounded hover:bg-gray-100"
-                style={{ color: confirmingDuplicate ? "#0A5A46" : "#5B6B64" }}
+                style={{ color: "#5B6B64" }}
               >
-                {confirmingDuplicate ? <Check size={14} /> : <Copy size={14} />}
+                <Copy size={14} />
               </button>
             )}
             {canManage && (
@@ -150,6 +150,12 @@ export default function TaskCard({
 
       {meta.length > 0 && (
         <div className="mt-1.5 text-[11.5px] text-brand-sub leading-snug">{meta.join(" · ")}</div>
+      )}
+
+      {dates && (
+        <div className="mt-1.5 flex items-center gap-1 text-[11.5px] text-brand-sub">
+          <CalendarDays size={11} className="flex-shrink-0" /> {dates}
+        </div>
       )}
 
       {!task.isMilestone && <ProgressBar value={task.progress} color={status.color} />}
@@ -188,7 +194,7 @@ export default function TaskCard({
           )}
         </div>
         <div className="flex items-center gap-2">
-          {badge && <Chip small style={toneStyle(badge.tone)}>{badge.label}</Chip>}
+          {badge && showsStatusTag(badge.tone) && <Chip small style={toneStyle(badge.tone)}>{badge.label}</Chip>}
           {dependencyWarning && (
             <span title={dependencyWarning}>
               <Chip small style={{ background: "#FBEEDD", color: "#8A5A20" }}>

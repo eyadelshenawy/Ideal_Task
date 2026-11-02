@@ -247,6 +247,7 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
   const [newName, setNewName] = useState("");
   const [newCode, setNewCode] = useState("");
   const [newIsSupport, setNewIsSupport] = useState(false);
+  const [nextCodeError, setNextCodeError] = useState<{ id: string; message: string } | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [cloningId, setCloningId] = useState<string | null>(null);
@@ -298,6 +299,22 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       setError(body.error || "Couldn't update code");
+    }
+    onChanged(); mutateAll();
+  }
+
+  async function setNextCodeNumber(id: string, n: number, input: HTMLInputElement, previous: number) {
+    setNextCodeError(null);
+    const res = await fetch(`/api/projects/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nextCodeNumber: n }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      // Shown right under the field, so it's seen even when the list is scrolled.
+      setNextCodeError({ id, message: body.error || "Couldn't change the next code number" });
+      input.value = String(previous);
     }
     onChanged(); mutateAll();
   }
@@ -541,7 +558,27 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
                       <Timer size={11} /> SLA targets
                     </button>
                   )}
+                  <label
+                    className="flex items-center gap-1 text-[11px] text-brand-sub"
+                    title="The number the next new task's code will get. Lower it to reuse numbers of tasks you deleted permanently."
+                  >
+                    Next code: <span className="font-mono uppercase">{p.code}-</span>
+                    <input
+                      key={p.taskCodeSeq}
+                      type="number"
+                      min={1}
+                      defaultValue={p.taskCodeSeq + 1}
+                      onBlur={(e) => {
+                        const n = Number(e.target.value);
+                        if (!Number.isInteger(n) || n < 1) { e.target.value = String(p.taskCodeSeq + 1); return; }
+                        if (n !== p.taskCodeSeq + 1) setNextCodeNumber(p.id, n, e.target, p.taskCodeSeq + 1);
+                      }}
+                      onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                      className="w-[64px] rounded border border-brand-border px-1 py-0.5 text-[11px] font-mono outline-none"
+                    />
+                  </label>
                 </div>
+                {nextCodeError?.id === p.id && <div className="mt-1 text-[11px] text-red-600">{nextCodeError.message}</div>}
 
                 {fieldsOpenId === p.id && <CustomFieldsEditor projectId={p.id} />}
                 {slaOpenId === p.id && p.slaTrackingEnabled && <ProjectSlaEditor projectId={p.id} />}

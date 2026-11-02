@@ -84,6 +84,26 @@ export function formatDateDisplay(s?: string | null): string {
   return `${d}/${m}/${y}`;
 }
 
+/** "2026-11-02" -> "2 Nov" (adds the year when it isn't this year: "2 Nov 2025"). */
+export function shortDate(s: string, thisYear = new Date().getFullYear()): string {
+  const [y, m, d] = s.split("-").map(Number);
+  return `${d} ${MONTHS[m - 1]}${y !== thisYear ? ` ${y}` : ""}`;
+}
+
+/** Start and due date for cards and rows: "2 Nov → 10 Nov", "From 2 Nov", "Due 10 Nov", or null. */
+export function dateRange(task: Pick<Task, "startDate" | "dueDate">): string | null {
+  const { startDate, dueDate } = task;
+  if (startDate && dueDate) return startDate === dueDate ? shortDate(dueDate) : `${shortDate(startDate)} → ${shortDate(dueDate)}`;
+  if (startDate) return `From ${shortDate(startDate)}`;
+  if (dueDate) return `Due ${shortDate(dueDate)}`;
+  return null;
+}
+
+/** The coloured tag is only shown when it adds something beyond the dates (late, due soon, waiting). */
+export function showsStatusTag(tone: DueTone): boolean {
+  return tone === "overdue" || tone === "soon" || tone === "paused";
+}
+
 export type DueTone = "done" | "overdue" | "soon" | "normal" | "paused";
 
 /** Due within the next 7 days (inclusive of today), and not already Done. */

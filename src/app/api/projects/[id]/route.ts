@@ -14,6 +14,30 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid project" }, { status: 400 });
   }
 
+  // Setting the next task-code number: refuse it if that number, or any later one
+  // the counter would reach, is already taken by a task (Trash included —
+  // codes stay reserved until a task is deleted permanently).
+  let taskCodeSeq: number | undefined;
+  if (parsed.data.nextCodeNumber !== undefined) {
+    const current = await prisma.project.findUnique({ where: { id: params.id }, select: { code: true } });
+    if (!current) return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    const prefix = (parsed.data.code ?? current.code).toUpperCase();
+    const pattern = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-(\\d+)$`, "i");
+    const used = await prisma.task.findMany({
+      where: { code: { startsWith: `${prefix}-`, mode: "insensitive" } },
+      select: { code: true },
+    });
+    const highest = Math.max(0, ...used.map((t) => Number(t.code?.match(pattern)?.[1] ?? 0)));
+    const wanted = parsed.data.nextCodeNumber;
+    if (highest >= wanted) {
+      const takenCode = `${prefix}-${String(highest).padStart(4, "0")}`;
+      return NextResponse.json({
+        error: `${takenCode} is already used (it may be in Trash — delete it permanently first). The lowest number you can use is ${highest + 1}.`,
+      }, { status: 400 });
+    }
+    taskCodeSeq = wanted - 1;
+  }
+
   try {
     const project = await prisma.project.update({
       where: { id: params.id },
@@ -23,9 +47,15 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
         ...(parsed.data.slaTrackingEnabled !== undefined ? { slaTrackingEnabled: parsed.data.slaTrackingEnabled } : {}),
         ...(parsed.data.slaBusinessHours !== undefined ? { slaBusinessHours: parsed.data.slaBusinessHours } : {}),
         ...(parsed.data.isTemplate !== undefined ? { isTemplate: parsed.data.isTemplate } : {}),
+        ...(taskCodeSeq !== undefined ? { taskCodeSeq } : {}),
       },
     });
-    logAudit(session.user.id, `Updated project "${project.name}" (${project.code})`);
+    logAudit(
+      session.user.id,
+      taskCodeSeq !== undefined
+        ? `Set the next task code of "${project.name}" to ${project.code}-${String(taskCodeSeq + 1).padStart(4, "0")}`
+        : `Updated project "${project.name}" (${project.code})`,
+    );
     return NextResponse.json(project);
   } catch {
     return NextResponse.json({ error: "Couldn't update project — code may already be in use" }, { status: 400 });

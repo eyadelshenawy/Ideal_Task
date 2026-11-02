@@ -13,4 +13,6 @@ export const projectUpdateSchema = z.object({
   slaTrackingEnabled: z.boolean().optional(),
   slaBusinessHours: z.boolean().optional(),
   isTemplate: z.boolean().optional(),
+  // The number the next new task's code will get, e.g. 41 -> "ABM-0041".
+  nextCodeNumber: z.number().int().min(1, "Next number must be 1 or more").max(999999).optional(),
 });
