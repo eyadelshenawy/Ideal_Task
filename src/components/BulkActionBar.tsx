@@ -64,7 +64,7 @@ export default function BulkActionBar({
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [assignOpen]);
 
-  async function applyAssignees(mode: "add" | "replace") {
+  async function applyAssignees(mode: "add" | "replace" | "remove") {
     await run({
       assignees: [
         ...assignPicked.map((id) => ({ type: "user", id })),
@@ -133,7 +133,7 @@ export default function BulkActionBar({
           {assignOpen && (
             <div
               className="absolute z-30 top-full mt-1 left-0 rounded-lg p-3 bg-white border border-brand-border shadow-lg text-brand-text"
-              style={{ minWidth: 240 }}
+              style={{ minWidth: 300 }}
             >
               <div className="text-[11px] font-semibold text-brand-sub mb-1.5">Consultants</div>
               <div className="max-h-[220px] overflow-y-auto flex flex-col gap-1">
@@ -168,10 +168,19 @@ export default function BulkActionBar({
                   disabled={busy || (assignPicked.length === 0 && contactPicked.length === 0)}
                   onClick={() => applyAssignees("add")}
                   title="Keeps whoever is already on each task"
-                  className="flex-1 rounded-md px-2 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                  className="flex-1 whitespace-nowrap rounded-md px-2 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
                   style={{ background: "#0A5A46" }}
                 >
                   Add to tasks
+                </button>
+                <button
+                  disabled={busy || (assignPicked.length === 0 && contactPicked.length === 0)}
+                  onClick={() => applyAssignees("remove")}
+                  title="Takes only the ticked people off each task; everyone else stays"
+                  className="flex-1 rounded-md px-2 py-1.5 text-xs font-semibold border border-brand-border disabled:opacity-50"
+                  style={{ color: "#9A3530" }}
+                >
+                  Remove
                 </button>
                 <button
                   disabled={busy || assignPicked.length === 0}
@@ -182,7 +191,7 @@ export default function BulkActionBar({
                   Replace
                 </button>
               </div>
-              <div className="mt-1.5 text-[10.5px] text-brand-sub leading-snug">Customer contacts already on the tasks always stay. Ticked contacts are added.</div>
+              <div className="mt-1.5 text-[10.5px] text-brand-sub leading-snug">Add: puts the ticked people on. Remove: takes only them off. Replace: only the ticked consultants stay. Customer contacts are only changed if you tick them.</div>
             </div>
           )}
         </div>

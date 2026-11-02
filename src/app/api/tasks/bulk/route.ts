@@ -166,8 +166,14 @@ export async function PATCH(req: NextRequest) {
         ...(status !== undefined ? { status, progress: status === "DONE" ? 100 : undefined } : {}),
         ...(progressUpdate !== undefined ? { progress: progressUpdate } : {}),
         ...(completedAtUpdate !== undefined ? { completedAt: completedAtUpdate } : {}),
-        ...(bulkContactIds.length > 0 ? { contactAssignees: { connect: bulkContactIds.map((id) => ({ id })) } } : {}),
-        ...(bulkUserIds ? { assignees: assigneeMode === "add" ? { connect: bulkUserIds.map((id) => ({ id })) } : { set: bulkUserIds.map((id) => ({ id })) } } : {}),
+        ...(bulkContactIds.length > 0
+          ? { contactAssignees: assigneeMode === "remove" ? { disconnect: bulkContactIds.map((id) => ({ id })) } : { connect: bulkContactIds.map((id) => ({ id })) } }
+          : {}),
+        ...(bulkUserIds
+          ? { assignees: assigneeMode === "add" ? { connect: bulkUserIds.map((id) => ({ id })) }
+              : assigneeMode === "remove" ? { disconnect: bulkUserIds.map((id) => ({ id })) }
+              : { set: bulkUserIds.map((id) => ({ id })) } }
+          : {}),
         ...(projectId !== undefined ? { projectId: projectId || null } : {}),
         ...(priority !== undefined ? { priority } : {}),
         ...(type !== undefined ? { type } : {}),
@@ -206,7 +212,7 @@ export async function PATCH(req: NextRequest) {
       await syncAncestorChain(prisma, updatedTask.id);
     }
 
-    if (assignees !== undefined) {
+    if (assignees !== undefined && assigneeMode !== "remove") {
       const existingUserIds = new Set(task.assignees.map((a) => a.id));
       const newlyAssignedUserIds = assignees.filter((a) => a.type === "user" && !existingUserIds.has(a.id)).map((a) => a.id);
       notifyAssignment(updatedTask, newlyAssignedUserIds).catch((err) => console.error("notifyAssignment failed:", err));
