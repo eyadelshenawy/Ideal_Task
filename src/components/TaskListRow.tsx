@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Trash2, Check, Diamond, Copy, ChevronDown, ChevronRight, AlertTriangle } from "lucide-react";
 import type { Task, Project, AssigneeDisplay, Status } from "@/types/models";
-import { PRIORITIES, STATUSES, dueBadge, toneStyle, isBlocked, splitModules } from "@/lib/taskHelpers";
+import { PRIORITIES, STATUSES, dueBadge, dateRange, showsStatusTag, toneStyle, isBlocked, splitModules } from "@/lib/taskHelpers";
 import { useWorkDays } from "@/lib/useWorkDays";
 import AvatarStack from "./ui/AvatarStack";
 import Chip from "./ui/Chip";
@@ -49,10 +49,10 @@ export default function TaskListRow({
   density = "comfortable", dependencyWarning, sla, categoryName, projectColour,
 }: TaskListRowProps) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [confirmingDuplicate, setConfirmingDuplicate] = useState(false);
   const priority = PRIORITIES.find((p) => p.id === task.priority)!;
   const status = STATUSES.find((s) => s.id === task.status)!;
   const badge = dueBadge(task, useWorkDays());
+  const dates = dateRange(task);
   const blocked = isBlocked(task, allTasks);
   const modules = splitModules(task.module);
   const compact = density === "compact";
@@ -138,24 +138,25 @@ export default function TaskListRow({
           </select>
           <span className="hidden sm:flex justify-center w-[128px]">{sla && task.status !== "DONE" && <SlaChip sla={sla} />}</span>
           {sla && task.status !== "DONE" && <span className="sm:hidden"><SlaChip sla={sla} /></span>}
-          <span className="sm:w-[84px] flex sm:justify-center">{badge && <Chip small style={toneStyle(badge.tone)}>{badge.label}</Chip>}</span>
+          <span className="sm:w-[124px] text-[11.5px] text-brand-sub whitespace-nowrap sm:text-center">{dates}</span>
+          <span className="sm:w-[84px] flex sm:justify-center">{badge && showsStatusTag(badge.tone) && <Chip small style={toneStyle(badge.tone)}>{badge.label}</Chip>}</span>
           {!selectMode && (
             // On a computer the icons appear when the mouse is over the row; touch screens always show them.
             <div
               className={`flex items-center gap-1 transition-opacity ${
-                confirmingDelete || confirmingDuplicate
+                confirmingDelete
                   ? ""
                   : "[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 group-focus-within:opacity-100"
               }`}
             >
               {canManage && (
                 <button
-                  onClick={() => (confirmingDuplicate ? onDuplicate(task.id) : setConfirmingDuplicate(true))}
-                  title={confirmingDuplicate ? "Click to confirm" : "Duplicate"}
+                  onClick={() => onDuplicate(task.id)}
+                  title="Duplicate"
                   className="p-1 rounded hover:bg-gray-100"
-                  style={{ color: confirmingDuplicate ? "#0A5A46" : "#5B6B64" }}
+                  style={{ color: "#5B6B64" }}
                 >
-                  {confirmingDuplicate ? <Check size={14} /> : <Copy size={14} />}
+                  <Copy size={14} />
                 </button>
               )}
               {canManage && (
