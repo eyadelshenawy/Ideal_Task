@@ -54,3 +54,15 @@ export function daysOverdue(task: { dueDate: string | null; status: string }, to
 export function isOverdue(task: { dueDate: string | null; status: string }, today: string, cal: WorkDays): boolean {
   return daysOverdue(task, today, cal) > 0;
 }
+
+/**
+ * Due date for a task of `duration` working days starting on `start`
+ * (the start counts as day 1; a non-working start moves to the next working
+ * day). Same rule as the server's addWorkingDays:
+ *   Due = Start + (Duration − 1) working days, skipping weekends and holidays
+ */
+export function dueFromDuration(start: string, duration: number, cal: WorkDays): string {
+  let d = isWorkDay(start, cal) ? start : nextWorkDay(start, cal);
+  for (let i = 1; i < duration; i++) d = nextWorkDay(d, cal);
+  return d;
+}

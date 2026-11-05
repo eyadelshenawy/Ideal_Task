@@ -13,6 +13,7 @@ import { getDescendantIds, syncAncestorChain, childDateSpan, uncoveredSpanError 
 import { resolveTags } from "@/lib/tags";
 import { dateStrToUTC } from "@/lib/serverDates";
 import { loadSchedulingCalendar, resolveTaskDates, toDateOnly } from "@/lib/scheduling";
+import { withSlaDuration } from "@/lib/slaDuration";
 
 // Bulk edit: same patch (status / assignees / project) applied to every task
 // id the requester is allowed to manage. Ids they can't manage are silently
@@ -136,12 +137,17 @@ export async function PATCH(req: NextRequest) {
       const existingStartStr = task.startDate ? toDateOnly(task.startDate) : null;
       const existingDueStr = task.dueDate ? toDateOnly(task.dueDate) : null;
       const resolved = resolveTaskDates(
-        {
-          // A milestone is a single date: no Start, no Duration.
-          startDate: task.isMilestone ? null : startDate !== undefined ? startDate : existingStartStr,
-          dueDate: dueDate !== undefined ? dueDate : existingDueStr,
-          durationDays: task.isMilestone ? null : durationDays !== undefined ? durationDays : task.durationDays,
-        },
+        // SLA projects: a start date alone takes its Duration from the SLA.
+        await withSlaDuration(
+          {
+            // A milestone is a single date: no Start, no Duration.
+            startDate: task.isMilestone ? null : startDate !== undefined ? startDate : existingStartStr,
+            dueDate: dueDate !== undefined ? dueDate : existingDueStr,
+            durationDays: task.isMilestone ? null : durationDays !== undefined ? durationDays : task.durationDays,
+          },
+          projectId !== undefined ? projectId || null : task.projectId,
+          priority ?? task.priority,
+        ),
         cal,
         dueDate !== undefined,
       );

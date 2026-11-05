@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Start date fills the Due Date from the SLA",
+    description: "In a project that tracks SLA, picking a Start Date on a ticket with no Duration now fills the Duration from the SLA for its priority, and the Due Date is worked out from it — skipping Fridays, Saturdays and holidays from the Work Calendar. Before, this only happened on brand-new tickets, so tickets that came in through the ticket form got no Due Date. The form now also shows the Due Date it will set, e.g. \"Will be 16/11/2026\", before you save.",
+  },
+  {
     title: "Counts no longer add main tasks on top of their subtasks",
     description: "The numbers now count the actual pieces of work: a task with subtasks is left out and its subtasks are counted instead. For example, ABM-0040 with 3 subtasks now counts as 3, not 4, and a late subtask no longer also counts its main task as overdue. This applies to the cards at the top, the greeting strip, the Board column numbers, Reports and the client report. The main task still shows in the list and on the board.",
   },
