@@ -6,6 +6,8 @@ import type { Task, Project, TeamMember, Contact, Priority, Status, RecurrenceFr
 import { PRIORITIES, STATUSES, descendantIds, splitModules, formatDateDisplay } from "@/lib/taskHelpers";
 import { TICKET_TYPES, MATRIX_LEVELS, priorityFromMatrix } from "@/lib/ticketMeta";
 import { MODULE_OPTIONS } from "@/lib/listConfig";
+import { useWorkDays } from "@/lib/useWorkDays";
+import { dueFromDuration } from "@/lib/workdays";
 import type { TaskSla } from "@/lib/taskSla";
 import SlaStatusPanel from "./SlaStatusPanel";
 import SlaChip from "./SlaChip";
@@ -161,6 +163,7 @@ export default function TaskModal({
   //      value the user just typed, because it only fires on
   //      priority/project changes, not on every Duration keystroke.
   // Non-SLA projects (project.sla === null) are left alone entirely.
+  const workDays = useWorkDays();
   const prevKeyRef = useRef<string>("");
   useEffect(() => {
     const key = `${draft.projectId}|${draft.priority}`;
@@ -681,7 +684,13 @@ export default function TaskModal({
                   <input
                     type="date"
                     value={draft.startDate}
-                    onChange={(e) => setDraft({ ...draft, startDate: e.target.value, dueDate: "" })}
+                    onChange={(e) => {
+                      // SLA project and no Duration yet: take it from the SLA so the Due Date
+                      // is worked out on save (skipping weekends and holidays).
+                      const slaDays = projects.find((p) => p.id === draft.projectId)?.sla?.[draft.priority];
+                      const durationDays = !draft.durationDays && e.target.value && slaDays ? String(slaDays) : draft.durationDays;
+                      setDraft({ ...draft, startDate: e.target.value, dueDate: "", durationDays });
+                    }}
                     className={field}
                   />
                 </div>
@@ -718,6 +727,11 @@ export default function TaskModal({
                         className={`${field} ${fromSubtasks ? "bg-brand-bg text-brand-sub cursor-not-allowed" : ""}`}
                       />
                       {fromSubtasks && <div className="text-[10.5px] text-brand-sub mt-1">Set by its subtasks (latest due date).</div>}
+                      {!draft.isMilestone && !draft.dueDate && draft.startDate && Number(draft.durationDays) > 0 && (
+                        <div className="text-[10.5px] text-brand-dark mt-1">
+                          Will be {formatDateDisplay(dueFromDuration(draft.startDate, Number(draft.durationDays), workDays))} (skips weekends and holidays)
+                        </div>
+                      )}
                     </>
                   );
                 })()}

@@ -14,6 +14,7 @@ import { visibleTasksWhere } from "@/lib/taskVisibility";
 import { codeMatchesProject, nextTaskCode } from "@/lib/taskCode";
 import { codeMatchesParent, nextChildCode, syncAncestorChain } from "@/lib/taskHierarchy";
 import { loadSchedulingCalendar, resolveTaskDates } from "@/lib/scheduling";
+import { withSlaDuration } from "@/lib/slaDuration";
 import { checkCategoryPair } from "@/lib/categories";
 
 export async function GET() {
@@ -112,7 +113,8 @@ export async function POST(req: NextRequest) {
     // A milestone is a single date: no Start, no Duration.
     data.isMilestone
       ? { startDate: null, dueDate: data.dueDate, durationDays: null }
-      : { startDate: data.startDate, dueDate: data.dueDate, durationDays: data.durationDays },
+      // SLA projects: a start date alone takes its Duration from the SLA.
+      : await withSlaDuration({ startDate: data.startDate, dueDate: data.dueDate, durationDays: data.durationDays }, finalProjectId ?? null, data.priority),
     cal,
     data.dueDate !== null,
   );

@@ -17,6 +17,7 @@ import { codeMatchesProject } from "@/lib/taskCode";
 import { wouldCreateCycle } from "@/lib/taskDependencies";
 import { codeMatchesParent, wouldCreateHierarchyCycle, syncAncestorChain, getDescendantIds, childDateSpan, uncoveredSpanError } from "@/lib/taskHierarchy";
 import { loadSchedulingCalendar, resolveTaskDates, toDateOnly } from "@/lib/scheduling";
+import { withSlaDuration } from "@/lib/slaDuration";
 
 export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -224,11 +225,16 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
     const existingDueStr = existing.dueDate ? toDateOnly(existing.dueDate) : null;
     const cal = await loadSchedulingCalendar();
     resolvedDates = resolveTaskDates(
-      {
-        startDate: willBeMilestone ? null : data.startDate !== undefined ? data.startDate : existingStartStr,
-        dueDate: data.dueDate !== undefined ? data.dueDate : existingDueStr,
-        durationDays: willBeMilestone ? null : data.durationDays !== undefined ? data.durationDays : existing.durationDays,
-      },
+      // SLA projects: a start date alone takes its Duration from the SLA.
+      await withSlaDuration(
+        {
+          startDate: willBeMilestone ? null : data.startDate !== undefined ? data.startDate : existingStartStr,
+          dueDate: data.dueDate !== undefined ? data.dueDate : existingDueStr,
+          durationDays: willBeMilestone ? null : data.durationDays !== undefined ? data.durationDays : existing.durationDays,
+        },
+        data.projectId !== undefined ? data.projectId : existing.projectId,
+        data.priority ?? existing.priority,
+      ),
       cal,
       data.dueDate !== undefined,
     );
