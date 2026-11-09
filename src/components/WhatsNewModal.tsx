@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "A milestone with subtasks shows its full span",
+    description: "A milestone that has subtasks now runs from the earliest subtask start to the latest subtask due — for example 10 Nov → 18 Nov — instead of only its end date. It follows its subtasks both ways when you change their dates. Existing milestones were updated once to match. A milestone with no subtasks is still a single date.",
+  },
+  {
     title: "Start date fills the Due Date from the SLA",
     description: "In a project that tracks SLA, picking a Start Date on a ticket with no Duration now fills the Duration from the SLA for its priority, and the Due Date is worked out from it — skipping Fridays, Saturdays and holidays from the Work Calendar. Before, this only happened on brand-new tickets, so tickets that came in through the ticket form got no Due Date. The form now also shows the Due Date it will set, e.g. \"Will be 16/11/2026\", before you save.",
   },

@@ -726,7 +726,12 @@ export default function TaskModal({
                         readOnly={fromSubtasks}
                         className={`${field} ${fromSubtasks ? "bg-brand-bg text-brand-sub cursor-not-allowed" : ""}`}
                       />
-                      {fromSubtasks && <div className="text-[10.5px] text-brand-sub mt-1">Set by its subtasks (latest due date).</div>}
+                      {fromSubtasks && (
+                        <div className="text-[10.5px] text-brand-sub mt-1">
+                          Set by its subtasks: from the earliest start to the latest due
+                          {draft.startDate ? ` (${formatDateDisplay(draft.startDate)} → ${formatDateDisplay(draft.dueDate)})` : ""}.
+                        </div>
+                      )}
                       {!draft.isMilestone && !draft.dueDate && draft.startDate && Number(draft.durationDays) > 0 && (
                         <div className="text-[10.5px] text-brand-dark mt-1">
                           Will be {formatDateDisplay(dueFromDuration(draft.startDate, Number(draft.durationDays), workDays))} (skips weekends and holidays)

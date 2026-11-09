@@ -104,18 +104,27 @@ async function recomputeOneLevel(db: Db, parentId: string): Promise<boolean> {
     if (average !== parent.progress) patch.progress = average;
   }
 
-  // A milestone parent marks the moment its subtasks are all due: its single
-  // date follows the latest subtask due, both ways, and it keeps no Start.
+  // A milestone parent spans its subtasks exactly, both ways (it widens and
+  // shrinks with them):
+  //   Start = earliest subtask start, Due = latest subtask due,
+  //   Duration = working days from Start to Due.
+  // With no subtask start it keeps no Start (a single date).
   if (parent.isMilestone) {
+    const starts = siblings.map((s) => s.startDate).filter((d): d is Date => !!d);
     const dues = siblings.map((s) => s.dueDate).filter((d): d is Date => !!d);
     if (dues.length > 0) {
       const nextDue = new Date(Math.max(...dues.map((d) => d.getTime())));
       if (nextDue.getTime() !== parent.dueDate?.getTime()) patch.dueDate = nextDue;
     }
-    if (parent.startDate || parent.durationDays) {
-      patch.startDate = null;
-      patch.durationDays = null;
+    const due = patch.dueDate ?? parent.dueDate;
+    const nextStart = starts.length > 0 ? new Date(Math.min(...starts.map((d) => d.getTime()))) : null;
+    let nextDuration: number | null = null;
+    if (nextStart && due) {
+      const { countWorkingDaysInclusive, loadSchedulingCalendar, toDateOnly } = await import("@/lib/scheduling");
+      nextDuration = Math.max(1, countWorkingDaysInclusive(toDateOnly(nextStart), toDateOnly(due), await loadSchedulingCalendar()));
     }
+    if (nextStart?.getTime() !== parent.startDate?.getTime()) patch.startDate = nextStart;
+    if (nextDuration !== parent.durationDays) patch.durationDays = nextDuration;
     if (Object.keys(patch).length === 0) return false;
     await db.task.update({ where: { id: parentId }, data: patch });
     return true;
