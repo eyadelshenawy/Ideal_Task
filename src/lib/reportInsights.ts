@@ -73,6 +73,8 @@ export function computeInsights(input: {
   today: string;
   monthCount: number;
   projectIds: string[];
+  /** Only these priorities (empty = all), e.g. ["CRITICAL", "HIGH"]. */
+  priorities?: Priority[];
   workDays: WorkDays;
 }): Insights {
   const { projects, team, slaAll, firstCommentAt, raw, today, monthCount, projectIds, workDays } = input;
@@ -81,7 +83,10 @@ export function computeInsights(input: {
   const months = lastMonths(today, monthCount);
   const from = `${months[0].key}-01`;
   const inPeriod = (d: string | null) => !!d && dayOf(d) >= from && dayOf(d) <= today;
-  const inProjects = projectIds.length ? input.tasks.filter((t) => t.projectId && projectIds.includes(t.projectId)) : input.tasks;
+  const priorities = input.priorities ?? [];
+  const inProjects = input.tasks.filter((t) =>
+    (!projectIds.length || (t.projectId && projectIds.includes(t.projectId))) &&
+    (!priorities.length || priorities.includes(t.priority)));
   // Ticket counts are of actual work: tasks with subtasks are left out and
   // their subtasks counted. Hours logged (section 6) still use every task, so
   // time booked on a main task is never lost.
