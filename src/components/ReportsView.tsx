@@ -18,7 +18,7 @@ import MultiSelectFilter from "./ui/MultiSelectFilter";
 import { computeInsights, lastMonths, type InsightsRaw } from "@/lib/reportInsights";
 import { exportInsightsToExcel } from "@/lib/insightsExcel";
 import { countedTasks } from "@/lib/taskCount";
-import { Download, Loader2 } from "lucide-react";
+import { Download, FileText, Loader2 } from "lucide-react";
 
 const TABS: { id: "overview" | InsightsTab; label: string }[] = [
   { id: "overview", label: "Overview" },
@@ -89,7 +89,11 @@ export default function ReportsView({ tasks, projects, team, categories, isSuper
     if (!firstCommentAt || !slaAll) return null;
     const now = new Date();
     const trackedProjectIds = new Set(projects.filter((p) => p.slaTrackingEnabled).map((p) => p.id));
-    const tracked = counted.filter((t) => t.projectId && trackedProjectIds.has(t.projectId));
+    // On the insight tabs the SLA figures follow the project and priority filters above them.
+    const filtered = tab === "overview" ? counted : counted.filter((t) =>
+      (insightProjectIds.length === 0 || (t.projectId && insightProjectIds.includes(t.projectId))) &&
+      (insightPriorities.length === 0 || insightPriorities.includes(t.priority)));
+    const tracked = filtered.filter((t) => t.projectId && trackedProjectIds.has(t.projectId));
 
     const configFor = (projectId: string): SlaConfigDto => slaAll.overrides[projectId] ?? slaAll.default;
     const inScope = tracked.filter((t) => {
@@ -110,7 +114,7 @@ export default function ReportsView({ tasks, projects, team, categories, isSuper
     };
     const breached = rows.filter((r) => r.response === "breached" || r.resolution === "breached");
     return { responseRate: rate("response"), resolutionRate: rate("resolution"), breached, excludedCount: tracked.length - inScope.length, trackedCount: tracked.length };
-  }, [counted, projects, firstCommentAt, slaAll]);
+  }, [counted, projects, firstCommentAt, slaAll, tab, insightProjectIds, insightPriorities]);
 
   const overall = useMemo(() => {
     const tasks = counted;
@@ -370,10 +374,21 @@ export default function ReportsView({ tasks, projects, team, categories, isSuper
             selected={insightPriorities}
             onChange={(v) => setInsightPriorities(v as Priority[])}
           />
+          {insightProjectIds.length === 1 && (
+            // The client-facing version of these numbers, for one project, ready to print as PDF.
+            <a
+              href={`/projects/${insightProjectIds[0]}/report${insightPriorities.length ? `?priorities=${insightPriorities.join(",")}` : ""}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="sm:ml-auto flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs bg-brand-dark text-white"
+            >
+              <FileText size={13} /> Client report
+            </a>
+          )}
           <button
             onClick={async () => { if (!insights) return; setExporting(true); try { await exportInsightsToExcel(insights, periodLabel); } finally { setExporting(false); } }}
             disabled={!insights || !insightsRaw || exporting}
-            className="sm:ml-auto flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs bg-white border border-brand-border text-brand-text disabled:opacity-60"
+            className={`${insightProjectIds.length === 1 ? "" : "sm:ml-auto "}flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs bg-white border border-brand-border text-brand-text disabled:opacity-60`}
             title="All nine reports, with the formulas behind every total, average and percentage"
           >
             {exporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} Export to Excel (with formulas)

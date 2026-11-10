@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "A client report worth showing; SLA figures follow the filters",
+    description: "The Client report is now a proper support report you can print or save as PDF for the client: pick the period and the priorities (e.g. Critical + High), and it shows tickets received and resolved, average resolution time, SLA met, a month-by-month chart, SLA per priority and the open tickets with their age — every figure with its formula. In Reports, pick one project to get a Client report button with the same priorities. Also fixed: the SLA box at the bottom of the SLA & speed tab now follows the project and priority filters, instead of showing every project.",
+  },
+  {
     title: "Reports: filter by priority",
     description: "The Customers, SLA & speed, Team, Time & billing and Quality tabs in Reports now have a priority filter next to the project filter. For example, pick RCC and Critical + High to see tickets per month, SLA met or breached, response and resolution times, ageing and team figures for just those tickets. Export to Excel uses the same filters and names them in each sheet's title.",
   },
