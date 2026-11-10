@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Reports: filter by priority",
+    description: "The Customers, SLA & speed, Team, Time & billing and Quality tabs in Reports now have a priority filter next to the project filter. For example, pick RCC and Critical + High to see tickets per month, SLA met or breached, response and resolution times, ageing and team figures for just those tickets. Export to Excel uses the same filters and names them in each sheet's title.",
+  },
+  {
     title: "A milestone with subtasks shows its full span",
     description: "A milestone that has subtasks now runs from the earliest subtask start to the latest subtask due — for example 10 Nov → 18 Nov — instead of only its end date. It follows its subtasks both ways when you change their dates. Existing milestones were updated once to match. A milestone with no subtasks is still a single date.",
   },

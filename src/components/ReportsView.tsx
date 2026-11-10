@@ -4,7 +4,7 @@ import { isOverdue } from "@/lib/workdays";
 import { useWorkDays } from "@/lib/useWorkDays";
 import { useMemo, useState } from "react";
 import useSWR from "swr";
-import type { Task, Project, TeamMember, Category } from "@/types/models";
+import type { Task, Project, TeamMember, Category, Priority } from "@/types/models";
 import { todayStr, addDays, PRIORITIES } from "@/lib/taskHelpers";
 import type { SlaConfigDto } from "@/lib/slaConfig";
 import { computeTaskSla, type SlaAll } from "@/lib/taskSla";
@@ -53,6 +53,7 @@ export default function ReportsView({ tasks, projects, team, categories, isSuper
   const [tab, setTab] = useState<"overview" | InsightsTab>("overview");
   const [monthCount, setMonthCount] = useState(6);
   const [insightProjectIds, setInsightProjectIds] = useState<string[]>([]);
+  const [insightPriorities, setInsightPriorities] = useState<Priority[]>([]);
   const [exporting, setExporting] = useState(false);
   const [slaSettingsOpen, setSlaSettingsOpen] = useState(false);
   const [bulkTimeOpen, setBulkTimeOpen] = useState(false);
@@ -76,9 +77,10 @@ export default function ReportsView({ tasks, projects, team, categories, isSuper
     return computeInsights({
       tasks, projects, team, slaAll, firstCommentAt, raw: insightsRaw, today, monthCount, workDays,
       projectIds: insightProjectIds,
+      priorities: insightPriorities,
       categoryName: (id) => (id ? catName.get(id) ?? null : null),
     });
-  }, [tab, tasks, projects, team, categories, slaAll, firstCommentAt, insightsRaw, today, monthCount, insightProjectIds, workDays]);
+  }, [tab, tasks, projects, team, categories, slaAll, firstCommentAt, insightsRaw, today, monthCount, insightProjectIds, insightPriorities, workDays]);
 
   // Counts are of actual work: tasks with subtasks are left out, their subtasks counted.
   const counted = useMemo(() => countedTasks(tasks), [tasks]);
@@ -337,7 +339,12 @@ export default function ReportsView({ tasks, projects, team, categories, isSuper
   );
 
   if (tab !== "overview") {
-    const periodLabel = `last ${monthCount} months`;
+    // The Excel title names the filters too, e.g. "last 6 months · RCC · Critical, High".
+    const periodLabel = [
+      `last ${monthCount} months`,
+      insightProjectIds.length ? projects.filter((p) => insightProjectIds.includes(p.id)).map((p) => p.name).join(", ") : null,
+      insightPriorities.length ? PRIORITIES.filter((p) => insightPriorities.includes(p.id)).map((p) => p.label).join(", ") : null,
+    ].filter(Boolean).join(" · ");
     return (
       <div className="flex flex-col gap-3">
         {tabBar}
@@ -356,6 +363,12 @@ export default function ReportsView({ tasks, projects, team, categories, isSuper
             options={projects.map((p) => ({ value: p.id, label: p.name }))}
             selected={insightProjectIds}
             onChange={setInsightProjectIds}
+          />
+          <MultiSelectFilter
+            allLabel="All Priorities" pluralNoun="priorities" width={200}
+            options={PRIORITIES.map((p) => ({ value: p.id, label: p.label }))}
+            selected={insightPriorities}
+            onChange={(v) => setInsightPriorities(v as Priority[])}
           />
           <button
             onClick={async () => { if (!insights) return; setExporting(true); try { await exportInsightsToExcel(insights, periodLabel); } finally { setExporting(false); } }}
