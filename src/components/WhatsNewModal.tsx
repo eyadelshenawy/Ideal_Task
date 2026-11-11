@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Reports: tickets opened and closed each month; modules and categories add up",
+    description: "On Reports → Customers, each customer now has two lines per month: tickets opened (created that month) and tickets closed (marked Done that month). The modules and categories breakdowns now list every module and category instead of the top 5, add a \"Not set\" row for tickets with none, and show the period's ticket count underneath, so the figures add up. A ticket with several modules still counts once under each, and a note says so. The Excel export matches.",
+  },
+  {
     title: "Ticket form: longer details and clear error messages",
     description: "On the public ticket submission form, Details now takes up to 10,000 characters (was 2,000), with a counter as the customer gets close to the limit. When something is wrong, the message now names the field — for example \"Details is too long\" or \"Please enter a valid email address\" — instead of the general \"Please fill in the required fields\".",
   },
