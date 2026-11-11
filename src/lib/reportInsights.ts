@@ -33,11 +33,17 @@ function weekStart(date: string): string {
   return addDays(date, -new Date(y, m - 1, d).getDay());
 }
 
-export interface CustomerMonthRow { projectId: string; name: string; counts: Record<string, number>; total: number }
+export interface CustomerMonthRow {
+  projectId: string; name: string;
+  counts: Record<string, number>; total: number; // opened (created) per month
+  closed: Record<string, number>; closedTotal: number; // closed (marked Done) per month
+}
 export interface SlaMonthRow { projectId: string; name: string; met: Record<string, number>; breached: Record<string, number> }
 export interface SpeedRow { priority: Priority; label: string; responseHours: number; responseCount: number; resolutionDays: number; resolutionCount: number }
 export interface AgeBucket { label: string; count: number }
 export interface TopRow { name: string; count: number }
+/** Every module (or category) among the period's tickets, plus those with none, so it adds up to the ticket count. */
+export interface Breakdown { rows: TopRow[]; notSet: number; tickets: number }
 export interface HoursRow { projectId: string; name: string; hours: Record<string, number>; total: number }
 export interface TeamRow { id: string; name: string; closed: number; resolutionDays: number; open: number; overdue: number }
 export interface WeekRow { week: string; opened: number; closed: number }
@@ -48,8 +54,8 @@ export interface Insights {
   slaPerCustomer: SlaMonthRow[];
   speed: SpeedRow[];
   ageing: AgeBucket[];
-  topModules: TopRow[];
-  topCategories: TopRow[];
+  topModules: Breakdown;
+  topCategories: Breakdown;
   hoursPerCustomer: HoursRow[];
   team: TeamRow[];
   weeks: WeekRow[];
@@ -98,14 +104,19 @@ export function computeInsights(input: {
   const created = tasks.filter((t) => inPeriod(t.createdAt));
   const zero = () => Object.fromEntries(months.map((m) => [m.key, 0])) as Record<string, number>;
 
-  // 1 · Tickets created per customer (project) per month.
+  // 1 · Tickets per customer (project) per month: opened = created in the month,
+  // closed = marked Done in the month (whenever it was created).
   const perCustomer = new Map<string, CustomerMonthRow>();
+  const customerRow = (projectId: string | null) => {
+    const key = projectId ?? "__none__";
+    const row = perCustomer.get(key) ?? { projectId: key, name: projName(projectId), counts: zero(), total: 0, closed: zero(), closedTotal: 0 };
+    perCustomer.set(key, row);
+    return row;
+  };
   for (const t of created) {
-    const key = t.projectId ?? "__none__";
-    const row = perCustomer.get(key) ?? { projectId: key, name: projName(t.projectId), counts: zero(), total: 0 };
+    const row = customerRow(t.projectId);
     row.counts[monthOf(t.createdAt)] = (row.counts[monthOf(t.createdAt)] ?? 0) + 1;
     row.total++;
-    perCustomer.set(key, row);
   }
 
   // 2 · Resolution SLA met / breached per customer per month (by month created).
@@ -132,6 +143,11 @@ export function computeInsights(input: {
   }
   const completed = tasks.filter((t) => t.status === "DONE" && inPeriod(t.completedAt));
   for (const t of completed) {
+    const row = customerRow(t.projectId);
+    row.closed[monthOf(t.completedAt!)] = (row.closed[monthOf(t.completedAt!)] ?? 0) + 1;
+    row.closedTotal++;
+  }
+  for (const t of completed) {
     const s = speed.get(t.priority)!;
     s.resolutionDays += resolutionWorkDays(t);
     s.resolutionCount++;
@@ -148,13 +164,24 @@ export function computeInsights(input: {
   ];
 
   // 5 · Top 5 modules and categories among tickets created in the period.
-  const top = (names: (string | null)[]) => {
+  // 5 · Every module and category among tickets created in the period, most first,
+  // plus "Not set" for tickets with none. A ticket with several modules counts
+  // once under each, so module rows can add up to more than the ticket count.
+  const breakdown = (namesPerTicket: string[][]): Breakdown => {
     const counts = new Map<string, number>();
-    names.forEach((n) => { if (n) counts.set(n, (counts.get(n) ?? 0) + 1); });
-    return [...counts.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count).slice(0, 5);
+    let notSet = 0;
+    namesPerTicket.forEach((names) => {
+      if (names.length === 0) notSet++;
+      names.forEach((n) => counts.set(n, (counts.get(n) ?? 0) + 1));
+    });
+    const rows = [...counts.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+    return { rows, notSet, tickets: namesPerTicket.length };
   };
-  const topModules = top(created.flatMap((t) => splitModules(t.module)));
-  const topCategories = top(created.map((t) => input.categoryName(t.categoryId)));
+  const topModules = breakdown(created.map((t) => splitModules(t.module)));
+  const topCategories = breakdown(created.map((t) => {
+    const name = input.categoryName(t.categoryId);
+    return name ? [name] : [];
+  }));
 
   // 6 · Hours logged per customer per month.
   const hours = new Map<string, HoursRow>();

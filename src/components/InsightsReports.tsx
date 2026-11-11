@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import type { Insights } from "@/lib/reportInsights";
 
 export type InsightsTab = "customers" | "sla" | "team" | "time" | "quality";
@@ -70,25 +70,77 @@ function Bars({ rows, color }: { rows: { name: string; count: number }[]; color:
   );
 }
 
+/** Two lines per customer — opened and closed — so the month's intake and output sit side by side. */
+function OpenedClosedTable({ rows, months }: { rows: Insights["ticketsPerCustomer"]; months: Insights["months"] }) {
+  if (rows.length === 0) return <Empty />;
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-[11.5px]">
+        <thead>
+          <tr className="text-brand-sub">
+            <th className="text-left font-semibold py-1 pr-2">Customer</th>
+            <th className="text-left font-semibold py-1 pr-2" />
+            {months.map((m) => <th key={m.key} className="text-right font-semibold py-1 px-1.5 whitespace-nowrap">{m.label.slice(0, 3)}</th>)}
+            <th className="text-right font-semibold py-1 pl-1.5">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <Fragment key={r.projectId}>
+              <tr className="border-t border-[#EEF2F0]">
+                <td rowSpan={2} className="py-1 pr-2 text-brand-text whitespace-nowrap align-top">{r.name}</td>
+                <td className="py-1 pr-2 text-brand-sub">Opened</td>
+                {months.map((m) => <td key={m.key} className="text-right py-1 px-1.5">{r.counts[m.key] || ""}</td>)}
+                <td className="text-right py-1 pl-1.5 font-semibold">{r.total}</td>
+              </tr>
+              <tr>
+                <td className="py-1 pr-2 text-brand-sub">Closed</td>
+                {months.map((m) => <td key={m.key} className="text-right py-1 px-1.5">{r.closed[m.key] || ""}</td>)}
+                <td className="text-right py-1 pl-1.5 font-semibold">{r.closedTotal}</td>
+              </tr>
+            </Fragment>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** Every module or category, plus "Not set", with the period's ticket count underneath. */
+function Breakdown({ data, color, multi }: { data: Insights["topModules"]; color: string; multi?: boolean }) {
+  if (data.tickets === 0) return <Empty />;
+  const rows = [...data.rows, ...(data.notSet > 0 ? [{ name: "Not set", count: data.notSet }] : [])];
+  const sum = rows.reduce((a, r) => a + r.count, 0);
+  return (
+    <div>
+      <Bars rows={rows} color={color} />
+      <div className="mt-2 pt-1.5 border-t border-[#EEF2F0] flex items-center justify-between text-[11.5px]">
+        <span className="font-semibold text-brand-text">Tickets in the period</span>
+        <span className="font-semibold text-brand-text">{data.tickets}</span>
+      </div>
+      {multi && sum > data.tickets && (
+        <div className="text-[10.5px] text-brand-sub mt-1">
+          The rows add up to {sum}: a ticket with several modules counts once under each.
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function InsightsReports({ tab, data }: { tab: InsightsTab; data: Insights }) {
   const { months } = data;
 
   if (tab === "customers") {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        <Card n={1} title="Tickets per customer per month" formula="count of tickets created in the month" wide>
-          <MonthTable
-            rows={data.ticketsPerCustomer.map((r) => ({ key: r.projectId, name: r.name }))}
-            months={months}
-            cell={(k, m) => data.ticketsPerCustomer.find((r) => r.projectId === k)!.counts[m] || ""}
-            total={(k) => data.ticketsPerCustomer.find((r) => r.projectId === k)!.total}
-          />
+        <Card n={1} title="Tickets opened and closed per customer per month" formula="opened = created in the month · closed = marked Done in the month" wide>
+          <OpenedClosedTable rows={data.ticketsPerCustomer} months={months} />
         </Card>
-        <Card n={5} title="Where problems come from — modules (top 5)" formula="count of tickets created in the period, per module">
-          <Bars rows={data.topModules} color="#0A5A46" />
+        <Card n={5} title="Where problems come from — modules" formula="count of tickets created in the period, per module">
+          <Breakdown data={data.topModules} color="#0A5A46" multi />
         </Card>
-        <Card n={5} title="Where problems come from — categories (top 5)" formula="count of tickets created in the period, per category">
-          <Bars rows={data.topCategories} color="#82B478" />
+        <Card n={5} title="Where problems come from — categories" formula="count of tickets created in the period, per category">
+          <Breakdown data={data.topCategories} color="#82B478" />
         </Card>
       </div>
     );

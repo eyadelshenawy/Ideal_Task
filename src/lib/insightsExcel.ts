@@ -25,10 +25,14 @@ export async function exportInsightsToExcel(data: Insights, periodLabel: string)
   const lastMonthCol = col(1 + months.length);
 
   // 1 · Tickets per customer per month
-  let ws = sheet("Tickets per customer", ["Customer", ...months.map((m) => m.label), "Total"]);
+  // Two rows per customer: opened (created in the month) and closed (marked Done in the month).
+  let ws = sheet("Tickets per customer", ["Customer", "", ...months.map((m) => m.label), "Total"]);
+  const lastOpenedClosedCol = col(2 + months.length);
   data.ticketsPerCustomer.forEach((r) => {
-    const row = ws.addRow([r.name, ...months.map((m) => r.counts[m.key] ?? 0)]);
-    row.getCell(2 + months.length).value = { formula: `SUM(B${row.number}:${lastMonthCol}${row.number})` };
+    for (const [label, counts] of [["Opened", r.counts], ["Closed", r.closed]] as const) {
+      const row = ws.addRow([r.name, label, ...months.map((m) => counts[m.key] ?? 0)]);
+      row.getCell(3 + months.length).value = { formula: `SUM(C${row.number}:${lastOpenedClosedCol}${row.number})` };
+    }
   });
 
   // 2 · SLA met % per customer per month
@@ -57,9 +61,16 @@ export async function exportInsightsToExcel(data: Insights, periodLabel: string)
   ws.addRow(["Total", { formula: `SUM(B${ageStart}:B${ws.rowCount})` }]).font = { bold: true };
 
   // 5 · Where problems come from
-  ws = sheet("Top modules & categories", ["Type", "Name", "Tickets"]);
-  data.topModules.forEach((t) => ws.addRow(["Module", t.name, t.count]));
-  data.topCategories.forEach((t) => ws.addRow(["Category", t.name, t.count]));
+  // Every module / category plus "Not set". A ticket with several modules counts
+  // once under each, so the module rows can add up to more than the ticket count.
+  ws = sheet("Modules & categories", ["Type", "Name", "Tickets"]);
+  for (const [type, b] of [["Module", data.topModules], ["Category", data.topCategories]] as const) {
+    const first = ws.rowCount + 1;
+    b.rows.forEach((t) => ws.addRow([type, t.name, t.count]));
+    ws.addRow([type, "Not set", b.notSet]);
+    ws.addRow([type, "Sum of rows", { formula: `SUM(C${first}:C${ws.rowCount})` }]).font = { italic: true };
+    ws.addRow([type, "Tickets in the period", b.tickets]).font = { bold: true };
+  }
 
   // 6 · Hours per customer per month
   ws = sheet("Hours per customer", ["Customer", ...months.map((m) => m.label), "Total"]);

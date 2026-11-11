@@ -513,8 +513,8 @@
     </figure>
     <table class="perm-table">
       <tr><th>Tab</th><th>Report</th><th>Formula</th></tr>
-      <tr><td>Customers</td><td>1 · Tickets per customer per month</td><td>count of tickets created in the month</td></tr>
-      <tr><td>Customers</td><td>5 · Where problems come from (top 5 modules and categories)</td><td>count of tickets created in the period</td></tr>
+      <tr><td>Customers</td><td>1 · Tickets opened and closed per customer per month</td><td>opened = count of tickets created in the month; closed = count marked Done in the month (two lines per customer)</td></tr>
+      <tr><td>Customers</td><td>5 · Where problems come from (every module and category)</td><td>count of tickets created in the period, plus a <em>Not set</em> row for tickets with none and the period's ticket count underneath; a ticket with several modules counts once under each, so module rows can add up to more than the ticket count</td></tr>
       <tr><td>SLA &amp; speed</td><td>2 · Resolution SLA met per customer per month</td><td>met ÷ (met + breached) × 100</td></tr>
       <tr><td>SLA &amp; speed</td><td>3 · Average response and resolution time per priority</td><td>sum of hours (or working days) ÷ number of tickets — response = created → first comment (hours); resolution = created → Done (working days) − working days waiting on the customer</td></tr>
       <tr><td>SLA &amp; speed</td><td>4 · Age of open tickets (0–7, 8–30, 31–60, 60+ days)</td><td>working days from created date to today</td></tr>
