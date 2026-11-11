@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { z } from "zod";
+import { INTAKE_LIMITS } from "@/lib/intakeLimits";
 import { prisma } from "@/lib/prisma";
 import { priorityFromMatrix } from "@/lib/ticketMeta";
 import { nextTaskCode } from "@/lib/taskCode";
@@ -26,11 +27,21 @@ export async function GET(_req: Request, props: { params: Promise<{ token: strin
   return NextResponse.json({ projectName: project.name });
 }
 
+// Each message names the field, so the customer knows exactly what to fix.
 const submitSchema = z.object({
-  title: z.string().trim().min(1).max(200),
-  description: z.string().trim().min(1).max(2000),
-  contactName: z.string().trim().min(1).max(120),
-  contactEmail: z.string().trim().email().max(200),
+  title: z.string({ required_error: "Please describe the issue" }).trim()
+    .min(1, "Please describe the issue")
+    .max(INTAKE_LIMITS.title, `"What's the issue?" is too long — keep it under ${INTAKE_LIMITS.title} characters and put the rest in Details`),
+  description: z.string({ required_error: "Please add the details" }).trim()
+    .min(1, "Please add the details")
+    .max(INTAKE_LIMITS.description, `Details is too long — keep it under ${INTAKE_LIMITS.description.toLocaleString("en-GB")} characters, or attach the rest as a file`),
+  contactName: z.string({ required_error: "Please enter your name" }).trim()
+    .min(1, "Please enter your name")
+    .max(INTAKE_LIMITS.contactName, `Name is too long — keep it under ${INTAKE_LIMITS.contactName} characters`),
+  contactEmail: z.string({ required_error: "Please enter your email" }).trim()
+    .min(1, "Please enter your email")
+    .email("Please enter a valid email address, e.g. name@company.com")
+    .max(INTAKE_LIMITS.contactEmail, "Email is too long"),
   // Older cached copies of the form still send priority directly; newer ones
   // send impact + urgency and the priority comes from the matrix.
   priority: z.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW"]).default("MEDIUM"),
@@ -63,7 +74,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ token: s
     website: form.get("website") || undefined,
   });
   if (!parsed.success) {
-    return NextResponse.json({ error: "Please fill in the required fields" }, { status: 400 });
+    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Please fill in the required fields" }, { status: 400 });
   }
   // Honeypot tripped — pretend success so a bot doesn't learn to adapt.
   if (parsed.data.website) {

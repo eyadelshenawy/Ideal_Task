@@ -1,5 +1,6 @@
 "use client";
 
+import { INTAKE_LIMITS } from "@/lib/intakeLimits";
 import { useState } from "react";
 import useSWR from "swr";
 import { Loader2, CheckCircle2, Paperclip, Copy } from "lucide-react";
@@ -137,9 +138,13 @@ export default function IntakePageContent({ token }: { token: string }) {
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+            maxLength={INTAKE_LIMITS.title}
             placeholder="Short summary"
             className="w-full mt-1 rounded-lg border border-brand-border px-3 py-2 text-sm outline-none bg-white"
           />
+          {title.length > INTAKE_LIMITS.title * 0.8 && (
+            <div className="text-[10.5px] text-brand-sub text-right mt-0.5">{title.length} / {INTAKE_LIMITS.title} — put the rest in Details</div>
+          )}
         </div>
         <div>
           <label className="text-xs font-semibold text-brand-sub">Details *</label>
@@ -147,9 +152,15 @@ export default function IntakePageContent({ token }: { token: string }) {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={4}
+            maxLength={INTAKE_LIMITS.description}
             placeholder="Anything that helps us understand the request"
             className="w-full mt-1 rounded-lg border border-brand-border px-3 py-2 text-sm outline-none bg-white resize-none"
           />
+          {description.length > INTAKE_LIMITS.description * 0.8 && (
+            <div className="text-[10.5px] text-brand-sub text-right mt-0.5">
+              {description.length.toLocaleString("en-GB")} / {INTAKE_LIMITS.description.toLocaleString("en-GB")} — attach a file for anything longer
+            </div>
+          )}
         </div>
         <div>
           <label className="text-xs font-semibold text-brand-sub">What do you need?</label>

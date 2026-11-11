@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Ticket form: longer details and clear error messages",
+    description: "On the public ticket submission form, Details now takes up to 10,000 characters (was 2,000), with a counter as the customer gets close to the limit. When something is wrong, the message now names the field — for example \"Details is too long\" or \"Please enter a valid email address\" — instead of the general \"Please fill in the required fields\".",
+  },
+  {
     title: "A client report worth showing; SLA figures follow the filters",
     description: "The Client report is now a proper support report you can print or save as PDF for the client: pick the period and the priorities (e.g. Critical + High), and it shows tickets received and resolved, average resolution time, SLA met, a month-by-month chart, SLA per priority and the open tickets with their age — every figure with its formula. In Reports, pick one project to get a Client report button with the same priorities. Also fixed: the SLA box at the bottom of the SLA & speed tab now follows the project and priority filters, instead of showing every project.",
   },
