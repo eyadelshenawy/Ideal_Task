@@ -1,0 +1,108 @@
+name: Backup restore test
+
+# Proves the daily backup can actually be restored. It downloads the newest
+# backup from R2 and restores it into a throwaway Postgres that lives only
+# inside this run. The live database is never touched; its connection
+# string is not even given to this job.
+#
+# This repository is public, so the log shows only counts (tables, rows per
+# table, latest migration), never any data or failing SQL text.
+on:
+  workflow_dispatch: {}
+  # Runs once on the pull request that adds or changes this file, so the
+  # result is visible before it is merged.
+  pull_request:
+    paths:
+      - .github/workflows/backup-restore-test.yml
+
+permissions:
+  contents: read
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        # Same major version as the pg_dump that makes the backup.
+        image: postgres:18
+        env:
+          POSTGRES_USER: restore
+          POSTGRES_PASSWORD: restore
+          POSTGRES_DB: restore
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U restore"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: restore
+      DB: postgresql://restore:restore@localhost:5432/restore
+    steps:
+      - name: Install PostgreSQL 18 client and AWS CLI
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq curl ca-certificates gnupg
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /usr/share/keyrings/postgresql.gpg
+          echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-18
+          pip install --quiet awscli
+
+      - name: Download the newest backup from R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          set -euo pipefail
+          KEY=$(aws s3api list-objects-v2 --bucket "${{ secrets.R2_BUCKET_NAME }}" --prefix "backups/backup-" \
+                  --endpoint-url "${{ secrets.R2_ENDPOINT }}" --query "Contents[].Key" --output text | tr '\t' '\n' | sort | tail -n 1)
+          if [ -z "$KEY" ] || [ "$KEY" = "None" ]; then echo "::error::No backup found in R2"; exit 1; fi
+          echo "BACKUP_FILE=${KEY#backups/}" >> "$GITHUB_ENV"
+          aws s3 cp "s3://${{ secrets.R2_BUCKET_NAME }}/$KEY" backup.sql.gz --endpoint-url "${{ secrets.R2_ENDPOINT }}" --only-show-errors
+          echo "Downloaded ${KEY#backups/} ($(stat -c%s backup.sql.gz) bytes)"
+
+      - name: Restore into the throwaway database
+        run: |
+          set -uo pipefail
+          START=$(date +%s)
+          gunzip -c backup.sql.gz | /usr/lib/postgresql/18/bin/psql "$DB" -q -v ON_ERROR_STOP=1 > restore.log 2>&1
+          STATUS=$?
+          echo "RESTORE_SECONDS=$(( $(date +%s) - START ))" >> "$GITHUB_ENV"
+          if [ $STATUS -ne 0 ]; then
+            # Only the error class, never the statement or values (public log).
+            grep -m1 -o "ERROR:  [a-z ]\{1,60\}" restore.log || true
+            echo "::error::The backup did not restore cleanly."
+            exit 1
+          fi
+          echo "Restore finished without errors."
+
+      - name: Check the restored data
+        run: |
+          set -euo pipefail
+          q() { /usr/lib/postgresql/18/bin/psql "$DB" -tA -c "$1"; }
+          TABLES=$(q "select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE'")
+          MIGRATIONS=$(q "select count(*) from \"_prisma_migrations\" where finished_at is not null")
+          LATEST=$(q "select migration_name from \"_prisma_migrations\" where finished_at is not null order by migration_name desc limit 1")
+          {
+            echo "## Backup restore test"
+            echo ""
+            echo "| Item | Value |"
+            echo "|---|---|"
+            echo "| Backup file | $BACKUP_FILE |"
+            echo "| Restore time | ${RESTORE_SECONDS} s |"
+            echo "| Tables restored | $TABLES |"
+            echo "| Migrations applied | $MIGRATIONS (latest: $LATEST) |"
+            echo ""
+            echo "| Table | Rows |"
+            echo "|---|---|"
+            for t in User Project Task TaskEvent Attachment Contact TimeEntry ChecklistItem Notification AuditLog; do
+              echo "| $t | $(q "select count(*) from \"$t\"") |"
+            done
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          # A real backup always has the app's tables, at least one user and at least one task.
+          [ "$TABLES" -ge 20 ] || { echo "::error::Too few tables restored ($TABLES)"; exit 1; }
+          [ "$(q 'select count(*) from "User"')" -ge 1 ] || { echo "::error::No users in the restored backup"; exit 1; }
+          [ "$(q 'select count(*) from "Task"')" -ge 1 ] || { echo "::error::No tasks in the restored backup"; exit 1; }
+          echo "Backup restore test passed."
