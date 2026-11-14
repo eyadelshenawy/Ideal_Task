@@ -36,7 +36,7 @@ export default function ForgotPasswordPage() {
             <div className="absolute bottom-0 right-0 w-5 h-5 rounded-md bg-brand-light" />
           </div>
           <div>
-            <div className="font-bold text-brand-text leading-tight">IDEAL Tasks</div>
+            <div className="font-bold text-brand-text leading-tight">IDT Desk</div>
             <div className="text-xs text-brand-sub">Team Task Manager</div>
           </div>
         </div>

@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "New name and icon: IDT Desk",
+    description: "The app is now called IDT Desk, with a new icon: the IDEAL logo with a tick, so it is easy to tell apart from our other apps on a phone or the taskbar. The web address stays the same. If you installed the app before, remove it and install it again to see the new icon straight away (otherwise the browser updates it on its own within a few days). Emails, the browser tab and Excel downloads use the new name.",
+  },
+  {
     title: "Reports: tickets opened and closed each month; modules and categories add up",
     description: "On Reports → Customers, each customer now has two lines per month: tickets opened (created that month) and tickets closed (marked Done that month). The modules and categories breakdowns now list every module and category instead of the top 5, add a \"Not set\" row for tickets with none, and show the period's ticket count underneath, so the figures add up. A ticket with several modules still counts once under each, and a note says so. The Excel export matches.",
   },

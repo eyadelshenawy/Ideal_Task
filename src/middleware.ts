@@ -40,5 +40,7 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|robots.txt).*)"],
+  // Icons, the app manifest and the service worker must load for signed-out
+  // visitors too (login page, public ticket form, tracking page, home-screen install).
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|robots.txt|icons/|manifest.json|sw.js).*)"],
 };

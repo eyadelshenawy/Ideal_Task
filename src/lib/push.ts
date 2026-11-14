@@ -18,7 +18,7 @@ export async function sendPushToUsers(userIds: string[], title: string, taskId?:
     const subs = await prisma.pushSubscription.findMany({ where: { userId: { in: unique } } });
     if (subs.length === 0) return;
 
-    const payload = JSON.stringify({ title: "IDEAL Tasks", body: title, taskId: taskId ?? null });
+    const payload = JSON.stringify({ title: "IDT Desk", body: title, taskId: taskId ?? null });
     const staleIds: string[] = [];
 
     await Promise.all(

@@ -4,13 +4,12 @@ import AuthSessionProvider from "@/components/AuthSessionProvider";
 import PwaRegister from "@/components/PwaRegister";
 
 export const metadata: Metadata = {
-  title: "IDEAL Tasks",
+  title: "IDT Desk",
   description: "Team Task Manager for IDEAL for Digital Transformation",
   manifest: "/manifest.json",
-  icons: {
-    icon: "/icons/icon-192.png",
-    apple: "/icons/icon-192.png",
-  },
+  // favicon.ico for the browser tab, PNGs for bookmarks and Android, and a
+  // 180px apple-touch-icon for the iPhone home screen.
+  icons: { icon: [{ url: "/favicon.ico", sizes: "any" }, { url: "/icons/icon-32.png", sizes: "32x32", type: "image/png" }, { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }], apple: "/icons/apple-touch-icon.png" },
 };
 
 export const viewport: Viewport = {

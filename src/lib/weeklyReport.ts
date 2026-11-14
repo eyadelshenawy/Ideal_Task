@@ -76,16 +76,16 @@ export async function sendWeeklyReports(): Promise<{ sent: number }> {
 
     const html = `
       <div style="font-family: -apple-system, Arial, sans-serif; max-width: 520px; margin: 0 auto;">
-        <h2 style="color:#111;">Your Weekly IDEAL Tasks Summary</h2>
+        <h2 style="color:#111;">Your Weekly IDT Desk Summary</h2>
         ${section("Completed last 7 days", doneLastWeek)}
         ${section("Overdue now", overdueNow)}
         ${section("Due in the next 7 days", dueNextWeek)}
         ${projectBreakdown}
-        <p style="margin-top:24px;"><a href="${APP_URL}" style="color:#2563eb;">Open IDEAL Tasks</a></p>
+        <p style="margin-top:24px;"><a href="${APP_URL}" style="color:#2563eb;">Open IDT Desk</a></p>
       </div>
     `;
 
-    await sendEmail({ to: user.email, subject: "Your weekly IDEAL Tasks summary", html });
+    await sendEmail({ to: user.email, subject: "Your weekly IDT Desk summary", html });
     sent++;
   }
 

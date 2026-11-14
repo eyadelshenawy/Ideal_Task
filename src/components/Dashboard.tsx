@@ -691,7 +691,7 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "IDEAL-Tasks-Template.xlsx";
+    a.download = "IDT-Desk-Template.xlsx";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -770,7 +770,7 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `IDEAL-Tasks-Export-${todayStr()}.xlsx`;
+    a.download = `IDT-Desk-Export-${todayStr()}.xlsx`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -933,7 +933,7 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
               <div className="absolute bottom-0 right-0 w-5 h-5 rounded-md bg-brand-light" />
             </div>
             <div>
-              <div className="text-white font-bold text-[14px] sm:text-[15px] leading-tight">IDEAL Tasks</div>
+              <div className="text-white font-bold text-[14px] sm:text-[15px] leading-tight">IDT Desk</div>
               <div className="hidden sm:block text-[#CFE3D8] text-[11px]">Team Task Manager</div>
             </div>
           </div>

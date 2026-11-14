@@ -11,7 +11,7 @@ export async function exportInsightsToExcel(data: Insights, periodLabel: string)
 
   const sheet = (name: string, headers: string[]) => {
     const ws = wb.addWorksheet(name);
-    ws.addRow([`IDEAL Tasks — ${name} — ${periodLabel}`]).font = { bold: true, color: { argb: "FF0A5A46" } };
+    ws.addRow([`IDT Desk — ${name} — ${periodLabel}`]).font = { bold: true, color: { argb: "FF0A5A46" } };
     const h = ws.addRow(headers);
     h.eachCell((c) => {
       c.font = { bold: true, color: { argb: "FFFFFFFF" } };
@@ -113,7 +113,7 @@ export async function exportInsightsToExcel(data: Insights, periodLabel: string)
   const url = URL.createObjectURL(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
   const a = document.createElement("a");
   a.href = url;
-  a.download = `IDEAL-Tasks-reports-${new Date().toISOString().slice(0, 10)}.xlsx`;
+  a.download = `IDT-Desk-reports-${new Date().toISOString().slice(0, 10)}.xlsx`;
   a.click();
   URL.revokeObjectURL(url);
 }

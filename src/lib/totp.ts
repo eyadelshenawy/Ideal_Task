@@ -2,7 +2,7 @@ import * as OTPAuth from "otpauth";
 import QRCode from "qrcode";
 import { randomBytes } from "crypto";
 
-const ISSUER = "IDEAL Tasks";
+const ISSUER = "IDT Desk";
 
 export function generateTotpSecret(): string {
   // 20 bytes = 32 base32 chars, the RFC 6238 recommended size.
