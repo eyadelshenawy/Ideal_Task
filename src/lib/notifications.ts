@@ -22,7 +22,7 @@ function wrap(heading: string, task: TaskSummary) {
         ${task.dueDate ? `<li>Due date: ${task.dueDate}</li>` : ""}
         <li>Priority: ${task.priority}</li>
       </ul>
-      <p style="margin-top:24px;"><a href="${APP_URL}" style="color:#2563eb;">Open IDEAL Tasks</a></p>
+      <p style="margin-top:24px;"><a href="${APP_URL}" style="color:#2563eb;">Open IDT Desk</a></p>
     </div>
   `;
 }
@@ -81,7 +81,7 @@ export function slaRiskEmailHtml(task: TaskSummary, kind: "response" | "resoluti
         ${task.projectName ? `<li>Project: ${task.projectName}</li>` : ""}
         <li>Priority: ${task.priority}</li>
       </ul>
-      <p style="margin-top:24px;"><a href="${APP_URL}" style="color:#2563eb;">Open IDEAL Tasks</a></p>
+      <p style="margin-top:24px;"><a href="${APP_URL}" style="color:#2563eb;">Open IDT Desk</a></p>
     </div>
   `;
 }
@@ -102,7 +102,7 @@ export function newTicketEmailHtml(task: { title: string; description: string; p
         <li>Raised by: ${escapeHtml(task.contactName)}</li>
       </ul>
       <blockquote style="border-left:3px solid #0A5A46; padding-left:12px; color:#555; margin:16px 0; white-space:pre-wrap;">${escapeHtml(task.description)}</blockquote>
-      <p style="margin-top:24px;"><a href="${APP_URL}" style="color:#2563eb;">Open IDEAL Tasks</a></p>
+      <p style="margin-top:24px;"><a href="${APP_URL}" style="color:#2563eb;">Open IDT Desk</a></p>
     </div>
   `;
 }
@@ -126,7 +126,7 @@ export function customerReplyEmailHtml(task: TaskSummary, contactName: string, m
       <h2 style="color:#111;">${escapeHtml(contactName)} replied</h2>
       <p style="font-size:16px;"><strong>${escapeHtml(task.title)}</strong></p>
       <blockquote style="border-left:3px solid #0A5A46; padding-left:12px; color:#333; margin:16px 0; white-space:pre-wrap;">${escapeHtml(message)}</blockquote>
-      <p style="margin-top:24px;"><a href="${APP_URL}" style="color:#2563eb;">Open IDEAL Tasks</a></p>
+      <p style="margin-top:24px;"><a href="${APP_URL}" style="color:#2563eb;">Open IDT Desk</a></p>
     </div>
   `;
 }
@@ -156,7 +156,7 @@ export async function notifyMention(
         <h2 style="color:#111;">You were mentioned</h2>
         <p style="font-size:14px; color:#444;">${escapeHtml(authorName)} mentioned you in a comment on <strong>${escapeHtml(task.title)}</strong>:</p>
         <blockquote style="border-left:3px solid #0A5A46; padding-left:12px; color:#555; margin:16px 0; white-space:pre-wrap;">${escapeHtml(preview)}</blockquote>
-        <p style="margin-top:24px;"><a href="${APP_URL}" style="color:#2563eb;">Open IDEAL Tasks</a></p>
+        <p style="margin-top:24px;"><a href="${APP_URL}" style="color:#2563eb;">Open IDT Desk</a></p>
       </div>
     `,
   });

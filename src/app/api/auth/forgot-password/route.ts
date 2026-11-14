@@ -29,11 +29,11 @@ export async function POST(req: NextRequest) {
     const link = `${APP_URL}/reset-password?token=${rawToken}`;
     await sendEmail({
       to: user.email,
-      subject: "Reset your IDEAL Tasks password",
+      subject: "Reset your IDT Desk password",
       html: `
         <div style="font-family: -apple-system, Arial, sans-serif; max-width: 480px; margin: 0 auto;">
           <h2 style="color:#111;">Reset your password</h2>
-          <p style="font-size:14px; color:#444;">Someone requested a password reset for your IDEAL Tasks account. If this was you, click below — this link expires in ${RESET_TOKEN_HOURS} hour.</p>
+          <p style="font-size:14px; color:#444;">Someone requested a password reset for your IDT Desk account. If this was you, click below — this link expires in ${RESET_TOKEN_HOURS} hour.</p>
           <p style="margin-top:20px;"><a href="${link}" style="background:#0A5A46;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600;">Reset password</a></p>
           <p style="font-size:12px; color:#888; margin-top:24px;">If you didn't request this, you can safely ignore this email.</p>
         </div>

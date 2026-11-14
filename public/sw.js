@@ -14,7 +14,7 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("push", (event) => {
-  let data = { title: "IDEAL Tasks", body: "You have a new notification", taskId: null };
+  let data = { title: "IDT Desk", body: "You have a new notification", taskId: null };
   try {
     if (event.data) data = { ...data, ...event.data.json() };
   } catch {

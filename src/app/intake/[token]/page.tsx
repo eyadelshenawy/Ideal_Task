@@ -12,11 +12,11 @@ export async function generateMetadata(props: { params: Promise<{ token: string 
     where: { intakeToken: params.token },
     select: { name: true, deletedAt: true },
   });
-  const title = project && !project.deletedAt ? `${project.name} — Submit a request` : "IDEAL Tasks";
+  const title = project && !project.deletedAt ? `${project.name} — Submit a request` : "IDT Desk";
   return {
     title,
     manifest: `/api/public/intake/${params.token}/manifest`,
-    icons: { icon: "/icons/icon-192.png", apple: "/icons/icon-192.png" },
+    icons: { icon: [{ url: "/favicon.ico", sizes: "any" }, { url: "/icons/icon-32.png", sizes: "32x32", type: "image/png" }, { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }], apple: "/icons/apple-touch-icon.png" },
   };
 }
 
