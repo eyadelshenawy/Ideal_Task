@@ -17,10 +17,13 @@ export function visibleTasksWhere(
   isSuperAdmin: boolean,
   administeredProjectIds: string[]
 ): Prisma.TaskWhereInput {
-  if (isSuperAdmin) return { deletedAt: null, isPrivate: false };
+  // Tasks on hold are parked: hidden from every list, count and report built
+  // on this rule. Settings → On hold lists them on their own.
+  if (isSuperAdmin) return { deletedAt: null, isPrivate: false, onHoldAt: null };
   return {
     deletedAt: null,
     isPrivate: false,
+    onHoldAt: null,
     OR: [
       { assignees: { some: { id: userId } } },
       ...(administeredProjectIds.length > 0 ? [{ projectId: { in: administeredProjectIds } }] : []),

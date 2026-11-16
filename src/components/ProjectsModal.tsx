@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import useSWR from "swr";
-import { Plus, X, Trash2, Check, Link2, Copy, FolderPlus, SlidersHorizontal, Timer, Inbox, FileText, Archive } from "lucide-react";
+import { Plus, X, Trash2, Check, Link2, Copy, FolderPlus, SlidersHorizontal, Timer, Inbox, FileText, Archive, PauseCircle } from "lucide-react";
 import type { Project, Priority } from "@/types/models";
 import type { SlaTargets } from "@/lib/sla";
 import type { SlaConfigDto } from "@/lib/slaConfig";
@@ -249,6 +249,7 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
   const [newIsSupport, setNewIsSupport] = useState(false);
   const [nextCodeError, setNextCodeError] = useState<{ id: string; message: string } | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [holdConfirmId, setHoldConfirmId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [cloningId, setCloningId] = useState<string | null>(null);
   const [cloneName, setCloneName] = useState("");
@@ -300,6 +301,19 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
       const body = await res.json().catch(() => ({}));
       setError(body.error || "Couldn't update code");
     }
+    onChanged(); mutateAll();
+  }
+
+  // Parks every task in the project; they come back from Settings → On hold.
+  async function holdProject(id: string) {
+    setHoldConfirmId(null);
+    setError("");
+    const res = await fetch("/api/tasks/hold", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hold: true, projectId: id }),
+    });
+    if (!res.ok) setError("Couldn't put the tasks on hold");
     onChanged(); mutateAll();
   }
 
@@ -515,6 +529,14 @@ export default function ProjectsModal({ projects, onClose, onChanged }: Projects
                     title={p.isTemplate ? "Restore to active projects — its tasks will show on the Dashboard again" : "Marks this project as a template — it and its tasks disappear from the Dashboard and only show in the Templates section here"}
                   >
                     <Archive size={11} /> {p.isTemplate ? "Move out of templates" : "Mark as template"}
+                  </button>
+                  <button
+                    onClick={() => (holdConfirmId === p.id ? holdProject(p.id) : setHoldConfirmId(p.id))}
+                    className="flex items-center gap-1 text-[11px] underline"
+                    style={{ color: holdConfirmId === p.id ? "#C4443D" : undefined }}
+                    title="Hide every task in this project everywhere until you bring them back (Settings → On hold)"
+                  >
+                    <PauseCircle size={11} /> {holdConfirmId === p.id ? "Click to confirm: put all tasks on hold" : "Put all tasks on hold"}
                   </button>
                   <a
                     href={`/projects/${p.id}/report`}

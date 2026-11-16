@@ -21,10 +21,11 @@ interface BulkActionBarProps {
   onSelectAll: () => void;
   onBulkUpdate: (patch: Record<string, unknown>) => Promise<void>;
   onDelete: () => Promise<void>;
+  onHold: () => Promise<void>;
 }
 
 export default function BulkActionBar({
-  selectedCount, totalVisible, canManageAny, team, contacts, projects, onClear, onSelectAll, onBulkUpdate, onDelete,
+  selectedCount, totalVisible, canManageAny, team, contacts, projects, onClear, onSelectAll, onBulkUpdate, onDelete, onHold,
 }: BulkActionBarProps) {
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -379,6 +380,19 @@ export default function BulkActionBar({
           </div>
         )}
       </div>
+      )}
+
+      {canManageAny && (
+        // Parks the selection (and its subtasks): hidden everywhere until brought back from Settings → On hold.
+        <button
+          disabled={busy}
+          onClick={async () => { setBusy(true); try { await onHold(); } finally { setBusy(false); } }}
+          className="rounded-md px-2.5 py-1 text-xs font-semibold"
+          style={{ background: "rgba(255,255,255,0.15)" }}
+          title="Hide these tasks everywhere until you bring them back (Settings → On hold)"
+        >
+          Put on hold
+        </button>
       )}
 
       {canManageAny && (

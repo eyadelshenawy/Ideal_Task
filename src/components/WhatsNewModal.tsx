@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Put tasks on hold",
+    description: "Park tasks that are waiting on something outside the work, such as a client agreement. Select them and press Put on hold (or use Put on hold under More options inside a task, or Put all tasks on hold for a whole project in Settings → Projects). Tasks on hold, with their subtasks, disappear from the Board, List, Timeline, My Tasks, counts, Reports, SLA alerts and reminders. Settings → On hold lists them with a Bring back button. While on hold the SLA clock stops; when a task comes back in an SLA project, its Due Date moves on by the working days it was on hold. A customer's tracking link keeps working.",
+  },
+  {
     title: "New name and icon: IDT Desk",
     description: "The app is now called IDT Desk, with a new icon: the IDEAL logo with a tick, so it is easy to tell apart from our other apps on a phone or the taskbar. The web address stays the same. If you installed the app before, remove it and install it again to see the new icon straight away (otherwise the browser updates it on its own within a few days). Emails, the browser tab and Excel downloads use the new name.",
   },

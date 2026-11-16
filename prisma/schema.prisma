@@ -416,6 +416,10 @@ model Task {
   pausedAt      DateTime?
   pausedMinutes Int       @default(0)
   pausedDays    Int       @default(0)
+  // On hold: set while the task is parked (e.g. until a client agreement is
+  // settled). It is then hidden from every list, count, report, SLA alert and
+  // notification, and only shown under Settings → On hold. Null = normal.
+  onHoldAt      DateTime?
 
   // Set once the "due tomorrow" reminder email has been sent for the current
   // dueDate. Cleared whenever dueDate changes so a future move back to
@@ -479,6 +483,7 @@ model Task {
 
   @@index([projectId])
   @@index([status])
+  @@index([onHoldAt])
   @@index([deletedAt])
   @@index([parentId])
   @@index([type])

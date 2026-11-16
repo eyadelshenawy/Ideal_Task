@@ -18,7 +18,7 @@ export async function GET(_req: Request, props: { params: Promise<{ token: strin
   }
 
   const tasks = await prisma.task.findMany({
-    where: { project: { shareToken: params.token }, deletedAt: null },
+    where: { project: { shareToken: params.token }, deletedAt: null, onHoldAt: null },
     select: { id: true, code: true, title: true, status: true, dueDate: true, progress: true, isMilestone: true },
     orderBy: { dueDate: "asc" },
   });

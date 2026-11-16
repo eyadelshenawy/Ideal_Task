@@ -27,6 +27,7 @@ export async function checkSlaRisks(now: Date): Promise<{ responseWarned: number
       where: {
         deletedAt: null,
         isPrivate: false,
+        onHoldAt: null, // parked tasks raise no SLA alerts
         projectId: { in: trackedProjectIds },
         project: { isTemplate: false },
         OR: [{ responseRiskNotifiedAt: null }, { resolutionRiskNotifiedAt: null }],
