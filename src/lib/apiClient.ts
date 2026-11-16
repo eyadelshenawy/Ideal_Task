@@ -21,6 +21,7 @@ export const api = {
   deleteTask: (id: string) => request(`/api/tasks/${id}`, "DELETE"),
   bulkUpdateTasks: (data: unknown) => request("/api/tasks/bulk", "PATCH", data),
   bulkDeleteTasks: (taskIds: string[]) => request("/api/tasks/bulk", "DELETE", { taskIds }),
+  holdTasks: (body: { hold: boolean; taskIds?: string[]; projectId?: string }) => request("/api/tasks/hold", "POST", body),
   addTaskComment: (taskId: string, message: string) => request(`/api/tasks/${taskId}/events`, "POST", { message }),
   updateTaskComment: (taskId: string, eventId: string, message: string) =>
     request(`/api/tasks/${taskId}/events/${eventId}`, "PATCH", { message }),

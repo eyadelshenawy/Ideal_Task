@@ -108,13 +108,15 @@ interface TaskModalProps {
   onCreateContact: (name: string, projectId: string | null) => Promise<Contact | null>;
   onDuplicate?: (taskId: string, projectId?: string) => void;
   onAddSubtask?: (parent: Task) => void;
+  /** Parks this task (and its subtasks) until it's brought back from Settings → On hold. */
+  onPutOnHold?: (taskId: string) => void;
   categories: Category[];
   /** SLA status of the task being edited; null/undefined when it isn't SLA-tracked. */
   sla?: TaskSla | null;
 }
 
 export default function TaskModal({
-  draft, setDraft, onClose, onSave, error, team, projects, contacts, allTasks, canFullyEdit, isSuperAdmin, currentUserId, onCreateContact, onDuplicate, onAddSubtask,
+  draft, setDraft, onClose, onSave, error, team, projects, contacts, allTasks, canFullyEdit, isSuperAdmin, currentUserId, onCreateContact, onDuplicate, onAddSubtask, onPutOnHold,
   categories, sla,
 }: TaskModalProps) {
   const topCategories = categories.filter((c) => !c.parentId);
@@ -801,7 +803,7 @@ export default function TaskModal({
               </button>
               {!moreOpen && (
                 <span className="text-[11px] text-brand-sub">
-                  — {draft.id ? "code, " : ""}tags, milestone, repeat, depends on, parent task{draft.id ? ", duplicate" : ""}
+                  — {draft.id ? "code, " : ""}tags, milestone, repeat, depends on, parent task{draft.id ? ", duplicate, on hold" : ""}
                 </span>
               )}
             </div>
@@ -930,6 +932,16 @@ export default function TaskModal({
                       Duplicate
                     </button>
                   </div>
+                )}
+
+                {draft.id && onPutOnHold && (
+                  <button
+                    onClick={() => onPutOnHold(draft.id!)}
+                    title="Hide this task (and its subtasks) everywhere until you bring it back from Settings → On hold"
+                    className="w-full rounded-lg px-3 py-1.5 text-xs font-semibold border border-brand-border text-brand-text"
+                  >
+                    Put on hold
+                  </button>
                 )}
 
                 {savedTask && onAddSubtask && (

@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
       where: {
         deletedAt: null,
         isPrivate: false,
+        onHoldAt: null, // parked tasks send no reminders
         status: { not: "DONE" },
         dueDate: { not: null },
         OR: [{ projectId: null }, { project: { isTemplate: false } }],

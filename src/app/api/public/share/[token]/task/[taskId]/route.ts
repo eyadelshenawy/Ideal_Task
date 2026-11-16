@@ -28,7 +28,7 @@ export async function GET(
   const task = await prisma.task.findUnique({
     where: { id: params.taskId },
     select: {
-      id: true, projectId: true, deletedAt: true,
+      id: true, projectId: true, deletedAt: true, onHoldAt: true,
       code: true, title: true, description: true, status: true, dueDate: true, progress: true, isMilestone: true,
       events: {
         where: {
@@ -44,7 +44,8 @@ export async function GET(
   // Deliberately 404 (not 403) whether the task doesn't exist, is deleted,
   // or just belongs to a different project — never confirm a task id's
   // existence to someone who only has this project's link.
-  if (!task || task.deletedAt || task.projectId !== project.id) {
+  // A task on hold is parked, so the public status page doesn't show it either.
+  if (!task || task.deletedAt || task.onHoldAt || task.projectId !== project.id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 

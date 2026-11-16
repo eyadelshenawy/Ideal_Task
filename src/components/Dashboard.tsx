@@ -22,6 +22,7 @@ import TeamModal from "./TeamModal";
 import ProjectsModal from "./ProjectsModal";
 import ContactsModal from "./ContactsModal";
 import WhatsNewModal from "./WhatsNewModal";
+import OnHoldModal from "./OnHoldModal";
 import TrashModal from "./TrashModal";
 import ImportPreviewModal from "./ImportPreviewModal";
 import BulkActionBar from "./BulkActionBar";
@@ -340,6 +341,7 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
     ...(isSuperAdmin ? [{ id: "lists", label: "Lists", group: "Work" } as const] : []),
     ...(isSuperAdmin ? [{ id: "checklists", label: "Checklist Templates", group: "Work" } as const] : []),
     { id: "calendar", label: "Work Calendar", group: "Work" } as const,
+    ...(canCreateAnywhere ? [{ id: "onhold", label: "On hold", group: "Work" } as const] : []),
     ...(isSuperAdmin ? [{ id: "security", label: "Security Policy", group: "Security" } as const] : []),
     ...(isSuperAdmin ? [{ id: "audit", label: "Audit Log", group: "Security" } as const] : []),
     ...(canCreateAnywhere ? [{ id: "trash", label: "Trash", group: "Security" } as const] : []),
@@ -636,6 +638,20 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
   async function bulkPatch(patch: Record<string, unknown>) {
     await api.bulkUpdateTasks({ taskIds: Array.from(selectedIds), ...patch });
     await mutateTasks();
+  }
+
+  // On hold: parked tasks (and their subtasks) disappear everywhere until brought back.
+  async function holdTasks(ids: string[]) {
+    await api.holdTasks({ hold: true, taskIds: ids });
+    await mutateTasks();
+    showToast({
+      text: ids.length === 1 ? "Put on hold — find it in Settings → On hold" : `${ids.length} tasks put on hold — find them in Settings → On hold`,
+      onUndo: async () => { await api.holdTasks({ hold: false, taskIds: ids }); await mutateTasks(); },
+    });
+  }
+  async function bulkHold() {
+    await holdTasks(Array.from(selectedIds));
+    exitSelectMode();
   }
 
   async function bulkDelete() {
@@ -1477,6 +1493,7 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
             onSelectAll={() => setSelectedIds(new Set(filteredTasks.map((t) => t.id)))}
             onBulkUpdate={bulkPatch}
             onDelete={bulkDelete}
+            onHold={bulkHold}
           />
         )}
 
@@ -1586,6 +1603,7 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
           onCreateContact={createContact}
           onDuplicate={editingCanFullyEdit ? duplicateTask : undefined}
           onAddSubtask={addSubtask}
+          onPutOnHold={editingCanFullyEdit ? async (id) => { setModalOpen(false); await holdTasks([id]); } : undefined}
           categories={categoryList}
           sla={draft.id ? slaByTaskId.get(draft.id) ?? null : null}
         />
@@ -1648,7 +1666,7 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
             />
           )}
           {settingsSection === "projects" && (
-            <ProjectsModal key="projects" projects={projectList} onClose={closeSettings} onChanged={() => mutateProjects()} />
+            <ProjectsModal key="projects" projects={projectList} onClose={closeSettings} onChanged={() => { mutateProjects(); mutateTasks(); }} />
           )}
           {settingsSection === "contacts" && (
             <ContactsModal key="contacts" contacts={contactList} projects={projectList} onClose={closeSettings} onChanged={() => mutateContacts()} />
@@ -1668,6 +1686,9 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
           )}
           {settingsSection === "checklists" && <ChecklistTemplatesModal key="checklists" onClose={closeSettings} />}
           {settingsSection === "calendar" && <WorkCalendarModal key="calendar" onClose={closeSettings} canEdit={isSuperAdmin} />}
+          {settingsSection === "onhold" && (
+            <OnHoldModal key="onhold" onClose={closeSettings} onChanged={() => mutateTasks()} />
+          )}
           {settingsSection === "trash" && (
             <TrashModal
               key="trash"

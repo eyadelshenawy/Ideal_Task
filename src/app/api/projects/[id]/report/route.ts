@@ -41,7 +41,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
   // this to project admins — a private task's whole point is that it never
   // rolls up into any operational counts anywhere.
   const allTasks = await prisma.task.findMany({
-    where: { projectId: project.id, deletedAt: null, isPrivate: false },
+    where: { projectId: project.id, deletedAt: null, isPrivate: false, onHoldAt: null },
     select: {
       id: true, parentId: true, code: true, title: true, priority: true, status: true, startDate: true, dueDate: true,
       createdAt: true, completedAt: true, updatedAt: true, pausedAt: true, pausedMinutes: true, pausedDays: true,
