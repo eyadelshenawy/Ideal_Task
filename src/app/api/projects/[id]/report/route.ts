@@ -1,4 +1,5 @@
 import { countedTasks } from "@/lib/taskCount";
+import { countsAsResolved } from "@/lib/closeReason";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { loadWorkDays } from "@/lib/scheduling";
@@ -44,7 +45,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
     where: { projectId: project.id, deletedAt: null, isPrivate: false, onHoldAt: null },
     select: {
       id: true, parentId: true, code: true, title: true, priority: true, status: true, startDate: true, dueDate: true,
-      createdAt: true, completedAt: true, updatedAt: true, pausedAt: true, pausedMinutes: true, pausedDays: true,
+      createdAt: true, completedAt: true, updatedAt: true, pausedAt: true, pausedMinutes: true, pausedDays: true, closeReason: true,
     },
   });
   // Optional ?priorities=CRITICAL,HIGH narrows everything to those priorities.
@@ -75,6 +76,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
 
   let period: {
     from: string; to: string; created: number; completed: number;
+    byReason: Record<string, number>;
     resolutionDaysSum: number; avgResolutionDays: number | null;
     months: { month: string; created: number; resolved: number }[];
   } | null = null;
@@ -90,14 +92,19 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
     const monthRow = new Map(months.map((r) => [r.month, r]));
     createdInPeriod.forEach((t) => { const r = monthRow.get(day(t.createdAt).slice(0, 7)); if (r) r.created++; });
     resolvedInPeriod.forEach((t) => { const r = monthRow.get(day(closedAt(t)).slice(0, 7)); if (r) r.resolved++; });
-    const resolutionDaysSum = resolvedInPeriod.reduce((sum, t) => sum + resolutionDays(t), 0);
+    // Average resolution counts Resolved only; Not applicable / Duplicate / Cancelled are closed but not worked to a fix.
+    const trulyResolved = resolvedInPeriod.filter(countsAsResolved);
+    const resolutionDaysSum = trulyResolved.reduce((sum, t) => sum + resolutionDays(t), 0);
+    const byReason: Record<string, number> = { RESOLVED: 0, NOT_APPLICABLE: 0, DUPLICATE: 0, CANCELLED: 0 };
+    resolvedInPeriod.forEach((t) => { byReason[t.closeReason ?? "RESOLVED"]++; });
     period = {
       from: fromStr,
       to: toStr,
       created: createdInPeriod.length,
       completed: resolvedInPeriod.length,
+      byReason,
       resolutionDaysSum,
-      avgResolutionDays: resolvedInPeriod.length > 0 ? Math.round((resolutionDaysSum / resolvedInPeriod.length) * 10) / 10 : null,
+      avgResolutionDays: trulyResolved.length > 0 ? Math.round((resolutionDaysSum / trulyResolved.length) * 10) / 10 : null,
       months,
     };
   }
@@ -112,7 +119,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
     const config = (await loadSlaConfig(project.id)) ?? (await loadDefaultSlaConfig());
     const clock = clockFor(project.slaBusinessHours, await loadBusinessCalendar());
     // With a period, SLA covers the tickets created in it; without one, every ticket.
-    const base = period ? createdInPeriod : tasks;
+    const base = (period ? createdInPeriod : tasks).filter(countsAsResolved);
     const inScope = config.cutoffDate
       ? base.filter((t) => day(t.createdAt) >= config.cutoffDate!)
       : base;

@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Closure reason, and tickets with work on them stay",
+    description: "When a task is Done you can now pick why: Resolved (the default), Not applicable, Duplicate or Cancelled. Only Resolved tickets count toward SLA and average resolution time, and the client report shows how many were closed for each reason. Tickets already tagged Not Applicable, Duplicate or Cancelled were given that reason. Also, a ticket with comments or logged hours can no longer be moved to Trash — close it with the right reason instead; a Super Admin can still override after confirming.",
+  },
+  {
     title: "Put tasks on hold",
     description: "Park tasks that are waiting on something outside the work, such as a client agreement. Select them and press Put on hold (or use Put on hold under More options inside a task, or Put all tasks on hold for a whole project in Settings → Projects). Tasks on hold, with their subtasks, disappear from the Board, List, Timeline, My Tasks, counts, Reports, SLA alerts and reminders. Settings → On hold lists them with a Bring back button. While on hold the SLA clock stops; when a task comes back in an SLA project, its Due Date moves on by the working days it was on hold. A customer's tracking link keeps working.",
   },

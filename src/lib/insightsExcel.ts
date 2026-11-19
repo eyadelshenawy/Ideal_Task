@@ -89,12 +89,13 @@ export async function exportInsightsToExcel(data: Insights, periodLabel: string)
   }
 
   // 7 · Team performance
-  ws = sheet("Team performance", ["Person", "Closed", "Total resolution working days (excl. waiting on customer)", "Avg resolution (working days)", "Open now", "Overdue now", "Overdue %"]);
+  // Average resolution counts Resolved tickets only (not Not applicable / Duplicate / Cancelled).
+  ws = sheet("Team performance", ["Person", "Closed", "Resolved", "Total resolution working days (resolved, excl. waiting on customer)", "Avg resolution (working days)", "Open now", "Overdue now", "Overdue %"]);
   data.team.forEach((r) => {
-    const row = ws.addRow([r.name, r.closed, r.resolutionDays, null, r.open, r.overdue]);
+    const row = ws.addRow([r.name, r.closed, r.resolved, r.resolutionDays, null, r.open, r.overdue]);
     const n = row.number;
-    row.getCell(4).value = { formula: `IF(B${n}=0,"",ROUND(C${n}/B${n},1))` };
-    row.getCell(7).value = { formula: `IF(E${n}=0,"",ROUND(F${n}/E${n}*100,0))` };
+    row.getCell(5).value = { formula: `IF(C${n}=0,"",ROUND(D${n}/C${n},1))` };
+    row.getCell(8).value = { formula: `IF(F${n}=0,"",ROUND(G${n}/F${n}*100,0))` };
   });
 
   // 8 · Opened vs closed per week

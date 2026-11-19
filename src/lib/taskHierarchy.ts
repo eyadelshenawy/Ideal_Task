@@ -81,6 +81,7 @@ async function recomputeOneLevel(db: Db, parentId: string): Promise<boolean> {
 
   const patch: {
     status?: "DONE" | "INPROGRESS";
+    closeReason?: "RESOLVED" | null;
     progress?: number;
     pausedAt?: null;
     startDate?: Date | null;
@@ -91,10 +92,12 @@ async function recomputeOneLevel(db: Db, parentId: string): Promise<boolean> {
   const allDone = siblings.length > 0 && siblings.every((s) => s.status === "DONE");
   if (allDone && parent.status !== "DONE") {
     patch.status = "DONE";
+    patch.closeReason = "RESOLVED"; // a main task closes as Resolved once all its subtasks are Done
     // Done ends any wait on the customer it was in.
     if (parent.pausedAt) patch.pausedAt = null;
   } else if (!allDone && parent.status === "DONE") {
     patch.status = "INPROGRESS";
+    patch.closeReason = null;
   }
 
   // A main task's progress comes from its subtasks:

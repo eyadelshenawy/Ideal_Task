@@ -550,11 +550,12 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
               // value — otherwise omitted so the server's own auto-set (on
               // completion) / auto-clear (on reopen) logic takes over.
               ...(draft.status === "DONE" && draft.completedAt ? { completedAt: draft.completedAt } : {}),
+              ...(draft.status === "DONE" ? { closeReason: draft.closeReason } : {}),
               progress: draft.progress, isMilestone: draft.isMilestone, dependsOn: draft.dependsOn,
               recurrenceFreq: draft.recurrenceFreq || null, recurrenceEndDate: draft.recurrenceEndDate || null,
               tags: draft.tags, parentId: draft.parentId || null,
             }
-          : { status: draft.status, progress: draft.progress };
+          : { status: draft.status, progress: draft.progress, ...(draft.status === "DONE" ? { closeReason: draft.closeReason } : {}) };
         await api.updateTask(draft.id, payload);
       } else {
         await api.createTask({
@@ -564,6 +565,7 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
           startDate: draft.startDate || null, dueDate: draft.dueDate || null,
           durationDays: draft.durationDays.trim() ? Number(draft.durationDays) : null,
           ...(draft.status === "DONE" && draft.completedAt ? { completedAt: draft.completedAt } : {}),
+          ...(draft.status === "DONE" ? { closeReason: draft.closeReason } : {}),
           progress: draft.progress, isMilestone: draft.isMilestone, dependsOn: draft.dependsOn,
           recurrenceFreq: draft.recurrenceFreq || null, recurrenceEndDate: draft.recurrenceEndDate || null,
           tags: draft.tags, parentId: draft.parentId || null,
@@ -577,7 +579,22 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
   }
 
   async function deleteTask(id: string) {
-    await api.deleteTask(id);
+    // A ticket with comments or logged hours is closed, not deleted; a Super Admin may override after confirming.
+    let res = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+    if (res.status === 409) {
+      const body = await res.json().catch(() => ({}));
+      if (!body.canForce) {
+        showToast({ text: body.error ?? "This ticket has comments or logged time — close it as Done instead" });
+        return;
+      }
+      const ok = window.confirm(`${body.error}\n\nAs a Super Admin you can still move it to Trash. Move it anyway?`);
+      if (!ok) return;
+      res = await fetch(`/api/tasks/${id}?force=1`, { method: "DELETE" });
+    }
+    if (!res.ok) {
+      showToast({ text: "Couldn't move it to Trash — please try again" });
+      return;
+    }
     await mutateTasks();
     showToast({
       text: "Moved to Trash",
@@ -655,9 +672,23 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
   }
 
   async function bulkDelete() {
-    await api.bulkDeleteTasks(Array.from(selectedIds));
+    const result = await api.bulkDeleteTasks(Array.from(selectedIds));
+    let kept = result.blocked.length;
+    if (kept > 0 && result.canForce) {
+      const ok = window.confirm(
+        `${kept} of the selected ticket${kept === 1 ? " has" : "s have"} comments or logged hours, so ${kept === 1 ? "it was" : "they were"} kept. ` +
+        "Normally these are closed as Done (e.g. Not applicable) instead.\n\nAs a Super Admin you can still move them to Trash. Move them anyway?",
+      );
+      if (ok) {
+        await api.bulkDeleteTasks(result.blocked, true);
+        kept = 0;
+      }
+    }
     await mutateTasks();
     exitSelectMode();
+    if (kept > 0) {
+      showToast({ text: `${kept} ticket${kept === 1 ? "" : "s"} kept: comments or logged hours — close as Done instead` });
+    }
   }
 
   async function moveTask(task: Task, dir: 1 | -1) {

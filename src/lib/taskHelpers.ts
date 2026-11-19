@@ -114,6 +114,14 @@ export function isDueThisWeek(task: Pick<Task, "dueDate" | "status">): boolean {
 }
 
 /** Overdue and "Due in" count working days only (Work Calendar), not weekends or holidays. */
+/** Closure reasons for a Done task (client-side copy of src/lib/closeReason.ts). */
+export const CLOSE_REASON_OPTIONS: { id: "RESOLVED" | "NOT_APPLICABLE" | "DUPLICATE" | "CANCELLED"; label: string }[] = [
+  { id: "RESOLVED", label: "Resolved" },
+  { id: "NOT_APPLICABLE", label: "Not applicable" },
+  { id: "DUPLICATE", label: "Duplicate" },
+  { id: "CANCELLED", label: "Cancelled" },
+];
+
 export function dueBadge(task: Pick<Task, "dueDate" | "status"> & Partial<Pick<Task, "pausedAt">>, cal: WorkDays): { label: string; tone: DueTone } | null {
   const today = todayStr();
   // Waiting on the customer: no overdue, just how many working days it has waited.

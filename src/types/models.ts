@@ -147,6 +147,8 @@ export interface Task {
   /** Working-days between start and due (inclusive), skipping the org's weekends + holidays. Auto-kept in sync with dates. */
   durationDays: number | null;
   completedAt: string | null; // "YYYY-MM-DD" — when it actually finished, auto-set on DONE
+  /** Why a Done task was closed; null unless Done. Only RESOLVED counts toward SLA and resolution times. */
+  closeReason: "RESOLVED" | "NOT_APPLICABLE" | "DUPLICATE" | "CANCELLED" | null;
   // Waiting on the customer — see src/lib/pause.ts. pausedAt is a full ISO time.
   pausedAt: string | null;
   pausedMinutes: number;

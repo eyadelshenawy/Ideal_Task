@@ -42,6 +42,15 @@ enum MatrixLevel {
   LOW
 }
 
+// Why a Done task was closed. Only Resolved counts toward SLA and resolution
+// times; the others are closed but weren't real work outcomes.
+enum CloseReason {
+  RESOLVED
+  NOT_APPLICABLE
+  DUPLICATE
+  CANCELLED
+}
+
 enum TaskEventType {
   COMMENT
   ACTIVITY
@@ -420,6 +429,8 @@ model Task {
   // settled). It is then hidden from every list, count, report, SLA alert and
   // notification, and only shown under Settings → On hold. Null = normal.
   onHoldAt      DateTime?
+  // Set while status is DONE (Resolved unless chosen otherwise), null otherwise.
+  closeReason   CloseReason?
 
   // Set once the "due tomorrow" reminder email has been sent for the current
   // dueDate. Cleared whenever dueDate changes so a future move back to
