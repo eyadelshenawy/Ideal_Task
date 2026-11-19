@@ -18,6 +18,7 @@ import MultiSelectFilter from "./ui/MultiSelectFilter";
 import { computeInsights, lastMonths, type InsightsRaw } from "@/lib/reportInsights";
 import { exportInsightsToExcel } from "@/lib/insightsExcel";
 import { countedTasks } from "@/lib/taskCount";
+import { countsAsResolved } from "@/lib/closeReason";
 import { Download, FileText, Loader2 } from "lucide-react";
 
 const TABS: { id: "overview" | InsightsTab; label: string }[] = [
@@ -93,7 +94,8 @@ export default function ReportsView({ tasks, projects, team, categories, isSuper
     const filtered = tab === "overview" ? counted : counted.filter((t) =>
       (insightProjectIds.length === 0 || (t.projectId && insightProjectIds.includes(t.projectId))) &&
       (insightPriorities.length === 0 || insightPriorities.includes(t.priority)));
-    const tracked = filtered.filter((t) => t.projectId && trackedProjectIds.has(t.projectId));
+    // Closed as Not applicable / Duplicate / Cancelled: no SLA to meet.
+    const tracked = filtered.filter((t) => t.projectId && trackedProjectIds.has(t.projectId) && countsAsResolved(t));
 
     const configFor = (projectId: string): SlaConfigDto => slaAll.overrides[projectId] ?? slaAll.default;
     const inScope = tracked.filter((t) => {

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { recordedWork } from "@/lib/deleteGuard";
+import { closeReasonUpdate } from "@/lib/closeReason";
 import { checkTaskLists } from "@/lib/lists";
 import { prisma } from "@/lib/prisma";
 import { pauseUpdate } from "@/lib/pauseUpdate";
@@ -27,7 +29,7 @@ export async function PATCH(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request" }, { status: 400 });
   }
-  const { taskIds, status, assignees, assigneeMode, projectId, priority, type, categoryId, startDate, dueDate, durationDays, progress, addTag, removeTag } = parsed.data;
+  const { taskIds, status, closeReason, assignees, assigneeMode, projectId, priority, type, categoryId, startDate, dueDate, durationDays, progress, addTag, removeTag } = parsed.data;
   const lists = await checkTaskLists(type, parsed.data.module);
   if (lists.error) return NextResponse.json({ error: lists.error }, { status: 400 });
   const moduleValue = lists.module;
@@ -172,6 +174,10 @@ export async function PATCH(req: NextRequest) {
         ...(status !== undefined ? { status, progress: status === "DONE" ? 100 : undefined } : {}),
         ...(progressUpdate !== undefined ? { progress: progressUpdate } : {}),
         ...(completedAtUpdate !== undefined ? { completedAt: completedAtUpdate } : {}),
+        ...(() => {
+          const cr = status !== undefined || closeReason !== undefined ? closeReasonUpdate(task.status, status ?? task.status, closeReason) : undefined;
+          return cr !== undefined ? { closeReason: cr } : {};
+        })(),
         ...(bulkContactIds.length > 0
           ? { contactAssignees: assigneeMode === "remove" ? { disconnect: bulkContactIds.map((id) => ({ id })) } : { connect: bulkContactIds.map((id) => ({ id })) } }
           : {}),
@@ -256,7 +262,7 @@ export async function DELETE(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request" }, { status: 400 });
   }
-  const { taskIds } = parsed.data;
+  const { taskIds, force } = parsed.data;
   const access = await getUserAccess(session);
 
   const tasks = await prisma.task.findMany({
@@ -266,6 +272,9 @@ export async function DELETE(req: NextRequest) {
 
   const deleted: string[] = [];
   const skipped: string[] = [];
+  // Tickets with comments or logged hours are kept (close them instead); a
+  // Super Admin can override with force after confirming.
+  const blocked: string[] = [];
   const parentIdsToSync = new Set<string>();
   for (const task of tasks) {
     const canManage = access.isSuperAdmin || (task.projectId !== null && access.administeredProjectIds.includes(task.projectId));
@@ -274,6 +283,11 @@ export async function DELETE(req: NextRequest) {
       continue;
     }
     const descendantIds = await getDescendantIds(prisma, task.id);
+    const work = await recordedWork(prisma, [task.id, ...descendantIds]);
+    if ((work.comments > 0 || work.hours > 0) && !(force && access.isSuperAdmin)) {
+      blocked.push(task.id);
+      continue;
+    }
     await prisma.task.updateMany({ where: { id: { in: [task.id, ...descendantIds] } }, data: { deletedAt: new Date() } });
     deleted.push(task.id);
     if (task.parentId) parentIdsToSync.add(task.parentId);
@@ -283,5 +297,5 @@ export async function DELETE(req: NextRequest) {
     await syncAncestorChain(prisma, parentId);
   }
 
-  return NextResponse.json({ deleted, skipped });
+  return NextResponse.json({ deleted, skipped, blocked, canForce: access.isSuperAdmin });
 }

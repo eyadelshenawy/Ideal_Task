@@ -30,6 +30,8 @@ const taskFields = z.object({
   assignees: assigneesSchema.default([]),
   priority: z.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW"]).default("MEDIUM"),
   status: z.enum(["TODO", "READY", "INPROGRESS", "WAITING_CUSTOMER", "INTERNAL_TEST", "CUSTOMER_TEST", "DONE"]).default("TODO"),
+  // Why a Done task was closed; ignored unless the task is (or becomes) Done.
+  closeReason: z.enum(["RESOLVED", "NOT_APPLICABLE", "DUPLICATE", "CANCELLED"]).nullable().optional(),
   type: ticketTypeEnum.default("TASK"),
   impact: matrixLevelEnum.nullable().default(null),
   urgency: matrixLevelEnum.nullable().default(null),
@@ -105,6 +107,7 @@ export function assigneesToSet(assignees: AssigneeEntry[]) {
 export const taskBulkUpdateSchema = z.object({
   taskIds: z.array(z.string().min(1)).min(1),
   status: z.enum(["TODO", "READY", "INPROGRESS", "WAITING_CUSTOMER", "INTERNAL_TEST", "CUSTOMER_TEST", "DONE"]).optional(),
+  closeReason: z.enum(["RESOLVED", "NOT_APPLICABLE", "DUPLICATE", "CANCELLED"]).optional(),
   assignees: assigneesSchema.optional(),
   // "add" keeps who is already on each task; "replace" (default) leaves only
   // these people. Either way, bulk changes only consultants — customer
@@ -127,6 +130,8 @@ export const taskBulkUpdateSchema = z.object({
 
 export const taskBulkDeleteSchema = z.object({
   taskIds: z.array(z.string().min(1)).min(1),
+  // Super Admin only: also move tickets that have comments or logged hours.
+  force: z.boolean().optional(),
 });
 
 // Members (and anyone without project admin rights on a task) may only move
@@ -135,6 +140,7 @@ export const taskStatusUpdateSchema = z
   .object({
     status: z.enum(["TODO", "READY", "INPROGRESS", "WAITING_CUSTOMER", "INTERNAL_TEST", "CUSTOMER_TEST", "DONE"]).optional(),
     progress: z.number().min(0).max(100).optional(),
+    closeReason: z.enum(["RESOLVED", "NOT_APPLICABLE", "DUPLICATE", "CANCELLED"]).optional(),
   })
   .refine((data) => data.status !== undefined || data.progress !== undefined, {
     message: "status or progress is required",

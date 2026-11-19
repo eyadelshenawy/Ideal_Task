@@ -228,6 +228,7 @@ export async function POST(req: NextRequest) {
             dueDate: dateStrToUTC(dates.dueDate),
             durationDays: t.isMilestone ? null : dates.durationDays,
             progress: t.status === "DONE" ? 100 : t.progress,
+            closeReason: t.status === "DONE" ? "RESOLVED" : null,
             isMilestone: t.isMilestone,
             createdById,
           };

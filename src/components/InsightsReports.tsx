@@ -187,7 +187,7 @@ export default function InsightsReports({ tab, data }: { tab: InsightsTab; data:
 
   if (tab === "team") {
     return (
-      <Card n={7} title="Team performance" formula="average resolution = (resolution working days − days waiting on the customer) ÷ closed · overdue % = overdue ÷ open × 100">
+      <Card n={7} title="Team performance" formula="average resolution = (resolution working days − days waiting on the customer) ÷ resolved · overdue % = overdue ÷ open × 100">
         {data.team.length === 0 ? <Empty /> : (
           <table className="w-full text-[11.5px]">
             <thead><tr className="text-brand-sub"><th className="text-left font-semibold py-1">Person</th><th className="text-right font-semibold">Closed</th><th className="text-right font-semibold">Avg resolution</th><th className="text-right font-semibold">Open now</th><th className="text-right font-semibold">Overdue %</th></tr></thead>
@@ -196,7 +196,7 @@ export default function InsightsReports({ tab, data }: { tab: InsightsTab; data:
                 <tr key={r.id} className="border-t border-[#EEF2F0]">
                   <td className="py-1">{r.name}</td>
                   <td className="text-right">{r.closed}</td>
-                  <td className="text-right">{avg(r.resolutionDays, r.closed, "d")}</td>
+                  <td className="text-right" title={`${r.resolved} resolved — not applicable, duplicate and cancelled are left out`}>{avg(r.resolutionDays, r.resolved, "d")}</td>
                   <td className="text-right">{r.open}</td>
                   <td className="text-right" style={{ color: r.open && r.overdue / r.open > 0.25 ? "#9A3530" : undefined }} title={`${r.overdue} of ${r.open} overdue`}>{pct(r.overdue, r.open)}</td>
                 </tr>

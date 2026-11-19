@@ -1,4 +1,5 @@
 import type { Task, Project, TeamMember, Priority } from "@/types/models";
+import { countsAsResolved } from "@/lib/closeReason";
 import { MONTHS, PRIORITIES, addDays, splitModules } from "@/lib/taskHelpers";
 import { computeTaskSla, type SlaAll } from "@/lib/taskSla";
 import { isOverdue, workDaysAfter, type WorkDays } from "@/lib/workdays";
@@ -45,7 +46,7 @@ export interface TopRow { name: string; count: number }
 /** Every module (or category) among the period's tickets, plus those with none, so it adds up to the ticket count. */
 export interface Breakdown { rows: TopRow[]; notSet: number; tickets: number }
 export interface HoursRow { projectId: string; name: string; hours: Record<string, number>; total: number }
-export interface TeamRow { id: string; name: string; closed: number; resolutionDays: number; open: number; overdue: number }
+export interface TeamRow { id: string; name: string; closed: number; resolved: number; resolutionDays: number; open: number; overdue: number }
 export interface WeekRow { week: string; opened: number; closed: number }
 
 export interface Insights {
@@ -124,7 +125,8 @@ export function computeInsights(input: {
   // 3 · Response (hours) and resolution (days) per priority.
   const speed = new Map<Priority, SpeedRow>(PRIORITIES.map((p) => [p.id, { priority: p.id, label: p.label, responseHours: 0, responseCount: 0, resolutionDays: 0, resolutionCount: 0 }]));
   const now = new Date();
-  for (const t of created) {
+  // Closed as Not applicable / Duplicate / Cancelled: left out of SLA and speed.
+  for (const t of created.filter(countsAsResolved)) {
     const first = firstCommentAt?.[t.id];
     if (first) {
       const s = speed.get(t.priority)!;
@@ -147,7 +149,8 @@ export function computeInsights(input: {
     row.closed[monthOf(t.completedAt!)] = (row.closed[monthOf(t.completedAt!)] ?? 0) + 1;
     row.closedTotal++;
   }
-  for (const t of completed) {
+  const resolvedDone = completed.filter(countsAsResolved);
+  for (const t of resolvedDone) {
     const s = speed.get(t.priority)!;
     s.resolutionDays += resolutionWorkDays(t);
     s.resolutionCount++;
@@ -198,12 +201,14 @@ export function computeInsights(input: {
   // 7 · Per person: closed in the period, total resolution days, open and overdue today.
   const teamRows: TeamRow[] = team.filter((m) => m.active).map((m) => {
     const mineDone = completed.filter((t) => t.assigneeIds.includes(m.id));
+    const mineResolved = mineDone.filter(countsAsResolved);
     const mineOpen = open.filter((t) => t.assigneeIds.includes(m.id));
     return {
       id: m.id,
       name: m.name,
       closed: mineDone.length,
-      resolutionDays: mineDone.reduce((sum, t) => sum + resolutionWorkDays(t), 0),
+      resolved: mineResolved.length,
+      resolutionDays: mineResolved.reduce((sum, t) => sum + resolutionWorkDays(t), 0),
       open: mineOpen.length,
       overdue: mineOpen.filter((t) => isOverdue(t, today, workDays)).length,
     };

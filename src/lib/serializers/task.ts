@@ -45,6 +45,7 @@ export function serializeTask(t: TaskWithRelations): Task {
     dueDate: utcToDateStr(t.dueDate),
     durationDays: t.durationDays,
     completedAt: utcToDateStr(t.completedAt),
+    closeReason: t.closeReason ?? null,
     pausedAt: t.pausedAt ? t.pausedAt.toISOString() : null,
     pausedMinutes: t.pausedMinutes,
     pausedDays: t.pausedDays,

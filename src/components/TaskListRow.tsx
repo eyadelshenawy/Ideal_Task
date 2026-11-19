@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Trash2, Check, Diamond, Copy, ChevronDown, ChevronRight, AlertTriangle } from "lucide-react";
 import type { Task, Project, AssigneeDisplay, Status } from "@/types/models";
-import { PRIORITIES, STATUSES, dueBadge, dateRange, showsStatusTag, toneStyle, isBlocked, splitModules } from "@/lib/taskHelpers";
+import { PRIORITIES, STATUSES, CLOSE_REASON_OPTIONS, dueBadge, dateRange, showsStatusTag, toneStyle, isBlocked, splitModules } from "@/lib/taskHelpers";
 import { useWorkDays } from "@/lib/useWorkDays";
 import AvatarStack from "./ui/AvatarStack";
 import Chip from "./ui/Chip";
@@ -111,7 +111,10 @@ export default function TaskListRow({
           {task.isMilestone && <Diamond size={12} className="text-brand-dark flex-shrink-0" />}
           {projectColour && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: projectColour }} title={project?.name} />}
           {task.code && <span className="font-mono text-[11px] text-brand-sub flex-shrink-0 sm:min-w-[92px]">{task.code}</span>}
-          <span className="flex-shrink-0 sm:w-[36px]"><TicketTypeChip type={task.type} /></span>
+          <span className="flex-shrink-0 sm:w-[36px]"><TicketTypeChip type={task.type} />
+        {task.status === "DONE" && task.closeReason && task.closeReason !== "RESOLVED" && (
+          <Chip small style={{ background: "#EEF2F0", color: "#5B6B64" }}>{CLOSE_REASON_OPTIONS.find((r) => r.id === task.closeReason)?.label}</Chip>
+        )}</span>
           <span className="font-semibold text-[13.5px] text-brand-text sm:truncate sm:flex-shrink-0 sm:max-w-[45%]" title={task.title}>{task.title}</span>
           {blocked && <span className="flex-shrink-0"><Chip small style={{ background: "#FBE7E5", color: "#9A3530" }}>Blocked</Chip></span>}
           {meta.length > 0 && (

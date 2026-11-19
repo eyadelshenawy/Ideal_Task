@@ -143,6 +143,7 @@ export async function POST(req: NextRequest) {
         durationDays: resolvedDates.durationDays,
         completedAt: data.completedAt ? dateStrToUTC(data.completedAt) : data.status === "DONE" ? new Date() : null,
         progress: data.status === "DONE" ? 100 : data.progress,
+        closeReason: data.status === "DONE" ? data.closeReason ?? "RESOLVED" : null,
         isMilestone: data.isMilestone,
         recurrenceFreq: data.recurrenceFreq,
         recurrenceEndDate: dateStrToUTC(data.recurrenceEndDate),

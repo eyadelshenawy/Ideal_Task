@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Trash2, Check, ChevronLeft, ChevronRight, Diamond, AlertTriangle, Copy, Paperclip, MessageSquare, ListChecks, CalendarDays } from "lucide-react";
 import type { Task, Project, AssigneeDisplay } from "@/types/models";
-import { PRIORITIES, STATUSES, dueBadge, dateRange, showsStatusTag, toneStyle, isBlocked, splitModules } from "@/lib/taskHelpers";
+import { PRIORITIES, STATUSES, CLOSE_REASON_OPTIONS, dueBadge, dateRange, showsStatusTag, toneStyle, isBlocked, splitModules } from "@/lib/taskHelpers";
 import { useWorkDays } from "@/lib/useWorkDays";
 import AvatarStack from "./ui/AvatarStack";
 import Chip from "./ui/Chip";
@@ -140,6 +140,9 @@ export default function TaskCard({
 
       <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
         <TicketTypeChip type={task.type} />
+        {task.status === "DONE" && task.closeReason && task.closeReason !== "RESOLVED" && (
+          <Chip small style={{ background: "#EEF2F0", color: "#5B6B64" }}>{CLOSE_REASON_OPTIONS.find((r) => r.id === task.closeReason)?.label}</Chip>
+        )}
         {sla && task.status !== "DONE" && <SlaChip sla={sla} />}
         {blocked && (
           <Chip small style={{ background: "#FBE7E5", color: "#9A3530" }}>

@@ -23,6 +23,7 @@ interface ReportData {
   sla: { response: SlaTally; resolution: SlaTally; byPriority: ({ priority: Priority } & SlaTally)[] } | null;
   period: {
     from: string; to: string; created: number; completed: number;
+    byReason: Record<string, number>;
     resolutionDaysSum: number; avgResolutionDays: number | null;
     months: { month: string; created: number; resolved: number }[];
   } | null;
@@ -246,11 +247,15 @@ export default function ProjectReportContent({ projectId }: { projectId: string 
         {data.period && (
           <div className="flex gap-3 flex-wrap mb-4">
             <Kpi label="Tickets received" value={String(data.period.created)} formula="count created in the period" />
-            <Kpi label="Tickets resolved" value={String(data.period.completed)} formula="count closed in the period" />
+            <Kpi
+              label="Tickets closed"
+              value={String(data.period.completed)}
+              formula={`resolved ${data.period.byReason.RESOLVED}${data.period.byReason.NOT_APPLICABLE ? ` · not applicable ${data.period.byReason.NOT_APPLICABLE}` : ""}${data.period.byReason.DUPLICATE ? ` · duplicate ${data.period.byReason.DUPLICATE}` : ""}${data.period.byReason.CANCELLED ? ` · cancelled ${data.period.byReason.CANCELLED}` : ""}`}
+            />
             <Kpi
               label="Average resolution"
               value={data.period.avgResolutionDays === null ? "—" : `${data.period.avgResolutionDays} d`}
-              formula={`Σ working days ÷ resolved = ${data.period.resolutionDaysSum} ÷ ${data.period.completed}`}
+              formula={`Σ working days ÷ resolved = ${data.period.resolutionDaysSum} ÷ ${data.period.byReason.RESOLVED}`}
             />
             {data.sla && (
               <Kpi

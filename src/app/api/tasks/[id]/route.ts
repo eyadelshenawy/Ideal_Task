@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { recordedWork, recordedWorkMessage } from "@/lib/deleteGuard";
+import { closeReasonUpdate } from "@/lib/closeReason";
 import { checkTaskLists } from "@/lib/lists";
 import { prisma } from "@/lib/prisma";
 import { pauseUpdate } from "@/lib/pauseUpdate";
@@ -73,6 +75,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
           status: nextStatus,
           progress: nextStatus === "DONE" ? 100 : hasSubtasks ? existing.progress : data.progress ?? existing.progress,
           ...(completedAtUpdate !== undefined ? { completedAt: completedAtUpdate } : {}),
+          ...(() => { const cr = closeReasonUpdate(existing.status, nextStatus, data.closeReason); return cr !== undefined ? { closeReason: cr } : {}; })(),
           ...(await pauseUpdate(existing, nextStatus)),
         },
         include: taskInclude,
@@ -297,6 +300,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
             : {}),
         ...pauseData,
         ...(completedAtUpdate !== undefined ? { completedAt: completedAtUpdate } : {}),
+        ...(() => { const cr = closeReasonUpdate(existing.status, nextStatus, data.closeReason); return cr !== undefined ? { closeReason: cr } : {}; })(),
         progress: nextStatus === "DONE" ? 100 : hasSubtasks ? existing.progress : data.progress ?? existing.progress,
         ...(data.isMilestone !== undefined ? { isMilestone: data.isMilestone } : {}),
         ...(dependsOn !== undefined ? { dependsOn: { set: dependsOn.map((id) => ({ id })) } } : {}),
@@ -368,7 +372,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
 // Soft-delete: moves the task to Trash instead of removing it outright.
 // Any subtasks (at any depth) move to Trash along with it.
 // See /api/tasks/[id]/restore to undo, and /api/trash to list/empty.
-export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const { session, error } = await requireSession();
   if (error) return error;
@@ -384,6 +388,18 @@ export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: s
     const access = await getUserAccess(session);
     if (!access.isSuperAdmin && !(existing.projectId && access.administeredProjectIds.includes(existing.projectId))) {
       return NextResponse.json({ error: "You don't have admin rights on this project" }, { status: 403 });
+    }
+    // A ticket the team worked on (comments or logged hours, subtasks included)
+    // is closed, not deleted. Only a Super Admin may override, after confirming (?force=1).
+    const work = await recordedWork(prisma, [params.id, ...(await getDescendantIds(prisma, params.id))]);
+    if (work.comments > 0 || work.hours > 0) {
+      const forced = access.isSuperAdmin && req.nextUrl.searchParams.get("force") === "1";
+      if (!forced) {
+        return NextResponse.json(
+          { error: recordedWorkMessage(work, existing.code ?? "This ticket"), hasWork: true, canForce: access.isSuperAdmin },
+          { status: 409 },
+        );
+      }
     }
   }
 

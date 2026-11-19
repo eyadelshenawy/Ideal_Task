@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X, ChevronRight, ChevronDown } from "lucide-react";
 import type { Task, Project, TeamMember, Contact, Priority, Status, RecurrenceFreq, TicketType, MatrixLevel, Category } from "@/types/models";
-import { PRIORITIES, STATUSES, descendantIds, splitModules, formatDateDisplay } from "@/lib/taskHelpers";
+import { PRIORITIES, STATUSES, CLOSE_REASON_OPTIONS, descendantIds, splitModules, formatDateDisplay } from "@/lib/taskHelpers";
 import { TICKET_TYPES, MATRIX_LEVELS, priorityFromMatrix } from "@/lib/ticketMeta";
 import { MODULE_OPTIONS } from "@/lib/listConfig";
 import { useWorkDays } from "@/lib/useWorkDays";
@@ -45,6 +45,8 @@ export interface TaskDraft {
   tags: string[];
   parentId: string;
   durationDays: string;
+  /** Why it was closed; only used while status is Done. */
+  closeReason: "RESOLVED" | "NOT_APPLICABLE" | "DUPLICATE" | "CANCELLED";
 }
 
 export function blankDraft(): TaskDraft {
@@ -54,6 +56,7 @@ export function blankDraft(): TaskDraft {
     startDate: "", dueDate: "", completedAt: "",
     progress: 0, isMilestone: false, dependsOn: [],
     recurrenceFreq: "", recurrenceEndDate: "", tags: [], parentId: "", durationDays: "",
+    closeReason: "RESOLVED",
   };
 }
 
@@ -87,6 +90,7 @@ export function draftFromTask(task: Task): TaskDraft {
     tags: task.tags,
     parentId: task.parentId ?? "",
     durationDays: task.durationDays !== null ? String(task.durationDays) : "",
+    closeReason: task.closeReason ?? "RESOLVED",
   };
 }
 
@@ -324,6 +328,18 @@ export default function TaskModal({
         >
           {STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
         </select>
+        {draft.status === "DONE" && (
+          // Why it was closed. Not applicable / Duplicate / Cancelled stay out of SLA and resolution times.
+          <select
+            value={draft.closeReason}
+            onChange={(e) => setDraft({ ...draft, closeReason: e.target.value as TaskDraft["closeReason"] })}
+            aria-label="Closure reason"
+            title="Why it was closed — only Resolved counts toward SLA and resolution times"
+            className="rounded-lg border border-brand-border bg-white px-2 py-1.5 text-sm outline-none"
+          >
+            {CLOSE_REASON_OPTIONS.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+          </select>
+        )}
         {!draft.isMilestone && (
           <div className="flex flex-wrap items-center gap-x-2 flex-1 min-w-[140px]">
             <input
