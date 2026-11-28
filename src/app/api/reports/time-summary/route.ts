@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { requireSession, getUserAccess } from "@/lib/permissions";
 import { visibleTasksWhere } from "@/lib/taskVisibility";
-import { dateStrToUTC } from "@/lib/serverDates";
+import { hoursByPerson } from "@/lib/reports/hoursByPerson";
 
 /** Per-person total hours logged within a date range, across every task visible to the requester. */
 export async function GET(req: NextRequest) {
@@ -16,26 +15,5 @@ export async function GET(req: NextRequest) {
   }
 
   const access = await getUserAccess(session);
-  const baseTaskWhere = visibleTasksWhere(session.user.id, access.isSuperAdmin, access.administeredProjectIds);
-  // Hours logged against template-project tasks aren't real work — same
-  // exclusion the main task list uses so per-person totals stay clean.
-  const taskWhere = {
-    AND: [
-      baseTaskWhere,
-      { OR: [{ projectId: null }, { project: { isTemplate: false } }] },
-    ],
-  };
-
-  const grouped = await prisma.timeEntry.groupBy({
-    by: ["userId"],
-    where: {
-      date: { gte: dateStrToUTC(from)!, lte: dateStrToUTC(to)! },
-      userId: { not: null },
-      task: taskWhere,
-    },
-    _sum: { hours: true },
-  });
-
-  const totals = Object.fromEntries(grouped.map((g) => [g.userId as string, g._sum.hours ?? 0]));
-  return NextResponse.json(totals);
+  return NextResponse.json(await hoursByPerson(visibleTasksWhere(session.user.id, access.isSuperAdmin, access.administeredProjectIds), from, to));
 }

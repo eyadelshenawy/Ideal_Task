@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { requireSession, getUserAccess } from "@/lib/permissions";
 import { visibleTasksWhere } from "@/lib/taskVisibility";
 import { dateStrToUTC } from "@/lib/serverDates";
+import { insightsRaw } from "@/lib/reports/insightsData";
 
 /**
  * Raw inputs for the Reports insight tabs that aren't already on the task
@@ -25,34 +25,5 @@ export async function GET(req: NextRequest) {
       { OR: [{ projectId: null }, { project: { isTemplate: false } }] },
     ],
   };
-
-  const [entries, events] = await Promise.all([
-    prisma.timeEntry.findMany({
-      where: { date: { gte: fromDate }, task: taskWhere },
-      select: { taskId: true, hours: true, date: true },
-    }),
-    prisma.taskEvent.findMany({
-      where: {
-        type: "ACTIVITY",
-        createdAt: { gte: fromDate },
-        message: { contains: "Status changed from" },
-        task: taskWhere,
-      },
-      select: { taskId: true, message: true, createdAt: true },
-    }),
-  ]);
-
-  const closed: { taskId: string; at: string }[] = [];
-  const reopened: { taskId: string; at: string }[] = [];
-  for (const e of events) {
-    const at = e.createdAt.toISOString();
-    if (/Status changed from Done to /.test(e.message)) reopened.push({ taskId: e.taskId, at });
-    if (/Status changed from .+ to Done(\n|$)/.test(e.message)) closed.push({ taskId: e.taskId, at });
-  }
-
-  return NextResponse.json({
-    time: entries.map((t) => ({ taskId: t.taskId, hours: t.hours, date: t.date.toISOString().slice(0, 10) })),
-    closed,
-    reopened,
-  });
+  return NextResponse.json(await insightsRaw(taskWhere, fromDate));
 }

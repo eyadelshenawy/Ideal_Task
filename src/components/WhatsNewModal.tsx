@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Claude can read IDT Desk reports",
+    description: "Through MCP access, Claude can now list and read every report IDT Desk has for a project — Overview, Client report, Customers, SLA & speed, modules and categories, Team, Time & billing, Quality and Customer satisfaction — for a period and priorities you choose. It gets the plain numbers with the formula behind each figure, calculated by the same code as the Reports page, one project at a time. Nothing on the Reports page itself has changed.",
+  },
+  {
     title: "Bulk edit: several modules, category, type, Impact × Urgency and closure reason",
     description: "Under More… on the bulk bar you can now tick several modules at once and choose Add (keeps the modules already on each task), Remove (takes the ticked ones off) or Replace (leaves only the ticked ones); Clear all modules empties them. New on the same panel: Type, Category with its subcategory, Impact × Urgency (the priority follows the matrix, as in the task form) and Closure reason, which changes only the selected tasks that are already Done.",
   },

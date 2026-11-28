@@ -6,6 +6,7 @@ import { utcToDateStr } from "@/lib/serverDates";
 import type { McpCaller } from "./tokens";
 import { deckSchema, buildReportDeck } from "./reportDeck";
 import { sendEmail } from "@/lib/email";
+import { REPORTS, runReport, ReportError } from "./reports";
 
 // Tools for the MCP server at /api/mcp. Nothing here writes to a task. The
 // only tool with an effect is send_report, which emails a PowerPoint built
@@ -121,6 +122,36 @@ export const TOOL_DEFINITIONS: { name: string; [key: string]: unknown }[] = [
         since: { type: "string", description: "Changes on or after this date, e.g. 2026-11-01" },
       },
       required: ["project", "since"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "list_reports",
+    title: "List reports",
+    description: "Lists every report IDT Desk has for ONE project: id, name, description, which screen it matches, and the parameters it accepts.",
+    inputSchema: {
+      type: "object",
+      properties: { project: { type: "string", description: "Project code, e.g. ABM" } },
+      required: ["project"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "get_report",
+    title: "Get a report",
+    description:
+      "Returns one report for ONE project exactly as IDT Desk calculates it: raw numbers (rows and totals) plus `definitions`, the formula or " +
+      "rule behind each figure. Use list_reports for the report ids and their parameters.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project: { type: "string", description: "Project code, e.g. ABM" },
+        report_id: { type: "string", description: "Report id from list_reports, e.g. client_report" },
+        from: { type: "string", description: "Start date, YYYY-MM-DD (optional)" },
+        to: { type: "string", description: "End date, YYYY-MM-DD, inclusive (optional, default today)" },
+        priorities: { type: "array", items: { type: "string", enum: ["CRITICAL", "HIGH", "MEDIUM", "LOW"] }, description: "Only these priorities (optional)" },
+      },
+      required: ["project", "report_id"],
       additionalProperties: false,
     },
   },
@@ -369,6 +400,28 @@ export async function runTool(name: string, args: Record<string, unknown>, calle
         resultCount: changes.length,
         projectCode: project.code,
       };
+    }
+
+    case "list_reports": {
+      const project = projectFor(caller, str(args, "project", true)!);
+      return { data: { project: project.code, reports: REPORTS }, resultCount: REPORTS.length, projectCode: project.code };
+    }
+
+    case "get_report": {
+      const project = projectFor(caller, str(args, "project", true)!);
+      const reportId = str(args, "report_id", true)!;
+      try {
+        const data = await runReport(project, reportId, {
+          from: str(args, "from", false),
+          to: str(args, "to", false),
+          priorities: args.priorities,
+        });
+        // Logged as "<project>/<report id>" in the ticket column of the request log.
+        return { data, resultCount: 1, projectCode: project.code, ticketCode: reportId.slice(0, 40) };
+      } catch (e) {
+        if (e instanceof ReportError) throw new ToolError(e.message, "invalid");
+        throw e;
+      }
     }
 
     case "send_report":

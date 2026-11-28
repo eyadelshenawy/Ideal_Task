@@ -17,6 +17,9 @@ IDT Desk includes a remote MCP server that lets an AI assistant, such as Claude,
 | `get_status_changes` | `project` (required), `since` (required) | Every status change in the project since that date, oldest first: `code`, `title`, `from`, `to`, `at`. At most 5,000 rows |
 | `send_report` | `project`, `subject`, `summary`, `deck` (all required) | IDT Desk builds a PowerPoint in IDEAL colours from `deck` and emails it, from its own address, to the project's saved report recipients. Returns the number of recipients and the file name |
 
+| `list_reports` | `project` (required) | Every report IDT Desk has, for that project: `id`, `name`, `screen` (where it appears in IDT Desk), `description`, `parameters` |
+| `get_report` | `project`, `report_id` (required); `from`, `to`, `priorities` | The report's raw numbers (rows and totals) plus `definitions`, the formula or rule behind each figure |
+
 `deck` is slide content, not a file: `{ title, subtitle?, slides: [{ title, kpis?, bullets?, table?, chart?, note? }] }`. Each KPI is `{ label, value, formula? }`. The formula is printed under the figure, for example "Resolved ÷ Received = 6 ÷ 11". A chart is `{ type: bar | line | pie, categories, series: [{ name, values }] }`. At most 20 slides. A cover slide with today's date is added automatically.
 
 Notes:
@@ -26,6 +29,28 @@ Notes:
 - `closed` is filled only while a ticket is Done.
 - In `get_status_changes`, `from` is empty on a ticket's first row (the status it was created in).
 - A comment with no author came from the customer, through the tracking page or a shared link. Its author shows as "Customer".
+
+## Reports
+
+`get_report` runs the same code as the IDT Desk screens: `computeInsights`, `src/lib/reportOverview.ts` and `src/lib/reports/*`. Those were moved out of the screens and API routes, so both sides now share one copy. The report data is limited to one project, and private, Trash and on-hold tickets are left out. Each report returns sums and counts next to every average, so any figure can be rebuilt from its formula.
+
+| id | Screen in IDT Desk | Parameters |
+|---|---|---|
+| `overview` | Reports → Overview | none (as of now) |
+| `client_report` | Client report (print / PDF) | `from`, `to`, `priorities` |
+| `customers` | Reports → Customers (opened / closed per month) | `from`, `to`, `priorities` |
+| `sla_speed` | Reports → SLA & speed | `from`, `to`, `priorities` |
+| `breakdown` | Reports → Customers (modules / categories) | `from`, `to`, `priorities` |
+| `team` | Reports → Team | `from`, `to`, `priorities` |
+| `time_billing` | Reports → Time & billing | `from`, `to`, `priorities` |
+| `quality` | Reports → Quality | `from`, `to`, `priorities` |
+| `satisfaction` | Reports → Overview (Customer satisfaction) | none (all time) |
+
+Notes:
+
+- The monthly reports cover every month from the month of `from` to the month of `to`, up to 24 months. With no `from`, they cover the last 6 months, the same default as the Reports page.
+- `to` defaults to today. "Open today" and "ageing" figures are worked out as of `to`, using each ticket's current status.
+- `client_report` adds its period section only when `from` is given, the same as the screen.
 
 ## Rules the server enforces
 
@@ -167,6 +192,27 @@ This test ran on the same local copy. The client was the official MCP SDK client
 
 Known dependency note: `pptxgenjs` uses `image-size`, which has two denial-of-service advisories for crafted image files. IDT Desk never adds images to the deck, so that code never runs on input from outside.
 
+## Test run: reports on ABM
+
+The test ran on the same local copy, with sample hours and satisfaction ratings added.
+
+- `list_reports` for ABM returned 9 reports: `overview`, `client_report`, `customers`, `sla_speed`, `breakdown`, `team`, `time_billing`, `quality` and `satisfaction`. All 9 ran without errors.
+- `client_report` (1 Oct – 30 Nov 2026) is byte-for-byte the same as the screen's `/api/projects/[id]/report`, apart from `generatedAt`.
+- The default 6-month figures match the Reports page:
+  - Resolution SLA in Oct: 3 met, 7 breached, so 30%.
+  - Response time: 1 h for every priority.
+  - Resolution time: Critical 4 d, Medium 3 d, Low 2 d.
+  - Team: Eyad 4 closed (3.5 d); Sara 2 closed (2 d).
+  - Response SLA met 100%, resolution SLA met 30%, 7 breached.
+- The `/api/reports/*` routes still return 200 after the refactor.
+- These calls were refused:
+  - another project;
+  - an unknown report id;
+  - `from` after `to`;
+  - an unknown priority;
+  - a period longer than 24 months.
+- Every call was logged with its tool, project and report id.
+
 ## Files
 
 - `src/app/api/mcp/route.ts`: the MCP endpoint (JSON-RPC, auth, logging)
@@ -174,6 +220,8 @@ Known dependency note: `pptxgenjs` uses `image-size`, which has two denial-of-se
 - `src/lib/mcp/tokens.ts`: token creation, hashing and checking
 - `src/lib/mcp/oauth.ts`, `src/app/.well-known/*`, `src/app/api/oauth/*` and `src/app/oauth/authorize/`: OAuth sign-in
 - `src/lib/mcp/reportDeck.ts`: the PowerPoint builder for `send_report`
+- `src/lib/mcp/reports.ts`: the report catalogue and `get_report`
+- `src/lib/reportOverview.ts` and `src/lib/reports/*`: report calculations shared with the screens
 - `src/app/api/mcp-tokens/*`: Settings API (create, revoke, request log)
 - `src/components/McpAccessModal.tsx`: Settings → MCP access
 - `prisma/migrations/20261128090000_mcp_server/`: tables, history rebuild and trigger
