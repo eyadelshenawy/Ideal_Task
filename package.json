@@ -22,7 +22,7 @@
     "@prisma/client": "^5.18.0",
     "bcryptjs": "^2.4.3",
     "exceljs": "^4.4.0",
-    "lucide-react": "^0.417.0",
+    "lucide-react": "^1.63.0",
     "next": "^15.5.28",
     "next-auth": "^4.24.15",
     "otpauth": "^9.5.2",
