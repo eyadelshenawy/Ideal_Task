@@ -23,6 +23,7 @@ import ProjectsModal from "./ProjectsModal";
 import ContactsModal from "./ContactsModal";
 import WhatsNewModal from "./WhatsNewModal";
 import OnHoldModal from "./OnHoldModal";
+import McpAccessModal from "./McpAccessModal";
 import TrashModal from "./TrashModal";
 import ImportPreviewModal from "./ImportPreviewModal";
 import BulkActionBar from "./BulkActionBar";
@@ -343,6 +344,7 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
     { id: "calendar", label: "Work Calendar", group: "Work" } as const,
     ...(canCreateAnywhere ? [{ id: "onhold", label: "On hold", group: "Work" } as const] : []),
     ...(isSuperAdmin ? [{ id: "security", label: "Security Policy", group: "Security" } as const] : []),
+    ...(isSuperAdmin ? [{ id: "mcp", label: "MCP access", group: "Security" } as const] : []),
     ...(isSuperAdmin ? [{ id: "audit", label: "Audit Log", group: "Security" } as const] : []),
     ...(canCreateAnywhere ? [{ id: "trash", label: "Trash", group: "Security" } as const] : []),
   ];
@@ -1704,6 +1706,9 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
           )}
           {settingsSection === "audit" && <AuditLogModal key="audit" onClose={closeSettings} />}
           {settingsSection === "security" && <SecurityPolicyModal key="security" onClose={closeSettings} />}
+          {settingsSection === "mcp" && (
+            <McpAccessModal key="mcp" projects={projectList.filter((p) => !p.isTemplate)} onClose={closeSettings} />
+          )}
           {settingsSection === "categories" && (
             <CategoriesModal
               key="categories"

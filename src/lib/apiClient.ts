@@ -22,6 +22,9 @@ export const api = {
   bulkUpdateTasks: (data: unknown) => request("/api/tasks/bulk", "PATCH", data),
   bulkDeleteTasks: (taskIds: string[], force = false) =>
     request("/api/tasks/bulk", "DELETE", { taskIds, ...(force ? { force: true } : {}) }) as Promise<{ deleted: string[]; skipped: string[]; blocked: string[]; canForce: boolean }>,
+  createMcpToken: (body: { name: string; projectIds: string[] }) =>
+    request("/api/mcp-tokens", "POST", body) as Promise<{ id: string; token: string }>,
+  revokeMcpToken: (id: string) => request(`/api/mcp-tokens/${id}`, "DELETE"),
   holdTasks: (body: { hold: boolean; taskIds?: string[]; projectId?: string }) => request("/api/tasks/hold", "POST", body),
   addTaskComment: (taskId: string, message: string) => request(`/api/tasks/${taskId}/events`, "POST", { message }),
   updateTaskComment: (taskId: string, eventId: string, message: string) =>
