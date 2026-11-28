@@ -11,7 +11,7 @@ export async function sendEmail(params: {
   const from = process.env.EMAIL_FROM;
   if (!process.env.RESEND_API_KEY || !from) {
     console.warn("RESEND_API_KEY or EMAIL_FROM not set - skipping email send.");
-    return;
+    return false;
   }
 
   const { error } = await resend.emails.send({
@@ -24,5 +24,8 @@ export async function sendEmail(params: {
 
   if (error) {
     console.error("Failed to send email:", error);
+    return false;
   }
+  // Callers that need to know (the MCP send_report tool) check this.
+  return true;
 }
