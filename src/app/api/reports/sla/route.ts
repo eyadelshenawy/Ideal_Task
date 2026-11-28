@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession, getUserAccess } from "@/lib/permissions";
 import { visibleTasksWhere } from "@/lib/taskVisibility";
+import { firstCommentTimes } from "@/lib/reports/insightsData";
 
 // For every task this user can see, the timestamp of its first real comment
 // (not an automatic activity line) — the "first response" half of SLA
@@ -25,16 +26,5 @@ export async function GET() {
     })
   ).map((t) => t.id);
 
-  const comments = await prisma.taskEvent.findMany({
-    where: { taskId: { in: taskIds }, type: "COMMENT" },
-    select: { taskId: true, createdAt: true },
-    orderBy: { createdAt: "asc" },
-  });
-
-  const firstCommentAt = new Map<string, string>();
-  for (const c of comments) {
-    if (!firstCommentAt.has(c.taskId)) firstCommentAt.set(c.taskId, c.createdAt.toISOString());
-  }
-
-  return NextResponse.json(Object.fromEntries(firstCommentAt));
+  return NextResponse.json(await firstCommentTimes(taskIds));
 }

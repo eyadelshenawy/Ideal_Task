@@ -116,7 +116,8 @@ export async function POST(req: Request) {
         ? params.arguments
         : {}) as Record<string, unknown>;
       const askedProject = typeof args.project === "string" ? args.project : undefined;
-      const askedCode = typeof args.code === "string" ? args.code : undefined;
+      // Ticket code, or the report id for get_report — shown in the request log.
+      const askedCode = typeof args.code === "string" ? args.code : typeof args.report_id === "string" ? args.report_id : undefined;
       try {
         const r = await runTool(name, args, caller);
         logRequest({ caller, method, tool: name, projectCode: r.projectCode, ticketCode: r.ticketCode, outcome: "ok", resultCount: r.resultCount, ip });
