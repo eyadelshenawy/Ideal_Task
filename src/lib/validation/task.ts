@@ -118,12 +118,22 @@ export const taskBulkUpdateSchema = z.object({
   priority: z.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW"]).optional(),
   type: ticketTypeEnum.optional(),
   categoryId: z.string().nullable().optional(),
+  // Only with categoryId; omit (or null) for no subcategory.
+  subcategoryId: z.string().nullable().optional(),
+  // Impact / Urgency: when both are known for a task, its priority follows
+  // the matrix (unless priority itself is in the same change).
+  impact: matrixLevelEnum.nullable().optional(),
+  urgency: matrixLevelEnum.nullable().optional(),
   // `null` explicitly clears the field; omit to leave untouched.
   startDate: dateOnly.optional(),
   dueDate: dateOnly.optional(),
   durationDays: z.number().int().min(1).nullable().optional(),
   progress: z.number().min(0).max(100).optional(),
-  module: z.string().trim().max(80).nullable().optional(),
+  module: z.string().trim().max(500).nullable().optional(),
+  // How `module` (comma-separated) applies to each task: "add" keeps the
+  // task's modules and adds these, "remove" takes these off, "replace"
+  // (default) leaves only these.
+  moduleMode: z.enum(["add", "replace", "remove"]).optional(),
   addTag: z.string().trim().min(1).max(40).optional(),
   removeTag: z.string().trim().min(1).max(40).optional(),
 });

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { recordedWork } from "@/lib/deleteGuard";
 import { closeReasonUpdate } from "@/lib/closeReason";
 import { checkTaskLists } from "@/lib/lists";
+import { splitModules } from "@/lib/taskHelpers";
+import { priorityFromMatrix } from "@/lib/ticketMeta";
 import { prisma } from "@/lib/prisma";
 import { pauseUpdate } from "@/lib/pauseUpdate";
 import { requireSession, getUserAccess } from "@/lib/permissions";
@@ -21,6 +23,17 @@ import { withSlaDuration } from "@/lib/slaDuration";
 // id the requester is allowed to manage. Ids they can't manage are silently
 // skipped and reported back as `skipped`, so a partial selection still goes
 // through for the tasks that are actually theirs to touch.
+// Applies a bulk module change to one task's comma-separated modules.
+function bulkModule(current: string | null, picked: string | null, mode: "add" | "replace" | "remove" | undefined): string | null {
+  const chosen = splitModules(picked);
+  const existing = splitModules(current);
+  const next =
+    mode === "add" ? [...existing, ...chosen.filter((m) => !existing.includes(m))]
+    : mode === "remove" ? existing.filter((m) => !chosen.includes(m))
+    : chosen;
+  return next.length ? next.join(", ") : null;
+}
+
 export async function PATCH(req: NextRequest) {
   const { session, error } = await requireSession();
   if (error) return error;
@@ -29,12 +42,15 @@ export async function PATCH(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request" }, { status: 400 });
   }
-  const { taskIds, status, closeReason, assignees, assigneeMode, projectId, priority, type, categoryId, startDate, dueDate, durationDays, progress, addTag, removeTag } = parsed.data;
+  const { taskIds, status, closeReason, assignees, assigneeMode, projectId, priority, type, categoryId, subcategoryId, impact, urgency, startDate, dueDate, durationDays, progress, addTag, removeTag } = parsed.data;
   const lists = await checkTaskLists(type, parsed.data.module);
   if (lists.error) return NextResponse.json({ error: lists.error }, { status: 400 });
   const moduleValue = lists.module;
+  if (subcategoryId && categoryId === undefined) {
+    return NextResponse.json({ error: "Pick a category with the subcategory" }, { status: 400 });
+  }
   if (categoryId) {
-    const categoryError = await checkCategoryPair(categoryId, null);
+    const categoryError = await checkCategoryPair(categoryId, subcategoryId ?? null);
     if (categoryError) return NextResponse.json({ error: categoryError }, { status: 400 });
   }
   const access = await getUserAccess(session);
@@ -84,6 +100,7 @@ export async function PATCH(req: NextRequest) {
   // being touched requires manage rights on the task's project.
   const touchesOnlyStatusOrProgress =
     assignees === undefined && projectId === undefined && priority === undefined && type === undefined && categoryId === undefined &&
+    impact === undefined && urgency === undefined &&
     startDate === undefined && dueDate === undefined && durationDays === undefined &&
     moduleValue === undefined && addTag === undefined && removeTag === undefined;
 
@@ -189,11 +206,20 @@ export async function PATCH(req: NextRequest) {
         ...(projectId !== undefined ? { projectId: projectId || null } : {}),
         ...(priority !== undefined ? { priority } : {}),
         ...(type !== undefined ? { type } : {}),
-        // A new category invalidates whatever subcategory the task had.
-        ...(categoryId !== undefined ? { categoryId, subcategoryId: null } : {}),
+        // A new category replaces the subcategory too (none unless one was picked).
+        ...(categoryId !== undefined ? { categoryId, subcategoryId: categoryId ? subcategoryId ?? null : null } : {}),
+        ...(impact !== undefined ? { impact } : {}),
+        ...(urgency !== undefined ? { urgency } : {}),
+        // Same rule as the task form: Impact × Urgency sets the priority.
+        ...((impact !== undefined || urgency !== undefined) && priority === undefined
+          ? (() => {
+              const p = priorityFromMatrix(impact !== undefined ? impact : task.impact, urgency !== undefined ? urgency : task.urgency);
+              return p ? { priority: p } : {};
+            })()
+          : {}),
         ...bulkDateData,
         ...pauseData,
-        ...(moduleValue !== undefined ? { module: moduleValue || null } : {}),
+        ...(moduleValue !== undefined ? { module: bulkModule(task.module, moduleValue, parsed.data.moduleMode) } : {}),
         ...(addTagRecord ? { tags: { connect: [{ id: addTagRecord.id }] } } : {}),
         ...(removeTagRecord ? { tags: { disconnect: [{ id: removeTagRecord.id }] } } : {}),
       },

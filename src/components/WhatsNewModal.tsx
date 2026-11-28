@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Bulk edit: several modules, category, type, Impact × Urgency and closure reason",
+    description: "Under More… on the bulk bar you can now tick several modules at once and choose Add (keeps the modules already on each task), Remove (takes the ticked ones off) or Replace (leaves only the ticked ones); Clear all modules empties them. New on the same panel: Type, Category with its subcategory, Impact × Urgency (the priority follows the matrix, as in the task form) and Closure reason, which changes only the selected tasks that are already Done.",
+  },
+  {
     title: "Claude in an ordinary chat, and weekly reports by email",
     description: "IDT Desk can now be added to claude.ai as a custom connector: paste the server address from Settings → MCP access, sign in when asked, tick the projects and press Allow. Any ordinary Claude chat can then read those projects' tickets. Claude can also email a PowerPoint report for a project — built by IDT Desk in IDEAL colours and sent from IDT Desk's usual email address — but only to the addresses you save under Settings → MCP access → Report emails, and at most once every 20 hours per project. Connected apps show in the Tokens tab with a Revoke button, and every request still appears in the Request log.",
   },

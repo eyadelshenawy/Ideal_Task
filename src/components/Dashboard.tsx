@@ -1522,6 +1522,7 @@ export default function Dashboard({ userId, userName, userEmail, isSuperAdmin, a
             team={teamList}
             contacts={contactList}
             projects={modalProjects}
+            categories={categoryList}
             onClear={() => setSelectedIds(new Set())}
             onSelectAll={() => setSelectedIds(new Set(filteredTasks.map((t) => t.id)))}
             onBulkUpdate={bulkPatch}

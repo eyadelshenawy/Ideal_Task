@@ -2,9 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { X, Loader2, MoreHorizontal } from "lucide-react";
-import type { Contact, Project, Status, TeamMember } from "@/types/models";
+import type { Category, Contact, Project, Status, TeamMember } from "@/types/models";
 import { STATUSES } from "@/lib/taskHelpers";
 import { MODULE_OPTIONS } from "@/lib/listConfig";
+import { TICKET_TYPES, MATRIX_LEVELS, priorityFromMatrix } from "@/lib/ticketMeta";
+import { CLOSE_REASONS } from "@/lib/closeReason";
+import type { MatrixLevel } from "@/types/models";
 
 interface BulkActionBarProps {
   selectedCount: number;
@@ -17,6 +20,7 @@ interface BulkActionBarProps {
   team: TeamMember[];
   contacts: Contact[];
   projects: Project[];
+  categories: Category[];
   onClear: () => void;
   onSelectAll: () => void;
   onBulkUpdate: (patch: Record<string, unknown>) => Promise<void>;
@@ -25,7 +29,7 @@ interface BulkActionBarProps {
 }
 
 export default function BulkActionBar({
-  selectedCount, totalVisible, canManageAny, team, contacts, projects, onClear, onSelectAll, onBulkUpdate, onDelete, onHold,
+  selectedCount, totalVisible, canManageAny, team, contacts, projects, categories, onClear, onSelectAll, onBulkUpdate, onDelete, onHold,
 }: BulkActionBarProps) {
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -43,7 +47,16 @@ export default function BulkActionBar({
   const [dueDate, setDueDate] = useState("");
   const [duration, setDuration] = useState("");
   const [progress, setProgress] = useState("");
-  const [module, setModule] = useState("");
+  const [modulesPicked, setModulesPicked] = useState<string[]>([]);
+  const [typePicked, setTypePicked] = useState("");
+  const [categoryPicked, setCategoryPicked] = useState("");
+  const [subcategoryPicked, setSubcategoryPicked] = useState("");
+  const [impact, setImpact] = useState<MatrixLevel | "">("");
+  const [urgency, setUrgency] = useState<MatrixLevel | "">("");
+  const [reasonPicked, setReasonPicked] = useState("");
+  const topCategories = categories.filter((c) => !c.parentId);
+  const subcategories = categories.filter((c) => c.parentId && c.parentId === categoryPicked);
+  const matrixPriority = impact && urgency ? priorityFromMatrix(impact, urgency) : null;
   const [addTag, setAddTag] = useState("");
   const [removeTag, setRemoveTag] = useState("");
 
@@ -227,7 +240,7 @@ export default function BulkActionBar({
         {moreOpen && (
           <div
             className="absolute z-30 top-full mt-1 right-0 rounded-lg p-3 bg-white border border-brand-border shadow-lg text-brand-text"
-            style={{ minWidth: 260 }}
+            style={{ minWidth: 260, maxHeight: "70vh", overflowY: "auto" }}
           >
             <label className="block text-[11px] font-semibold text-brand-sub mb-1">Priority</label>
             <select
@@ -326,23 +339,125 @@ export default function BulkActionBar({
               </button>
             </div>
 
-            <label className="block text-[11px] font-semibold text-brand-sub mb-1">Module</label>
+            <label className="block text-[11px] font-semibold text-brand-sub mb-1">Modules</label>
+            <div className="max-h-[120px] overflow-y-auto rounded-md border border-brand-border px-2 py-1 mb-1">
+              {MODULE_OPTIONS.filter((m) => m.active).map((m) => (
+                <label key={m.id} className="flex items-center gap-1.5 text-xs text-brand-text py-0.5">
+                  <input
+                    type="checkbox"
+                    checked={modulesPicked.includes(m.name)}
+                    onChange={(e) => setModulesPicked((cur) => (e.target.checked ? [...cur, m.name] : cur.filter((x) => x !== m.name)))}
+                  />
+                  {m.name}
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-1 mb-1">
+              {(["add", "remove", "replace"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  disabled={modulesPicked.length === 0}
+                  onClick={() => applyMore({ module: modulesPicked.join(", "), moduleMode: mode }, () => setModulesPicked([]))}
+                  title={mode === "add" ? "Add the ticked modules, keep the ones already there" : mode === "remove" ? "Take the ticked modules off" : "Leave only the ticked modules"}
+                  className="flex-1 rounded-md px-2 py-1 text-[11px] font-semibold bg-brand-dark text-white disabled:opacity-40"
+                >
+                  {mode === "add" ? "Add" : mode === "remove" ? "Remove" : "Replace"}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => applyMore({ module: null, moduleMode: "replace" }, () => setModulesPicked([]))}
+              className="text-[11px] text-brand-sub underline mb-3"
+            >
+              Clear all modules
+            </button>
+
+            <label className="block text-[11px] font-semibold text-brand-sub mb-1">Type</label>
             <div className="flex gap-1 mb-3">
-              <select
-                value={module}
-                onChange={(e) => setModule(e.target.value)}
-                className="flex-1 rounded-md px-2 py-1 text-xs border border-brand-border"
-              >
-                <option value="">— No module —</option>
-                {MODULE_OPTIONS.filter((m) => m.active).map((m) => <option key={m.id} value={m.name}>{m.name}</option>)}
+              <select value={typePicked} onChange={(e) => setTypePicked(e.target.value)} className="flex-1 rounded-md px-2 py-1 text-xs border border-brand-border">
+                <option value="">Pick a type…</option>
+                {TICKET_TYPES.filter((t) => t.active).map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
               <button
-                onClick={() => applyMore({ module: module.trim() || null }, () => setModule(""))}
-                className="rounded-md px-2 py-1 text-[11px] font-semibold bg-brand-dark text-white"
+                disabled={!typePicked}
+                onClick={() => applyMore({ type: typePicked }, () => setTypePicked(""))}
+                className="rounded-md px-2 py-1 text-[11px] font-semibold bg-brand-dark text-white disabled:opacity-40"
               >
                 Apply
               </button>
             </div>
+
+            <label className="block text-[11px] font-semibold text-brand-sub mb-1">Category</label>
+            <select
+              value={categoryPicked}
+              onChange={(e) => { setCategoryPicked(e.target.value); setSubcategoryPicked(""); }}
+              className="w-full rounded-md px-2 py-1 text-xs border border-brand-border mb-1"
+            >
+              <option value="">Pick a category…</option>
+              <option value="__none__">— No category —</option>
+              {topCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <div className="flex gap-1 mb-3">
+              <select
+                value={subcategoryPicked}
+                onChange={(e) => setSubcategoryPicked(e.target.value)}
+                disabled={subcategories.length === 0}
+                className="flex-1 rounded-md px-2 py-1 text-xs border border-brand-border disabled:opacity-50"
+              >
+                <option value="">{subcategories.length ? "No subcategory" : "No subcategories"}</option>
+                {subcategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              <button
+                disabled={!categoryPicked}
+                onClick={() =>
+                  applyMore(
+                    categoryPicked === "__none__" ? { categoryId: null } : { categoryId: categoryPicked, subcategoryId: subcategoryPicked || null },
+                    () => { setCategoryPicked(""); setSubcategoryPicked(""); },
+                  )
+                }
+                className="rounded-md px-2 py-1 text-[11px] font-semibold bg-brand-dark text-white disabled:opacity-40"
+              >
+                Apply
+              </button>
+            </div>
+
+            <label className="block text-[11px] font-semibold text-brand-sub mb-1">Impact × Urgency</label>
+            <div className="flex gap-1 mb-1">
+              <select value={impact} onChange={(e) => setImpact(e.target.value as MatrixLevel | "")} className="flex-1 rounded-md px-2 py-1 text-xs border border-brand-border">
+                <option value="">Impact…</option>
+                {MATRIX_LEVELS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+              </select>
+              <select value={urgency} onChange={(e) => setUrgency(e.target.value as MatrixLevel | "")} className="flex-1 rounded-md px-2 py-1 text-xs border border-brand-border">
+                <option value="">Urgency…</option>
+                {MATRIX_LEVELS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+              </select>
+              <button
+                disabled={!impact && !urgency}
+                onClick={() => applyMore({ ...(impact ? { impact } : {}), ...(urgency ? { urgency } : {}) }, () => { setImpact(""); setUrgency(""); })}
+                className="rounded-md px-2 py-1 text-[11px] font-semibold bg-brand-dark text-white disabled:opacity-40"
+              >
+                Apply
+              </button>
+            </div>
+            <div className="text-[10.5px] text-brand-sub mb-3">
+              {matrixPriority ? `Priority will be ${matrixPriority.charAt(0) + matrixPriority.slice(1).toLowerCase()}` : "Priority follows Impact × Urgency when a task has both"}
+            </div>
+
+            <label className="block text-[11px] font-semibold text-brand-sub mb-1">Closure reason</label>
+            <div className="flex gap-1 mb-1">
+              <select value={reasonPicked} onChange={(e) => setReasonPicked(e.target.value)} className="flex-1 rounded-md px-2 py-1 text-xs border border-brand-border">
+                <option value="">Pick a reason…</option>
+                {CLOSE_REASONS.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+              </select>
+              <button
+                disabled={!reasonPicked}
+                onClick={() => applyMore({ closeReason: reasonPicked }, () => setReasonPicked(""))}
+                className="rounded-md px-2 py-1 text-[11px] font-semibold bg-brand-dark text-white disabled:opacity-40"
+              >
+                Apply
+              </button>
+            </div>
+            <div className="text-[10.5px] text-brand-sub mb-3">Changes only the selected tasks that are already Done.</div>
 
             <label className="block text-[11px] font-semibold text-brand-sub mb-1">Add tag</label>
             <div className="flex gap-1 mb-3">
