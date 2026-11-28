@@ -16,6 +16,8 @@ export async function GET() {
     select: {
       id: true, name: true, hint: true, createdAt: true, lastUsedAt: true, revokedAt: true,
       createdBy: { select: { name: true } },
+      client: { select: { name: true } },
+      accessExpiresAt: true,
       projects: { select: { id: true, code: true, name: true }, orderBy: { code: "asc" } },
     },
   });
@@ -29,6 +31,8 @@ export async function GET() {
       lastUsedAt: r.lastUsedAt?.toISOString() ?? null,
       revokedAt: r.revokedAt?.toISOString() ?? null,
       projects: r.projects,
+      // Set for a connection made by signing in from an app (e.g. claude.ai).
+      connectedApp: r.client?.name ?? (r.accessExpiresAt ? "App" : null),
     })),
   );
 }

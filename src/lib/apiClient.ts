@@ -25,6 +25,8 @@ export const api = {
   createMcpToken: (body: { name: string; projectIds: string[] }) =>
     request("/api/mcp-tokens", "POST", body) as Promise<{ id: string; token: string }>,
   revokeMcpToken: (id: string) => request(`/api/mcp-tokens/${id}`, "DELETE"),
+  setMcpReportEmails: (projectId: string, emails: string[]) =>
+    request("/api/mcp-tokens/report-emails", "PUT", { projectId, emails }) as Promise<{ ok: boolean; emails: string[] }>,
   holdTasks: (body: { hold: boolean; taskIds?: string[]; projectId?: string }) => request("/api/tasks/hold", "POST", body),
   addTaskComment: (taskId: string, message: string) => request(`/api/tasks/${taskId}/events`, "POST", { message }),
   updateTaskComment: (taskId: string, eventId: string, message: string) =>

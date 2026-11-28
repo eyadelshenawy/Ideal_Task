@@ -14,6 +14,14 @@ interface McpTokenRow {
   lastUsedAt: string | null;
   revokedAt: string | null;
   projects: { id: string; code: string; name: string }[];
+  connectedApp: string | null;
+}
+
+interface ReportEmailsRow {
+  id: string;
+  code: string;
+  name: string;
+  reportEmails: string[];
 }
 
 interface McpLogRow {
@@ -48,6 +56,68 @@ const OUTCOME_LABEL: Record<string, string> = {
   unauthorised: "Invalid token",
 };
 
+/** One project's report recipients: edit as a comma/line separated list. */
+function ReportEmailsEditor({ row, onSaved }: { row: ReportEmailsRow; onSaved: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(row.reportEmails.join("\n"));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function save() {
+    setBusy(true);
+    setError("");
+    try {
+      const emails = text.split(/[\s,;]+/).map((e) => e.trim()).filter(Boolean);
+      await api.setMcpReportEmails(row.id, emails);
+      setEditing(false);
+      onSaved();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't save");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="py-2 border-b border-brand-border">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="text-[12.5px] text-brand-text">
+            <span className="font-mono text-[11.5px] text-brand-sub">{row.code}</span> {row.name}
+          </div>
+          {!editing && (
+            <div className="text-[11.5px] text-brand-sub mt-0.5 break-all">
+              {row.reportEmails.length ? row.reportEmails.join(", ") : "No one — reports can't be sent for this project"}
+            </div>
+          )}
+        </div>
+        {!editing && (
+          <button onClick={() => { setText(row.reportEmails.join("\n")); setEditing(true); }} className="text-[11.5px] text-brand-dark border border-brand-border rounded-md px-2 py-1 flex-shrink-0">
+            Edit
+          </button>
+        )}
+      </div>
+      {editing && (
+        <div className="mt-1.5">
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={3}
+            placeholder={"one@client.com\nmanager@ideal-dt.com"}
+            className="w-full rounded-lg border border-brand-border px-2 py-1.5 text-[12.5px] outline-none"
+          />
+          <div className="text-[10.5px] text-brand-sub mb-1">One address per line (or separated by commas). Up to 20.</div>
+          {error && <div className="text-[12px] text-red-700 mb-1">{error}</div>}
+          <div className="flex gap-2">
+            <button onClick={save} disabled={busy} className="rounded-md bg-brand-dark text-white px-3 py-1 text-[12px] disabled:opacity-50">Save</button>
+            <button onClick={() => { setEditing(false); setError(""); }} className="text-[12px] text-brand-sub px-2">Cancel</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CopyButton({ value, label }: { value: string; label: string }) {
   const [done, setDone] = useState(false);
   return (
@@ -75,8 +145,9 @@ export default function McpAccessModal({ projects, onClose }: {
   projects: { id: string; code: string; name: string }[];
   onClose: () => void;
 }) {
-  const [tab, setTab] = useState<"tokens" | "log">("tokens");
+  const [tab, setTab] = useState<"tokens" | "emails" | "log">("tokens");
   const { data: tokens, mutate } = useSWR<McpTokenRow[]>("/api/mcp-tokens", fetcher);
+  const { data: emailRows, mutate: mutateEmails } = useSWR<ReportEmailsRow[]>(tab === "emails" ? "/api/mcp-tokens/report-emails" : null, fetcher);
   const { data: log } = useSWR<McpLogRow[]>(tab === "log" ? "/api/mcp-tokens/log" : null, fetcher, { refreshInterval: 15000 });
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
@@ -121,7 +192,7 @@ export default function McpAccessModal({ projects, onClose }: {
           <button onClick={onClose} className="text-brand-sub" aria-label="Close"><X size={18} /></button>
         </div>
         <div className="text-[11.5px] text-brand-sub mb-3">
-          Lets an AI assistant such as Claude read tickets — one project at a time, and only the projects you pick for its token. It can&apos;t create, change or delete anything. Private tasks, tasks in Trash and tasks on hold are never shared.
+          Lets an AI assistant such as Claude read tickets — one project at a time, and only the projects you pick for its token — and email a report to the addresses under Report emails. It can&apos;t create, change or delete tickets. Private tasks, tasks in Trash and tasks on hold are never shared. Connect claude.ai by adding the server address below as a custom connector; you&apos;ll be asked to sign in and pick the projects.
         </div>
 
         <div className="flex items-center gap-2 flex-wrap rounded-lg bg-brand-bg border border-brand-border px-3 py-2 mb-3">
@@ -131,13 +202,13 @@ export default function McpAccessModal({ projects, onClose }: {
         </div>
 
         <div className="flex gap-1 mb-3 border-b border-brand-border">
-          {(["tokens", "log"] as const).map((t) => (
+          {(["tokens", "emails", "log"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
               className={`px-3 py-1.5 text-[12.5px] -mb-px border-b-2 ${tab === t ? "border-brand-dark text-brand-dark font-semibold" : "border-transparent text-brand-sub"}`}
             >
-              {t === "tokens" ? "Tokens" : "Request log"}
+              {t === "tokens" ? "Tokens" : t === "emails" ? "Report emails" : "Request log"}
             </button>
           ))}
         </div>
@@ -209,6 +280,9 @@ export default function McpAccessModal({ projects, onClose }: {
                     <div className="min-w-0">
                       <div className="text-[12.5px] text-brand-text font-semibold">
                         {t.name} <span className="font-mono font-normal text-brand-sub">…{t.hint}</span>
+                        {t.connectedApp && (
+                          <span className="ml-1.5 rounded bg-[#E6F0E3] text-brand-dark px-1.5 py-0.5 text-[10px] font-normal align-middle">Connected app</span>
+                        )}
                       </div>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {t.projects.map((p) => (
@@ -226,6 +300,18 @@ export default function McpAccessModal({ projects, onClose }: {
                   </div>
                 </div>
               ))}
+            </div>
+          </>
+        )}
+
+        {tab === "emails" && (
+          <>
+            <div className="text-[11.5px] text-brand-sub mb-2">
+              The assistant can email a PowerPoint report for a project only to the addresses saved here, from IDT Desk&apos;s own email address. It can&apos;t see or change them, and it can send at most one report per project every 20 hours.
+            </div>
+            {!emailRows && <div className="text-sm text-brand-sub text-center py-6">Loading…</div>}
+            <div className="flex flex-col">
+              {emailRows?.map((r) => <ReportEmailsEditor key={r.id + r.reportEmails.join()} row={r} onSaved={() => mutateEmails()} />)}
             </div>
           </>
         )}

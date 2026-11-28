@@ -35,10 +35,13 @@ export async function authenticateMcp(req: Request): Promise<McpCaller | null> {
       id: true,
       name: true,
       revokedAt: true,
+      accessExpiresAt: true,
       projects: { where: { deletedAt: null, isTemplate: false }, select: { id: true, code: true, name: true }, orderBy: { code: "asc" } },
     },
   });
   if (!row || row.revokedAt) return null;
+  // OAuth access tokens last an hour; the app renews them with its refresh token.
+  if (row.accessExpiresAt && row.accessExpiresAt.getTime() <= Date.now()) return null;
 
   prisma.mcpToken.update({ where: { id: row.id }, data: { lastUsedAt: new Date() } }).catch(() => {});
   return { tokenId: row.id, tokenName: row.name, projects: row.projects };

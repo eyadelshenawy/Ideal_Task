@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "Claude in an ordinary chat, and weekly reports by email",
+    description: "IDT Desk can now be added to claude.ai as a custom connector: paste the server address from Settings → MCP access, sign in when asked, tick the projects and press Allow. Any ordinary Claude chat can then read those projects' tickets. Claude can also email a PowerPoint report for a project — built by IDT Desk in IDEAL colours and sent from IDT Desk's usual email address — but only to the addresses you save under Settings → MCP access → Report emails, and at most once every 20 hours per project. Connected apps show in the Tokens tab with a Revoke button, and every request still appears in the Request log.",
+  },
+  {
     title: "MCP access: let an AI assistant read tickets",
     description: "Super Admins can now give an AI assistant such as Claude read-only access to tickets (⋯ → Settings → MCP access). Create a token, tick the projects it may read, and copy it — it is shown only once. The assistant can list a project's tickets, read one ticket with its comments, and see every status change since a date, one project at a time. It can't change anything, and private tasks, Trash and tasks on hold are never shared. The Request log tab shows who asked for what, and when. IDT Desk now also keeps a full history of status changes for every task, including past changes rebuilt from the activity log.",
   },

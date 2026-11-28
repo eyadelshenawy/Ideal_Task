@@ -4,9 +4,12 @@ import { STATUSES } from "@/lib/taskHelpers";
 import { CLOSE_REASONS } from "@/lib/closeReason";
 import { utcToDateStr } from "@/lib/serverDates";
 import type { McpCaller } from "./tokens";
+import { deckSchema, buildReportDeck } from "./reportDeck";
+import { sendEmail } from "@/lib/email";
 
-// Read-only tools for the MCP server at /api/mcp. Nothing here writes to a
-// task. Every tool that returns tickets works on ONE project, and only on a
+// Tools for the MCP server at /api/mcp. Nothing here writes to a task. The
+// only tool with an effect is send_report, which emails a PowerPoint built
+// by IDT Desk to the addresses saved for that project — never anywhere else. Every tool that returns tickets works on ONE project, and only on a
 // project linked to the caller's token, so two clients' data never mix.
 //
 // The same tasks are left out as everywhere else in the app: private tasks,
@@ -16,7 +19,7 @@ const LIST_LIMIT = 1000;
 const CHANGES_LIMIT = 5000;
 
 export class ToolError extends Error {
-  constructor(message: string, public outcome: "invalid" | "denied" | "not_found") {
+  constructor(message: string, public outcome: "invalid" | "denied" | "not_found" | "error") {
     super(message);
   }
 }
@@ -70,7 +73,7 @@ function owners(t: { assignees: { name: string }[]; contactAssignees: { name: st
   return [...t.assignees.map((a) => a.name), ...t.contactAssignees.map((c) => c.name)];
 }
 
-export const TOOL_DEFINITIONS = [
+export const TOOL_DEFINITIONS: { name: string; [key: string]: unknown }[] = [
   {
     name: "list_projects",
     title: "List projects",
@@ -122,6 +125,129 @@ export const TOOL_DEFINITIONS = [
     },
   },
 ].map((t) => ({ ...t, annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } }));
+
+const textList = (max: number) => ({ type: "array", items: { type: "string" }, maxItems: max });
+
+TOOL_DEFINITIONS.push({
+  name: "send_report",
+  title: "Email a PowerPoint report",
+  description:
+    "Builds a PowerPoint in IDEAL colours from the slide content you give and emails it, from IDT Desk's own address, to the report " +
+    "recipients saved for ONE project in IDT Desk (Settings → MCP access → Report emails). You can't choose or see the addresses. " +
+    "At most one report per project every 20 hours. Show formulas next to calculated figures (kpis[].formula). Use British English.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      project: { type: "string", description: "Project code, e.g. ABM" },
+      subject: { type: "string", maxLength: 120, description: "Email subject" },
+      summary: { type: "string", maxLength: 3000, description: "Short plain-text message for the email body (paragraphs separated by blank lines)" },
+      deck: {
+        type: "object",
+        description: "The slides. A cover slide with title, subtitle and today's date is added automatically.",
+        properties: {
+          title: { type: "string", maxLength: 90 },
+          subtitle: { type: "string", maxLength: 140 },
+          slides: {
+            type: "array",
+            maxItems: 20,
+            items: {
+              type: "object",
+              properties: {
+                title: { type: "string", maxLength: 90 },
+                kpis: {
+                  type: "array", maxItems: 6,
+                  items: {
+                    type: "object",
+                    properties: { label: { type: "string" }, value: { type: "string" }, formula: { type: "string", description: "e.g. Resolved ÷ Received = 18 ÷ 20" } },
+                    required: ["label", "value"],
+                  },
+                },
+                bullets: textList(10),
+                table: {
+                  type: "object",
+                  properties: { headers: textList(8), rows: { type: "array", maxItems: 20, items: textList(8) } },
+                  required: ["headers", "rows"],
+                },
+                chart: {
+                  type: "object",
+                  properties: {
+                    type: { type: "string", enum: ["bar", "line", "pie"] },
+                    categories: textList(24),
+                    series: {
+                      type: "array", maxItems: 4,
+                      items: { type: "object", properties: { name: { type: "string" }, values: { type: "array", items: { type: "number" } } }, required: ["name", "values"] },
+                    },
+                  },
+                  required: ["type", "categories", "series"],
+                },
+                note: { type: "string", maxLength: 300 },
+              },
+              required: ["title"],
+            },
+          },
+        },
+        required: ["title", "slides"],
+      },
+    },
+    required: ["project", "subject", "summary", "deck"],
+    additionalProperties: false,
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+});
+
+const SEND_GAP_MS = 20 * 60 * 60 * 1000;
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+}
+
+async function sendReport(args: Record<string, unknown>, caller: McpCaller): Promise<ToolResult> {
+  const project = projectFor(caller, str(args, "project", true)!);
+  const subject = typeof args.subject === "string" ? args.subject.replace(/[\r\n]+/g, " ").trim().slice(0, 120) : "";
+  const summary = typeof args.summary === "string" ? args.summary.trim() : "";
+  if (!subject) throw new ToolError('"subject" is required', "invalid");
+  if (!summary || summary.length > 3000) throw new ToolError('"summary" is required and must be at most 3,000 characters', "invalid");
+  const parsed = deckSchema.safeParse(args.deck);
+  if (!parsed.success) {
+    const i = parsed.error.issues[0];
+    throw new ToolError(`"deck" is not valid at ${["deck", ...i.path].join(".")}: ${i.message}`, "invalid");
+  }
+
+  const row = await prisma.project.findUnique({ where: { id: project.id }, select: { name: true, reportEmails: true } });
+  const to = row?.reportEmails ?? [];
+  if (to.length === 0) {
+    throw new ToolError(`No report emails are saved for ${project.code}. A Super Admin can add them in IDT Desk: Settings → MCP access → Report emails.`, "denied");
+  }
+  if (!process.env.RESEND_API_KEY || !process.env.EMAIL_FROM) throw new ToolError("Email sending isn't set up on this IDT Desk server.", "denied");
+
+  const recent = await prisma.mcpRequestLog.findFirst({
+    where: { tool: "send_report", projectCode: project.code, outcome: "ok", createdAt: { gte: new Date(Date.now() - SEND_GAP_MS) } },
+    select: { createdAt: true },
+  });
+  if (recent) {
+    throw new ToolError(`A report for ${project.code} was already sent at ${recent.createdAt.toISOString()}. Only one every 20 hours.`, "denied");
+  }
+
+  const today = new Date();
+  const dateLabel = today.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "Africa/Cairo" });
+  const file = await buildReportDeck(parsed.data, row!.name, dateLabel);
+  const filename = `${project.code}-report-${today.toISOString().slice(0, 10)}.pptx`;
+
+  const paragraphs = summary.split(/\n\s*\n/).map((p) => `<p style="margin:0 0 12px;">${escapeHtml(p).replace(/\n/g, "<br>")}</p>`).join("");
+  const html =
+    `<div style="font-family:Calibri,Arial,sans-serif;color:#16261F;font-size:14px;line-height:1.5;max-width:640px;">` +
+    `<div style="background:#0A5A46;color:#fff;padding:14px 18px;border-radius:8px 8px 0 0;font-weight:bold;font-size:16px;">${escapeHtml(parsed.data.title)}</div>` +
+    `<div style="border:1px solid #E1E8E4;border-top:4px solid #82B478;padding:16px 18px;border-radius:0 0 8px 8px;">${paragraphs}` +
+    `<p style="margin:12px 0 0;color:#5B6B64;font-size:12px;">Attached: ${escapeHtml(filename)}<br>IDEAL for Digital Transformation</p></div></div>`;
+
+  const sent = await sendEmail({ to, subject, html, attachments: [{ filename, content: file }] }).catch(() => false);
+  if (!sent) throw new ToolError("The email couldn't be sent. Nothing was delivered — try again later.", "error");
+  return {
+    data: { sent: true, project: project.code, recipients: to.length, file: filename, slides: parsed.data.slides.length + 1 },
+    resultCount: to.length,
+    projectCode: project.code,
+  };
+}
 
 export async function runTool(name: string, args: Record<string, unknown>, caller: McpCaller): Promise<ToolResult> {
   switch (name) {
@@ -244,6 +370,9 @@ export async function runTool(name: string, args: Record<string, unknown>, calle
         projectCode: project.code,
       };
     }
+
+    case "send_report":
+      return sendReport(args, caller);
 
     default:
       throw new ToolError(`Unknown tool "${name}"`, "invalid");

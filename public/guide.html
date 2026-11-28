@@ -690,13 +690,21 @@
 
   <section class="doc-section" id="mcp-access" data-group="Administration" data-icon="shield" data-label="MCP access">
     <h2>{{ICON:shield}} MCP access</h2>
-    <p class="lede">Super Admin only — lets an AI assistant such as Claude read tickets from IDT Desk, so it can answer questions or prepare a weekly report from live data. It is read-only: it can't create, change or delete anything.</p>
+    <p class="lede">Super Admin only — lets an AI assistant such as Claude read tickets from IDT Desk, so it can answer questions or prepare a weekly report from live data. It can't create, change or delete tickets; the only thing it can send is a report email to the addresses you save (see Report emails below).</p>
     <ul>
       <li><strong>One project at a time.</strong> Every request names one project, and a token can only read the projects ticked for it — so one client's tickets never mix with another's.</li>
       <li><strong>What it can read:</strong> the list of tickets (code, title, status, module, assignees, created, due and closed dates), one ticket in full with its comments, and every status change since a date.</li>
       <li><strong>What it never sees:</strong> private tasks, tasks in Trash and tasks on hold.</li>
     </ul>
     <p>Open <em>⋯ → Settings → MCP access</em>, press <em>New token</em>, give it a name (who or what will use it) and tick its projects. Copy the token straight away — it is shown only once. Give it to the assistant together with the <em>Server address</em> shown at the top. <em>Revoke</em> stops a token at once.</p>
+    <h3>Connect claude.ai (ordinary chat)</h3>
+    <ol>
+      <li>In claude.ai open <em>Settings → Connectors → Add custom connector</em> and paste the <em>Server address</em>.</li>
+      <li>Press <em>Connect</em>. IDT Desk opens: sign in (Super Admin), tick the projects, press <em>Allow</em>.</li>
+      <li>The connection appears in the <em>Tokens</em> tab marked <em>Connected app</em>; <em>Revoke</em> disconnects it.</li>
+    </ol>
+    <h3>Report emails</h3>
+    <p>In the <em>Report emails</em> tab, press <em>Edit</em> next to a project and enter who should receive its report, one address per line. Claude can then ask IDT Desk to email a PowerPoint for that project: IDT Desk builds the file in IDEAL colours and sends it from its usual address, only to these people and at most once every 20 hours per project. With no addresses saved, nothing can be sent for that project.</p>
     <p>The <em>Request log</em> tab lists every request: which token, what it asked for (tool, project, ticket), when, and whether it was allowed. The token itself is never stored or logged.</p>
     <figure class="shot">
       <img loading="lazy" src="/guide/mcp-access.jpg" alt="Settings — MCP access">

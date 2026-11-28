@@ -50,6 +50,12 @@ export default function LoginForm() {
       } catch {}
     }
 
+    // Only the app sign-in page may be returned to — never an outside address.
+    const callbackUrl = searchParams.get("callbackUrl");
+    if (callbackUrl && callbackUrl.startsWith("/oauth/authorize?")) {
+      window.location.href = callbackUrl;
+      return;
+    }
     router.push("/");
     router.refresh();
   }

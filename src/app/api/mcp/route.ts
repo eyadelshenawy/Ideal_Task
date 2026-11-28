@@ -3,15 +3,18 @@ import { prisma } from "@/lib/prisma";
 import { checkRateLimit, ipFromRequest } from "@/lib/rateLimit";
 import { authenticateMcp, type McpCaller } from "@/lib/mcp/tokens";
 import { TOOL_DEFINITIONS, runTool, ToolError } from "@/lib/mcp/tools";
+import { appOrigin, resourceMetadataUrl } from "@/lib/mcp/oauth";
 
-// Read-only MCP server (Streamable HTTP, stateless JSON responses).
+// MCP server (Streamable HTTP, stateless JSON responses): read-only ticket
+// tools plus send_report. Sign-in: a token from Settings, or OAuth.
 // Settings → MCP access creates the tokens and shows the request log.
 // See docs/mcp/README.md for setup.
 
 export const dynamic = "force-dynamic";
 
 const SUPPORTED_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
-const MAX_BODY = 64 * 1024;
+// Room for send_report's slide content.
+const MAX_BODY = 256 * 1024;
 
 type JsonRpcId = string | number | null;
 interface JsonRpcRequest { jsonrpc?: string; id?: JsonRpcId; method?: unknown; params?: unknown }
@@ -58,7 +61,8 @@ export async function POST(req: Request) {
     logRequest({ caller: null, method: "auth", outcome: "unauthorised", ip });
     return NextResponse.json(
       { jsonrpc: "2.0", id: null, error: { code: -32001, message: "Missing or invalid token" } },
-      { status: 401, headers: { "WWW-Authenticate": 'Bearer realm="IDT Desk MCP"' } },
+      // Points OAuth-capable apps (claude.ai connectors) to the sign-in.
+      { status: 401, headers: { "WWW-Authenticate": `Bearer resource_metadata="${resourceMetadataUrl(appOrigin(req))}"` } },
     );
   }
   if (checkRateLimit(`mcp-token:${caller.tokenId}`, 120, 60_000)) {
@@ -92,10 +96,10 @@ export async function POST(req: Request) {
       return rpcResult(id, {
         protocolVersion: SUPPORTED_VERSIONS.includes(asked) ? asked : SUPPORTED_VERSIONS[0],
         capabilities: { tools: { listChanged: false } },
-        serverInfo: { name: "idt-desk", title: "IDT Desk (read-only)", version: "1.0.0" },
+        serverInfo: { name: "idt-desk", title: "IDT Desk", version: "1.1.0" },
         instructions:
-          "Read-only access to IDT Desk tickets. Start with list_projects. Every ticket tool works on one project at a time; " +
-          "use the project code (e.g. ABM). Dates are UTC.",
+          "Read access to IDT Desk tickets, plus send_report to email a PowerPoint to a project's saved report recipients. " +
+          "Start with list_projects. Every tool works on one project at a time; use the project code (e.g. ABM). Dates are UTC.",
       });
     }
 

@@ -280,6 +280,11 @@ model Project {
   customFields CustomField[]
   contacts     Contact[]
   mcpTokens    McpToken[]     @relation("McpTokenProjects")
+
+  // Who receives the report the MCP send_report tool emails for this
+  // project (Settings → MCP access → Report emails). The tool can't send
+  // anywhere else.
+  reportEmails String[] @default([])
 }
 
 enum CustomFieldType {
@@ -731,7 +736,44 @@ model McpToken {
   lastUsedAt  DateTime?
   revokedAt   DateTime?
 
+  // Set when the token came from the OAuth sign-in (a claude.ai connector)
+  // rather than Settings → New token. The access token then expires and is
+  // renewed with the refresh token, whose hash is kept here too; renewing
+  // rotates both, on this same row.
+  clientId         String?
+  client           OAuthClient? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  accessExpiresAt  DateTime?
+  refreshHash      String?      @unique
+  refreshExpiresAt DateTime?
+
   logs McpRequestLog[]
+}
+
+// An app that registered itself for OAuth sign-in (e.g. claude.ai). Created
+// by /api/oauth/register; only listed redirect addresses are accepted.
+model OAuthClient {
+  id           String      @id
+  name         String
+  redirectUris String[]
+  createdAt    DateTime    @default(now())
+  tokens       McpToken[]
+  codes        OAuthCode[]
+}
+
+// One-time sign-in code, valid for 10 minutes, swapped for a token by
+// /api/oauth/token. Only its hash is stored.
+model OAuthCode {
+  id            String      @id @default(cuid())
+  codeHash      String      @unique
+  clientId      String
+  client        OAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId        String
+  redirectUri   String
+  codeChallenge String
+  projectIds    String[]
+  expiresAt     DateTime
+  usedAt        DateTime?
+  createdAt     DateTime    @default(now())
 }
 
 // Who asked the MCP server for what, and when. Never holds the token or any

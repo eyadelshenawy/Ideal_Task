@@ -15,7 +15,8 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith("/share/") ||
     pathname.startsWith("/intake/") ||
     pathname.startsWith("/track/") ||
-    pathname.startsWith("/rate/")
+    pathname.startsWith("/rate/") ||
+    pathname.startsWith("/.well-known/")
   ) {
     return NextResponse.next();
   }
@@ -25,6 +26,8 @@ export async function middleware(req: NextRequest) {
   if (!token || token.inactive) {
     const url = new URL("/login", req.url);
     if (token?.inactive) url.searchParams.set("error", "deactivated");
+    // An app sign-in (claude.ai connector) comes back to its Allow page after login.
+    else if (pathname === "/oauth/authorize") url.searchParams.set("callbackUrl", pathname + req.nextUrl.search);
     return NextResponse.redirect(url);
   }
 
