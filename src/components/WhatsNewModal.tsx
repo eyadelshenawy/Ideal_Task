@@ -7,6 +7,10 @@ import { X, Sparkles } from "lucide-react";
 // same habit as updating guide.html, just a shorter, more visible summary.
 const ENTRIES: { title: string; description: string }[] = [
   {
+    title: "MCP access: let an AI assistant read tickets",
+    description: "Super Admins can now give an AI assistant such as Claude read-only access to tickets (⋯ → Settings → MCP access). Create a token, tick the projects it may read, and copy it — it is shown only once. The assistant can list a project's tickets, read one ticket with its comments, and see every status change since a date, one project at a time. It can't change anything, and private tasks, Trash and tasks on hold are never shared. The Request log tab shows who asked for what, and when. IDT Desk now also keeps a full history of status changes for every task, including past changes rebuilt from the activity log.",
+  },
+  {
     title: "Closure reason, and tickets with work on them stay",
     description: "When a task is Done you can now pick why: Resolved (the default), Not applicable, Duplicate or Cancelled. Only Resolved tickets count toward SLA and average resolution time, and the client report shows how many were closed for each reason. Tickets already tagged Not Applicable, Duplicate or Cancelled were given that reason. Also, a ticket with comments or logged hours can no longer be moved to Trash — close it with the right reason instead; a Super Admin can still override after confirming.",
   },

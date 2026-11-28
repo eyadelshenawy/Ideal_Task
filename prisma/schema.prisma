@@ -110,6 +110,7 @@ model User {
   projectAdminOf ProjectAdmin[]
 
   pushSubscriptions PushSubscription[]
+  mcpTokensCreated  McpToken[]
   holidaysCreated   Holiday[]
 }
 
@@ -278,6 +279,7 @@ model Project {
   admins       ProjectAdmin[]
   customFields CustomField[]
   contacts     Contact[]
+  mcpTokens    McpToken[]     @relation("McpTokenProjects")
 }
 
 enum CustomFieldType {
@@ -423,8 +425,8 @@ model Task {
   // pausedDays = the same waits in working days, used to push the Due Date
   // and for reports. See src/lib/pause.ts.
   pausedAt      DateTime?
-  pausedMinutes Int       @default(0)
-  pausedDays    Int       @default(0)
+  pausedMinutes Int          @default(0)
+  pausedDays    Int          @default(0)
   // On hold: set while the task is parked (e.g. until a client agreement is
   // settled). It is then hidden from every list, count, report, SLA alert and
   // notification, and only shown under Settings → On hold. Null = normal.
@@ -491,6 +493,7 @@ model Task {
   timeEntries       TimeEntry[]
   customFieldValues TaskCustomFieldValue[]
   survey            SatisfactionSurvey?
+  statusChanges     TaskStatusChange[]
 
   @@index([projectId])
   @@index([status])
@@ -693,4 +696,63 @@ model TaskEvent {
   editedAt  DateTime?
 
   @@index([taskId])
+}
+
+// One row per status a task has been in. Written by a database trigger on
+// "Task" (see migration 20261128090000_mcp_server), so every code path that
+// changes a status is covered — PATCH, bulk, import, milestone roll-ups.
+// fromStatus is null for the first row (the status the task was created in).
+// Rows before the migration were rebuilt from the task activity log.
+model TaskStatusChange {
+  id         String   @id @default(cuid())
+  taskId     String
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  fromStatus Status?
+  toStatus   Status
+  changedAt  DateTime @default(now())
+
+  @@index([taskId, changedAt])
+  @@index([changedAt])
+}
+
+// Access token for the read-only MCP server at /api/mcp. Only the SHA-256
+// hash is stored; the token itself is shown once, when it is created.
+// A token can read only the projects linked to it.
+model McpToken {
+  id          String    @id @default(cuid())
+  name        String
+  tokenHash   String    @unique
+  // Last 4 characters, so an admin can tell tokens apart without the secret.
+  hint        String
+  projects    Project[] @relation("McpTokenProjects")
+  createdById String?
+  createdBy   User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+
+  logs McpRequestLog[]
+}
+
+// Who asked the MCP server for what, and when. Never holds the token or any
+// ticket content — only the tool, the project/ticket code asked for and how
+// many rows went back.
+model McpRequestLog {
+  id          String    @id @default(cuid())
+  tokenId     String?
+  token       McpToken? @relation(fields: [tokenId], references: [id], onDelete: SetNull)
+  // Copy of the token name at the time, or "Invalid token".
+  tokenName   String
+  method      String
+  tool        String?
+  projectCode String?
+  ticketCode  String?
+  // ok | denied | not_found | invalid | error | unauthorised
+  outcome     String
+  resultCount Int?
+  ip          String?
+  createdAt   DateTime  @default(now())
+
+  @@index([createdAt])
+  @@index([tokenId])
 }

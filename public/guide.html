@@ -688,6 +688,22 @@
     </figure>
   </section>
 
+  <section class="doc-section" id="mcp-access" data-group="Administration" data-icon="shield" data-label="MCP access">
+    <h2>{{ICON:shield}} MCP access</h2>
+    <p class="lede">Super Admin only — lets an AI assistant such as Claude read tickets from IDT Desk, so it can answer questions or prepare a weekly report from live data. It is read-only: it can't create, change or delete anything.</p>
+    <ul>
+      <li><strong>One project at a time.</strong> Every request names one project, and a token can only read the projects ticked for it — so one client's tickets never mix with another's.</li>
+      <li><strong>What it can read:</strong> the list of tickets (code, title, status, module, assignees, created, due and closed dates), one ticket in full with its comments, and every status change since a date.</li>
+      <li><strong>What it never sees:</strong> private tasks, tasks in Trash and tasks on hold.</li>
+    </ul>
+    <p>Open <em>⋯ → Settings → MCP access</em>, press <em>New token</em>, give it a name (who or what will use it) and tick its projects. Copy the token straight away — it is shown only once. Give it to the assistant together with the <em>Server address</em> shown at the top. <em>Revoke</em> stops a token at once.</p>
+    <p>The <em>Request log</em> tab lists every request: which token, what it asked for (tool, project, ticket), when, and whether it was allowed. The token itself is never stored or logged.</p>
+    <figure class="shot">
+      <img loading="lazy" src="/guide/mcp-access.jpg" alt="Settings — MCP access">
+      <figcaption>A new token is shown once — copy it before pressing Done.</figcaption>
+    </figure>
+  </section>
+
   <section class="doc-section" id="audit-log" data-group="Administration" data-icon="scroll" data-label="Audit log">
     <h2>{{ICON:scroll}} Audit log</h2>
     <p class="lede">Super Admin only — a running history of sign-ins, team and project changes, security changes (two-factor on/off, password changes, Security Policy), changes to Lists and Ticket Categories, and tickets moved to or restored from Trash. Per-task activity lives on each task instead (see Comments &amp; Activity above).</p>

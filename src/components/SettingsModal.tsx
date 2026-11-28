@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 export type SettingsSection =
   | "team" | "contacts" | "projects" | "categories" | "lists"
-  | "checklists" | "calendar" | "onhold" | "security" | "audit" | "trash";
+  | "checklists" | "calendar" | "onhold" | "security" | "mcp" | "audit" | "trash";
 
 export interface SettingsItem {
   id: SettingsSection;
